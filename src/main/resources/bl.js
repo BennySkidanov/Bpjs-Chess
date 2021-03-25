@@ -39,8 +39,8 @@ const anyMoves = bp.EventSet("anyMove", function (e) {
 
 const ESCenterCaptureMoves = bp.EventSet("EScenterCaptureMoves", function (e) {
     return e.name == 'Move' && ( e.data.dst[1] == '3' || e.data.dst[1] == '4' )
-        && ( e.data.src[0] == 'c'  || e.data.src[0] == 'd' || e.data.src[0] == 'e'  || e.data.src[0] == 'f' || e.data.src[0] == 'b'  || e.data.src[0] == 'g' )
-        && ( e.data.dst[0] == 'c'  || e.data.dst[0] == 'd' || e.data.dst[0] == 'e'  || e.data.dst[0] == 'f')
+      && ( e.data.src[0] == 'c'  || e.data.src[0] == 'd' || e.data.src[0] == 'e'  || e.data.src[0] == 'f' || e.data.src[0] == 'b'  || e.data.src[0] == 'g' )
+      && ( e.data.dst[0] == 'c'  || e.data.dst[0] == 'd' || e.data.dst[0] == 'e'  || e.data.dst[0] == 'f')
 
 })
 
@@ -50,7 +50,7 @@ const ESPawnDevelopingMoves = bp.EventSet("ESpawnDevelopingMoves", function (e) 
 
 const ESFianchettoMoves = bp.EventSet("ESfianchettoMoves", function (e) {
     return e.name == 'Move' &&  e.data.dst[1] == '3' &&
-        ( e.data.dst[0] == 'b' || e.data.dst[0] == 'g' )
+      ( e.data.dst[0] == 'b' || e.data.dst[0] == 'g' )
 })
 
 
@@ -84,21 +84,21 @@ ctx.bthread("interleave", "Phase.Opening", function (phase) {
 */
 
 
-ctx.bthread("Developing pieces", "Phase.Opening", function (phase) {
+/*ctx.bthread("Developing pieces", "Phase.Opening", function (phase) {
     bp.log.info("Starting Developing pieces...")
     sync({request: bp.Event("Starting developing", "pawns")})
     // until a break event happens
     sync({request: bp.Event("Starting developing", "bishop and knight")})
     sync({request: bp.Event("Starting developing", "queen and rook")})
-})
+})*/
 
-ctx.bthread("Starting developing", "Phase.Opening", function (phase) {
-   /* bp.log.info("Let's Start ")
+/*ctx.bthread("Starting developing", "Phase.Opening", function (phase) {
+   /!* bp.log.info("Let's Start ")
     bp.log.info("ESPawnDevelopingMoves")
     bp.log.info(ESpawnDevelopingMoves)
     bp.log.info(ESpawnDevelopingMoves.contains(moveEvent("Pawn", "c2", "c3")))
-   */
-   let i=0
+   *!/
+   // let i=0
    //bp.data.put("# developing moves",0)
     // while (devPawns()) {
     while (true) {
@@ -111,13 +111,13 @@ ctx.bthread("Starting developing", "Phase.Opening", function (phase) {
             pawnMoves = pawnMoves.concat(
             availableStraightCellsFromPawn(pawnsArr[i], 2).concat(availableStraightCellsFromPawn(pawnsArr[i], 1)).
             filter(m => ESPawnDevelopingMoves.contains(m)))
-            /*bp.log.info("develop moves")
-            bp.log.info(developMoves)*/
+            /!*bp.log.info("develop moves")
+            bp.log.info(developMoves)*!/
         }
-        /*bp.log.info("PAWN MOVES")
-        bp.log.info(pawnMoves)*/
+        /!*bp.log.info("PAWN MOVES")
+        bp.log.info(pawnMoves)*!/
         let e = sync({request: pawnMoves, waitFor: anyMoves})
-        //if(ESPawnDevelopingMoves.contains(e)) bp.data.put("# developing moves",++i)
+        //if(ESPawnDevelopingMoves.contains(e)) bp.data.put("# developing moves",++i) //TODO: check why not working
 
 
         //bp.data.put("Explanation - Developing pawn", i++) // this i counter suppose to quantify the probabilities
@@ -125,14 +125,14 @@ ctx.bthread("Starting developing", "Phase.Opening", function (phase) {
         // let piece = ctx.getEntityById(ctx.getEntityById(dst).pieceId)
         // sync({request: Explanation("piece", 'Explanation - Developing pawn')})
     }
-})
+})*/
 
-ctx.bthread("Strengthening the center", "Phase.Opening", function (phase) {
+/*ctx.bthread("Strengthening the center", "Phase.Opening", function (phase) {
     bp.log.info("Starting Strengthening the center...")
     while (true) {
         sync({request: bp.Event("Strengthen", "Pawn")})
     }
-})
+})*/
 
 
 function clearDuplicates(pawnMoves) {
@@ -142,7 +142,7 @@ function clearDuplicates(pawnMoves) {
         dup = false
         for(let j = 0; j < pawnMovesToRequest.length; j++) {
             if( pawnMoves[i].data.src == pawnMovesToRequest[j].data.src &&
-                pawnMoves[i].data.dst == pawnMovesToRequest[j].data.dst ) {
+              pawnMoves[i].data.dst == pawnMovesToRequest[j].data.dst ) {
                 dup = true
                 break;
             }
@@ -154,17 +154,15 @@ function clearDuplicates(pawnMoves) {
 }
 
 function filterOccupiedCellsMoves(pawnMovesSet, cellsArr) {
-    let srcCellFound = false
-    let dstCellFound = false
     let retArr = []
     for(let i = 0; i < pawnMovesSet.length; i++) {
         let srcCellFound = false
         let dstCellFound = false
-        for (let j = 0; j < cellsArr.length; j++) {
-            if (pawnMovesSet[i].data.src == cellsArr[j].id) {
+        for(let cell of cellsArr.values()) {
+            if (pawnMovesSet[i].data.src == cell.id) {
                 srcCellFound = true
             }
-            if (pawnMovesSet[i].data.dst == cellsArr[j].id) {
+            if (pawnMovesSet[i].data.dst == cell.id) {
                 dstCellFound = true
             }
         }
@@ -177,23 +175,20 @@ function filterOccupiedCellsMoves(pawnMovesSet, cellsArr) {
 
 ctx.bthread("Strengthen", "Phase.Opening", function (entity) {
     while (true) {
-
         let pawnMoves = []
-        let pawnsArr = Array.from(ctx.runQuery("Piece.White.Pawn"))
-        let cellsArr = Array.from(ctx.runQuery("Cell.all.nonOccupied"))
+        let pawnsSet = ctx.runQuery("Piece.White.Pawn")
+        let cellsSet = ctx.runQuery("Cell.all.nonOccupied")
 
-        for (let i = 0; i < pawnsArr.length; i++) {
+        for(let pawn of pawnsSet.values()) {
             pawnMoves = pawnMoves.concat(
-                availableStraightCellsFromPawn(pawnsArr[i], 2).concat(availableStraightCellsFromPawn(pawnsArr[i], 1)).
-            filter(m => ESCenterCaptureMoves.contains(m)))
+              availableStraightCellsFromPawn(pawn, 2)
+                .concat(availableStraightCellsFromPawn(pawn, 1))
+                .filter(m => ESCenterCaptureMoves.contains(m))
+            )
         }
 
         let pawnMovesSet = clearDuplicates(pawnMoves)
-        let pawnMovesToRequest = filterOccupiedCellsMoves(pawnMovesSet, cellsArr)
-        bp.log.info("pawnMovesToRequest")
-        bp.log.info(pawnMovesToRequest)
-        /*bp.log.info("cellsArr")
-        bp.log.info(cellsArr)*/
+        let pawnMovesToRequest = filterOccupiedCellsMoves(pawnMovesSet, cellsSet)
 
         sync({request: pawnMovesToRequest, waitFor: anyMoves})
     }

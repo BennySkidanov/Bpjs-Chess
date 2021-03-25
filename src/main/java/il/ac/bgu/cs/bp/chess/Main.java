@@ -3,12 +3,9 @@ package il.ac.bgu.cs.bp.chess;
 import il.ac.bgu.cs.bp.bpjs.context.ContextBProgram;
 import il.ac.bgu.cs.bp.bpjs.context.PrintCOBProgramRunnerListener;
 import il.ac.bgu.cs.bp.bpjs.execution.BProgramRunner;
-import il.ac.bgu.cs.bp.bpjs.execution.jsproxy.BpLog;
 import il.ac.bgu.cs.bp.bpjs.model.BEvent;
 import il.ac.bgu.cs.bp.bpjs.model.BProgram;
 
-import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,9 +17,9 @@ public class Main {
   public static void main(final String[] args) throws InterruptedException {
 
     /** Choose the desired COBP program... */
-    BProgram bprog = new ContextBProgram("dal.js", "bl.js");
+    var bprog = new ContextBProgram("dal.js", "bl.js");
 //    BProgram bprog = new ContextBProgram("chess/dal.js", "chess/bl.js");
-
+    bprog.setEventSelectionStrategy(new ChessEventSelectionStrategy());
     bprog.setWaitForExternalEvents(true);
     final BProgramRunner rnr = new BProgramRunner(bprog);
 

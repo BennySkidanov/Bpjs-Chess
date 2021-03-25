@@ -5,7 +5,7 @@ function Cell(i,j, pieceId) {
 
 function Piece(subtype,number, color, cellId) {
   var piece = { id: 'piece' + "_" + number, type: 'piece', subtype: subtype,
-                number:number, color: color, cellId: cellId}
+    number:number, color: color, cellId: cellId}
   return piece
 }
 
@@ -30,7 +30,7 @@ ctx.registerQuery("Cell.all.nonOccupied", entity => entity.type == 'cell' && ent
 
 
 ctx.registerQuery("Piece.White.Pawn" ,
-        entity => entity.type == 'piece' && entity.subtype == 'Pawn' && entity.color == 'white')
+  entity => entity.type == 'piece' && entity.subtype == 'Pawn' && entity.color == 'white')
 
 
 //ctx.registerQuery("Piece.All", entity => entity.type.equals('piece'))
