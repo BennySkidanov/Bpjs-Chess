@@ -3,6 +3,7 @@ function Cell(i,j, pieceId) {
   return cell
 }
 
+
 function Piece(subtype,number, color, cellId) {
   var piece = { id: 'piece' + "_" + number, type: 'piece', subtype: subtype,
     number:number, color: color, cellId: cellId}
@@ -28,9 +29,14 @@ ctx.registerQuery("Cell.all", entity => entity.type == 'cell')
 
 ctx.registerQuery("Cell.all.nonOccupied", entity => entity.type == 'cell' && entity.pieceId == undefined)
 
-
 ctx.registerQuery("Piece.White.Pawn" ,
   entity => entity.type == 'piece' && entity.subtype == 'Pawn' && entity.color == 'white')
+
+ctx.registerQuery("Piece.White.Bishop" ,
+    entity => entity.type == 'piece' && entity.subtype == 'Bishop' && entity.color == 'White')
+
+ctx.registerQuery("Piece.White.Rook" ,
+    entity => entity.type == 'piece' && entity.subtype == 'Rook' && entity.color == 'White')
 
 
 //ctx.registerQuery("Piece.All", entity => entity.type.equals('piece'))
@@ -47,7 +53,6 @@ ctx.registerEffect("Game Phase", function(e) {
   bp.log.info(phase)
   ctx.updateEntity(phase)
 })
-
 /*
 ctx.registerEffect("Develop", function(e) {
   let entity = ctx.getEntityById("phase")
@@ -56,12 +61,22 @@ ctx.registerEffect("Develop", function(e) {
 })
 */
 
+const prefixDict = {};
+prefixDict["Bishop"] = "B";
+prefixDict["Pawn"] = "";
+prefixDict["Knight"] = "N";
+prefixDict["King"] = "K";
+prefixDict["Queen"] = "Q";
+prefixDict["Rook"] = "R";
+
+
 ctx.registerEffect("Move", function(e) {
-  bp.log.info(" NOTICE : MOVE EVENT IS HAPPENING ")
+  bp.log.info("Chosen Move : " + prefixDict[e.piece] + e.src + " => " + e.dst )
+  //bp.log.info(" NOTICE : MOVE EVENT IS HAPPENING ")
   let srcCell = ctx.getEntityById(e.src.toString())
   let dstCell = ctx.getEntityById(e.dst.toString())
-  bp.log.info(srcCell)
-  bp.log.info(dstCell)
+  //bp.log.info(srcCell)
+  //bp.log.info(dstCell)
 
   let srcPiece = null
   let dstPiece = null
@@ -71,8 +86,8 @@ ctx.registerEffect("Move", function(e) {
   if(dstCell.pieceId != null) {
     dstPiece = ctx.getEntityById(dstCell.pieceId.toString())
   }
-  bp.log.info(srcPiece)
-  bp.log.info(dstPiece)
+  //bp.log.info(srcPiece)
+  //bp.log.info(dstPiece)
 
 
   dstCell.pieceId = srcPiece.id
@@ -87,7 +102,7 @@ ctx.registerEffect("Move", function(e) {
   if(dstPiece)
     ctx.removeEntity(dstPiece)
 
-  bp.log.info("MOVE HAS FINISHED")
+  //bp.log.info("MOVE HAS FINISHED")
 
 })
 
@@ -97,7 +112,7 @@ const pieces = ["Pawn", "Knight", "Bishop", "Rook", "Queen", "King"];
 
 function moveEvent(piece, oldCell, newCell) {
   // bp.log.info ("Move Event : " + piece + " " + newCell);
-  return bp.Event("Move", {src: oldCell, dst:newCell});
+  return bp.Event("Move", {piece: piece, src: oldCell, dst:newCell});
 }
 
 function prefixOfPiece(piece) {
@@ -114,7 +129,7 @@ function prefixOfPiece(piece) {
 
 
 
-bthread("populate data", function() {
+ctx.populateContext(()=>{
   let pieces=[ Piece("King", 1, "White", "e1"),
     Piece("King", 2, "Black", "e8"),
     Piece("Queen", 3, "White", "d1"),
@@ -187,10 +202,8 @@ bthread("populate data", function() {
     Cell('e', '6', undefined), Cell('f', '6', undefined), Cell('g', '6', undefined), Cell('h', '6', undefined),
   ]
 
-  ctx.beginTransaction()
   ctx.insertEntity("phase", "phase",{phase:""})
   // ctx.insertEntity("explanations", "explanation",{explanations: new Set()})
   cells.forEach(function(c) { ctx.insertEntity(c.id,'cell', c) })
   pieces.forEach(function(p) { ctx.insertEntity(p.id,'piece', p) })
-  ctx.endTransaction()
 })
