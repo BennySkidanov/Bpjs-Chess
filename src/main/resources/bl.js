@@ -1,3 +1,105 @@
+function mySync(request, waitFor, block) {
+    if(!block) block = []
+    if(!request) request = []
+    if(!waitFor) waitFor = []
+
+    if (generationMode) {
+        bp.log.info("In mySync")
+        waitFor = waitFor.concat(request)
+        request = []
+    }
+    sync({waitFor: waitFor,  request: request, block: block});
+}
+
+
+// TODO : add bthread that gets the PGN and requests each move that described in it
+
+// ctx.bthread("Interleave", "Phase.Opening", function (entity) {
+//    while(true) {
+//
+//    }
+// });
+
+const prefixDictBL = {};
+prefixDictBL["B"] = "Bishop";
+prefixDictBL[""] = "Pawn";
+prefixDictBL["N"] = "Knight";
+prefixDictBL["K"] = "King";
+prefixDictBL["Q"] = "Queen";
+prefixDictBL["R"] = "Rook";
+
+function startsWithCapital(word){
+    return word.charAt(0) === word.charAt(0).toUpperCase()
+}
+
+function canReachSquare(piece, dstCell) {
+    bp.log.info("In canReachSquare")
+    bp.log.info(piece.subtype)
+    bp.log.info(dstCell)
+    if ( piece.subtype == "Pawn" && dstCell[0] == piece.cellId[0] &&
+    ( dstCell[1] - 2 == piece.cellId[1] || dstCell[1] - 1 == piece.cellId[1] ) )
+        return true;
+    return false;
+}
+
+function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, allPieces) {
+    bp.log.info("In findPieceThatCanReachToEndSquare")
+    bp.log.info(piecePrefix)
+    bp.log.info(dstCell)
+    let pieceType = prefixDictBL[piecePrefix];
+    let allPiecesOfType = ctx.runQuery(getSpecificType(pieceType, 'white'))
+    bp.log.info('all piexes {0}',allPiecesOfType.size)
+    // let allPiecesOfType = ctx.runQuery("Piece.White." + pieceType)
+    let allPiecesOfTypeValues = Array.from(allPiecesOfType);
+    for (let i = 0; i < allPiecesOfType.size; i++) {
+        if(canReachSquare(allPiecesOfTypeValues[i], dstCell)) {
+            bp.log.info(allPiecesOfTypeValues[i]);
+            return allPiecesOfTypeValues[i];
+        }
+    }
+}
+
+const allMovesList = (function() {
+    let moves = pgn.split(" ");
+    let allMovesList = [];
+    for (let i = 0; i < moves.length; i++) {
+        if (i % 2 === 1) { // index is even
+            allMovesList.push(moves[i]);
+        }
+    }
+    return allMovesList
+/*
+    let whiteMoves = [];
+    let blackMoves = [];
+    for (let i = 0; i < allMovesList.length; i+=2) {
+        whiteMoves.push(allMovesList[i]);
+        blackMoves.push(allMovesList[i+1]);
+    }
+
+    bp.log.info(whiteMoves);
+    bp.log.info(blackMoves);*/
+})()
+
+bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
+    bp.log.info(allMovesList)
+    for (let i = 0; i < allMovesList.length ; i++) {
+        let move = allMovesList[i]
+        let pieces = ctx.runQuery("Piece.White.All");
+        let piece = findPieceThatCanReachToEndSquare(
+            startsWithCapital(move) ? move[0] : "",
+            startsWithCapital(move) ? move.substr(1) : move,
+            pieces);
+        bp.log.info("REACHED SYNC")
+        bp.log.info("piece is {0}",piece)
+        let event = moveEvent(piece, piece.cellId, move);
+        bp.log.info(event);
+        sync({request: event});
+    }
+
+
+
+});
+
 const AnyCastling = bp.EventSet("AnyCastling", function (e) {
     return false
 })
@@ -37,35 +139,35 @@ const anyMoves = bp.EventSet("anyMove", function (e) {
 
 
 const ESCenterCaptureMoves = bp.EventSet("EScenterCaptureMoves", function (e) {
-    return e.name == 'Move' && ( e.data.dst[1] == '3' || e.data.dst[1] == '4' )
-      && ( e.data.src[0] == 'c'  || e.data.src[0] == 'd' || e.data.src[0] == 'e'  || e.data.src[0] == 'f' || e.data.src[0] == 'b'  || e.data.src[0] == 'g' )
-      && ( e.data.dst[0] == 'c'  || e.data.dst[0] == 'd' || e.data.dst[0] == 'e'  || e.data.dst[0] == 'f')
+    return e.name == 'Move' && (e.data.dst[1] == '3' || e.data.dst[1] == '4')
+        && (e.data.src[0] == 'c' || e.data.src[0] == 'd' || e.data.src[0] == 'e' || e.data.src[0] == 'f' || e.data.src[0] == 'b' || e.data.src[0] == 'g')
+        && (e.data.dst[0] == 'c' || e.data.dst[0] == 'd' || e.data.dst[0] == 'e' || e.data.dst[0] == 'f')
 
 })
 
 const ESPawnDevelopingMoves = bp.EventSet("ESpawnDevelopingMoves", function (e) {
-    return e.name == 'Move' && ( e.data.dst[1] == '3' || e.data.dst[1] == '4' )
+    return e.name == 'Move' && (e.data.dst[1] == '3' || e.data.dst[1] == '4')
 })
 
 const ESKnightDevelopingMoves = bp.EventSet("ESKnightDevelopingMoves", function (e) {
     return e.name == 'Move' && e.data.subtype == "Knight" &&
-        ( e.data.dst[1] == '2' || e.data.dst[1] == '3' || e.data.dst[1] == '4' )
+        (e.data.dst[1] == '2' || e.data.dst[1] == '3' || e.data.dst[1] == '4')
 })
 
 const ESBishopDevelopingMoves = bp.EventSet("ESBishopDevelopingMoves", function (e) {
     return e.name == 'Move' && e.data.piece == "Bishop" &&
-        ( e.data.dst[1] == '2' || e.data.dst[1] == '3' || e.data.dst[1] == '4'
+        (e.data.dst[1] == '2' || e.data.dst[1] == '3' || e.data.dst[1] == '4'
             || e.data.dst[1] == '5')
 })
 
 const ESRookDevelopingMoves = bp.EventSet("ESRookDevelopingMoves", function (e) {
     return e.name == 'Move' && e.data.piece == "Rook" &&
-        ( e.data.dst[1] == '2' || e.data.dst[1] == '3' )
+        (e.data.dst[1] == '2' || e.data.dst[1] == '3')
 })
 
 const ESFianchettoMoves = bp.EventSet("ESfianchettoMoves", function (e) {
-    return e.name == 'Move' &&  ( e.data.dst[1] == '3' || e.data.dst[1] == '4')&&
-      ( e.data.dst[0] == 'b' || e.data.dst[0] == 'g' )
+    return e.name == 'Move' && (e.data.dst[1] == '3' || e.data.dst[1] == '4') &&
+        (e.data.dst[0] == 'b' || e.data.dst[0] == 'g')
 })
 
 let pawnMovesCounter = 0
@@ -73,27 +175,33 @@ let pawnMovesCounter = 0
 // Game behavioral thread
 bthread("Game thread", function (entity) {
 
-    bp.store.put("Strategy Counter: Center strengthen moves",   0)
-    bp.store.put("Strategy Counter: Fianchetto moves",          0)
-    bp.store.put("Strategy Counter: Developing moves",          0)
+    bp.store.put("Strategy Counter: Center strengthen moves", 0)
+    bp.store.put("Strategy Counter: Fianchetto moves", 0)
+    bp.store.put("Strategy Counter: Developing moves", 0)
 
-    bp.store.put("Counter: Pawn moves",     0)
-    bp.store.put("Counter: Bishop moves",   0)
-    bp.store.put("Counter: Rook moves",     0)
+    bp.store.put("Counter: Pawn moves", 0)
+    bp.store.put("Counter: Bishop moves", 0)
+    bp.store.put("Counter: Rook moves", 0)
 
-    bp.store.put("Advisor: Center",     5)
-    bp.store.put("Advisor: Develop",    3)
+    bp.store.put("Advisor: Center", 5)
+    bp.store.put("Advisor: Develop", 3)
     bp.store.put("Advisor: Fianchetto", 1)
 
-    bp.store.put("Piece Advisor: Pawn",     3)
-    bp.store.put("Piece Advisor: Bishop",    1)
+    bp.store.put("Piece Advisor: Pawn", 3)
+    bp.store.put("Piece Advisor: Bishop", 1)
     bp.store.put("Piece Advisor: Rook", 0)
 
     while (true) {
+
         sync({request: bp.Event("Game Phase", "Opening")})
         sync({waitFor: AnyCastling})
         sync({request: bp.Event("Game Phase", "Mid Game")})
-        sync({request: bp.Event("Game Phase", "End Game")})
+        sync({request: [bp.Event("Game Phase", "End Game")]})
+
+        /*mySync([bp.Event("Game Phase" , "Opening")], [], []);
+        mySync([], [AnyCastling], []);
+        mySync([bp.Event("Game Phase" , "Mid Game")], [], []);
+        mySync([bp.Event("Game Phase" , "End Game")], [], []);*/
     }
 });
 
@@ -107,16 +215,16 @@ bthread("Game thread", function (entity) {
 function clearDuplicates(pawnMoves) {
     let pawnMovesToRequest = []
     let dup = false
-    for(let i = 0; i < pawnMoves.length; i++) {
+    for (let i = 0; i < pawnMoves.length; i++) {
         dup = false
-        for(let j = 0; j < pawnMovesToRequest.length; j++) {
-            if( pawnMoves[i].data.src == pawnMovesToRequest[j].data.src &&
-              pawnMoves[i].data.dst == pawnMovesToRequest[j].data.dst ) {
+        for (let j = 0; j < pawnMovesToRequest.length; j++) {
+            if (pawnMoves[i].data.src == pawnMovesToRequest[j].data.src &&
+                pawnMoves[i].data.dst == pawnMovesToRequest[j].data.dst) {
                 dup = true
                 break;
             }
         }
-        if(!dup)
+        if (!dup)
             pawnMovesToRequest.push(pawnMoves[i])
     }
     return pawnMovesToRequest
@@ -124,10 +232,10 @@ function clearDuplicates(pawnMoves) {
 
 function filterOccupiedCellsMoves(pawnMovesSet, cellsArr) {
     let retArr = []
-    for(let i = 0; i < pawnMovesSet.length; i++) {
+    for (let i = 0; i < pawnMovesSet.length; i++) {
         let srcCellFound = false
         let dstCellFound = false
-        for(let cell of cellsArr.values()) {
+        for (let cell of cellsArr.values()) {
             if (pawnMovesSet[i].data.src == cell.id) {
                 srcCellFound = true
             }
@@ -135,7 +243,7 @@ function filterOccupiedCellsMoves(pawnMovesSet, cellsArr) {
                 dstCellFound = true
             }
         }
-        if(srcCellFound == false && dstCellFound == true) {
+        if (srcCellFound == false && dstCellFound == true) {
             retArr.push(pawnMovesSet[i])
         }
     }
@@ -145,17 +253,16 @@ function filterOccupiedCellsMoves(pawnMovesSet, cellsArr) {
 ctx.bthread("Strengthen", "Phase.Opening", function (entity) {
 
     while (true) {
-
         let pawnMoves = []
-        let pawnsSet = ctx.runQuery("Piece.White.Pawn")
+        let pawnsSet = ctx.runQuery(getSpecificType('Pawn', 'White'))
         let cellsSet = ctx.runQuery("Cell.all.nonOccupied")
         let allCells = ctx.runQuery("Cell.all")
         let allCellsArr = Array.from(allCells);
 
-        for(let pawn of pawnsSet.values()) {
+        for (let pawn of pawnsSet.values()) {
             pawnMoves = pawnMoves.concat(
-              availableStraightCellsFromPawn(pawn, 2,  allCellsArr)
-                .filter(m => ESCenterCaptureMoves.contains(m))
+                availableStraightCellsFromPawn(pawn, 2, allCellsArr)
+                    .filter(m => ESCenterCaptureMoves.contains(m))
             )
         }
 
@@ -163,8 +270,8 @@ ctx.bthread("Strengthen", "Phase.Opening", function (entity) {
         let pawnMovesToRequest = filterOccupiedCellsMoves(pawnMovesSet, cellsSet)
 
 
-
-        sync({request: pawnMovesToRequest, waitFor: pawnMovesToRequest})
+        //sync({request: pawnMovesToRequest, waitFor: pawnMovesToRequest})
+        mySync(pawnMovesToRequest, pawnMovesToRequest, []);
 
         let receivedCounter = bp.store.get("Strategy Counter: Center strengthen moves")
         bp.store.put("Strategy Counter: Center strengthen moves", receivedCounter + 1)
@@ -176,12 +283,12 @@ ctx.bthread("Fianchetto", "Phase.Opening", function (entity) {
     while (true) {
 
         let pawnMoves = []
-        let pawnsSet = ctx.runQuery("Piece.White.Pawn")
+        let pawnsSet = ctx.runQuery(getSpecificType('Pawn', 'White'))
         let cellsSet = ctx.runQuery("Cell.all.nonOccupied")
         let allCells = ctx.runQuery("Cell.all")
         let allCellsArr = Array.from(allCells);
 
-        for(let pawn of pawnsSet.values()) {
+        for (let pawn of pawnsSet.values()) {
             pawnMoves = pawnMoves.concat(
                 availableStraightCellsFromPawn(pawn, 2, allCellsArr)
                     .filter(m => ESFianchettoMoves.contains(m))
@@ -190,7 +297,8 @@ ctx.bthread("Fianchetto", "Phase.Opening", function (entity) {
         let pawnMovesSet = clearDuplicates(pawnMoves)
         let pawnMovesToRequest = filterOccupiedCellsMoves(pawnMovesSet, cellsSet)
 
-        sync({request: pawnMovesToRequest, waitFor: pawnMovesToRequest})
+        //sync({request: pawnMovesToRequest, waitFor: pawnMovesToRequest})
+        mySync(pawnMovesToRequest, pawnMovesToRequest, []);
 
         let receivedCounter = bp.store.get("Strategy Counter: Fianchetto moves")
         bp.store.put("Strategy Counter: Fianchetto moves", receivedCounter + 1)
@@ -202,7 +310,7 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
     while (true) {
 
         let pawnMoves = []
-        let pawnsSet = ctx.runQuery("Piece.White.Pawn")
+        let pawnsSet = ctx.runQuery(getSpecificType('Pawn', 'White'))
         let cellsSet = ctx.runQuery("Cell.all.nonOccupied")
         let allCells = ctx.runQuery("Cell.all")
         let allCellsArr = Array.from(allCells);
@@ -217,7 +325,8 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
         let pawnMovesSet = clearDuplicates(pawnMoves)
         let pawnMovesToRequest = filterOccupiedCellsMoves(pawnMovesSet, cellsSet)
 
-        sync({request: pawnMovesToRequest, waitFor: pawnMovesToRequest})
+        //sync({request: pawnMovesToRequest, waitFor: pawnMovesToRequest})
+        mySync(pawnMovesToRequest, pawnMovesToRequest, []);
 
         let receivedCounter = bp.store.get("Strategy Counter: Developing moves")
         bp.store.put("Strategy Counter: Developing moves", receivedCounter + 1)
@@ -229,7 +338,8 @@ ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
     while (true) {
 
         let bishopsMoves = []
-        let bishopsSet = ctx.runQuery("Piece.White.Bishop")
+        let bishopsSet = ctx.runQuery(getSpecificType('Bishop', 'White'))
+        // let bishopsSet = ctx.runQuery("Piece.White.Bishop")
         let cellsSet = ctx.runQuery("Cell.all.nonOccupied")
         let allCells = ctx.runQuery("Cell.all")
         let allCellsArr = Array.from(allCells);
@@ -244,14 +354,15 @@ ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
         let bishopsMovesSet = clearDuplicates(bishopsMoves)
         let bishopsMovesToRequest = filterOccupiedCellsMoves(bishopsMovesSet, cellsSet)
 
-        let e = sync({request: bishopsMovesToRequest, waitFor: anyMoves})
-        if (e.data.piece == "Bishop") {
-            let receivedCounter = bp.store.get("Strategy Counter: Developing moves")
-            bp.store.put("Strategy Counter: Developing moves", receivedCounter + 1)
-        }
-
-        let receivedCounter = bp.store.get("Counter: Bishop moves")
-        bp.store.put("Counter: Bishop moves", receivedCounter + 1)
+        //let e = sync({request: bishopsMovesToRequest, waitFor: anyMoves})
+        // //let e = mySync(bishopsMovesToRequest, bishopsMovesToRequest, []);
+        // if (e.data.piece == "Bishop") {
+        //     let receivedCounter = bp.store.get("Strategy Counter: Developing moves")
+        //     bp.store.put("Strategy Counter: Developing moves", receivedCounter + 1)
+        // }
+        //
+        // let receivedCounter = bp.store.get("Counter: Bishop moves")
+        // bp.store.put("Counter: Bishop moves", receivedCounter + 1)
 
     }
 });
@@ -262,7 +373,8 @@ ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
     while (true) {
 
         let RooksMoves = []
-        let RooksSet = ctx.runQuery("Piece.White.Rook")
+        let RooksSet = ctx.runQuery(getSpecificType('Rook', 'White'))
+        // let RooksSet = ctx.runQuery("Piece.White.Rook")
         let cellsSet = ctx.runQuery("Cell.all.nonOccupied")
         let allCells = ctx.runQuery("Cell.all")
         let allCellsArr = Array.from(allCells);
@@ -277,15 +389,15 @@ ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
         let RooksMovesSet = clearDuplicates(RooksMoves)
         let RooksMovesToRequest = filterOccupiedCellsMoves(RooksMovesSet, cellsSet)
 
-        let e = sync({request: RooksMovesToRequest, waitFor: anyMoves})
-
-        if (e.data.piece == "Rook") {
-            let receivedCounter = bp.store.get("Strategy Counter: Developing moves")
-            bp.store.put("Strategy Counter: Developing moves", receivedCounter + 1)
-        }
-
-        let receivedCounter = bp.store.get("Counter: Rook moves")
-        bp.store.put("Counter: Rook moves", receivedCounter + 1)
+        //let e = sync({request: RooksMovesToRequest, waitFor: anyMoves})
+        // let e = mySync(RooksMovesToRequest, anyMoves, []);
+        // if (e.data.piece == "Rook") {
+        //     let receivedCounter = bp.store.get("Strategy Counter: Developing moves")
+        //     bp.store.put("Strategy Counter: Developing moves", receivedCounter + 1)
+        // }
+        //
+        // let receivedCounter = bp.store.get("Counter: Rook moves")
+        // bp.store.put("Counter: Rook moves", receivedCounter + 1)
     }
 });
 
@@ -293,6 +405,7 @@ ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
 ctx.bthread("CenterTrackAndAdvice", "Phase.Opening", function (entity) {
     while (true) {
         sync({waitFor: ESCenterCaptureMoves})
+        //([], [ESCenterCaptureMoves], []);
         let receivedCounter = bp.store.get("Advisor: Center")
         bp.store.put("Advisor: Center", receivedCounter - 1)
     }
@@ -300,7 +413,8 @@ ctx.bthread("CenterTrackAndAdvice", "Phase.Opening", function (entity) {
 
 ctx.bthread("DevelopTrackAndAdvice", "Phase.Opening", function (entity) {
     while (true) {
-        sync({waitFor: [ESPawnDevelopingMoves, ESBishopDevelopingMoves] })
+        sync({waitFor: [ESPawnDevelopingMoves, ESBishopDevelopingMoves]})
+        //mySync([], [ESCenterCaptureMoves, ESBishopDevelopingMoves], []);
         let receivedCounter = bp.store.get("Advisor: Develop")
         bp.store.put("Advisor: Develop", receivedCounter - 1)
     }
@@ -309,6 +423,7 @@ ctx.bthread("DevelopTrackAndAdvice", "Phase.Opening", function (entity) {
 ctx.bthread("FianchettoTrackAndAdvice", "Phase.Opening", function (entity) {
     while (true) {
         sync({waitFor: ESFianchettoMoves})
+        //mySync([], [ESFianchettoMoves], []);
         let receivedCounter = bp.store.get("Advisor: Fianchetto")
         bp.store.put("Advisor: Fianchetto", receivedCounter - 1)
     }
@@ -317,7 +432,8 @@ ctx.bthread("FianchettoTrackAndAdvice", "Phase.Opening", function (entity) {
 ctx.bthread("PawnMovesTrackAndAdvice", "Phase.Opening", function (entity) {
     while (true) {
         let e = sync({waitFor: anyMoves})
-        if(e.data.piece == "Pawm") {
+        //let e = mySync([], [anyMoves], []);
+        if (e.data.piece == "Pawm") {
             let receivedAdvisor = bp.store.get("Piece Advisor: Pawn")
             bp.store.put("Piece Advisor: Pawn", receivedAdvisor - 1)
         }
@@ -327,7 +443,8 @@ ctx.bthread("PawnMovesTrackAndAdvice", "Phase.Opening", function (entity) {
 ctx.bthread("BishopMovesTrackAndAdvice", "Phase.Opening", function (entity) {
     while (true) {
         let e = sync({waitFor: anyMoves})
-        if(e.data.piece == "Bishop") {
+        //let e = mySync([], [anyMoves], []);
+        if (e.data.piece == "Bishop") {
             let receivedAdvisor = bp.store.get("Piece Advisor: Bishop")
             bp.store.put("Piece Advisor: Bishop", receivedAdvisor - 1)
         }
@@ -337,7 +454,8 @@ ctx.bthread("BishopMovesTrackAndAdvice", "Phase.Opening", function (entity) {
 ctx.bthread("RookMovesTrackAndAdvice", "Phase.Opening", function (entity) {
     while (true) {
         let e = sync({waitFor: anyMoves})
-        if(e.data.piece == "Rook") {
+        //let e = mySync([], [anyMoves], []);
+        if (e.data.piece == "Rook") {
             let receivedAdvisor = bp.store.get("Piece Advisor: Rook")
             bp.store.put("Piece Advisor: Rook", receivedAdvisor - 1)
         }
@@ -370,8 +488,7 @@ function availableStraightCellsFromPiece(piece, distance, allCells) {
             if (numericCellToCell(row + i, col, allCells).pieceId == undefined) {
                 availableCells.push({row: row + distance, col: col});
                 availableMoves.push(moveEvent("Rook", jToCol(col) + row, jToCol(col) + (row + i)));
-            }
-            else {
+            } else {
                 return availableMoves
             }
         }
@@ -418,16 +535,18 @@ function availableStraightCellsFromPawn(pawn, distance, allCells) {
         if (numericCellToCell(row + 1, col, allCells).pieceId == undefined) {
             availableCells.push({row: row + 1, col: col});
             availableMoves.push(moveEvent("Pawn", jToCol(col) + row, jToCol(col) + (row + 1)));
+        } else {
+            return availableMoves;
         }
-        else {return availableMoves;}
     }
 
     if (row + 2 <= 7 && row + 2 >= 0) {
         if (numericCellToCell(row + 2, col, allCells).pieceId == undefined) {
             availableCells.push({row: row + 2, col: col});
             availableMoves.push(moveEvent("Pawn", jToCol(col) + row, jToCol(col) + (row + 2)));
+        } else {
+            return availableMoves;
         }
-        else {return availableMoves;}
     }
 
 
@@ -453,7 +572,7 @@ function availableKnightMoves(knight) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col + 2) + (row - 1)));
         }
     }
-    if (row - 1 <= 7 && row - 1 >= 0 && col - 2 <= 7 && col -2 <= 0) {
+    if (row - 1 <= 7 && row - 1 >= 0 && col - 2 <= 7 && col - 2 <= 0) {
         if (numericCellToCell(row - 1, col - 2).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col - 2) + (row - 1)));
         }
@@ -516,7 +635,7 @@ function jToCol(j) {
 }
 
 function GiveMeCell(requestedID, allCells) {
-    for(let i = 0; i < allCells.length; i++) {
+    for (let i = 0; i < allCells.length; i++) {
         let cell = allCells[i]
         if (cell.id == requestedID)
             return cell;
@@ -575,8 +694,9 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
             if (numericCellToCell(row + i, col + i, allCells).pieceId == undefined && checkMeNorthEast) {
                 availableCells.push({row: row + i, col: col + i});
                 availableMoves.push(moveEvent("Bishop", jToCol(col) + row, jToCol(col + i) + (row + i)));
+            } else {
+                checkMeNorthEast = false;
             }
-            else { checkMeNorthEast = false; }
         }
         // if (row - i <= 7 && row - i >= 1 && col + i <= 7 && col + i >= 0) {
         //     if (numericCellToCell(row - i, col + i, allCells).pieceId == undefined && checkMeSouthEast) {
@@ -589,8 +709,9 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
             if (numericCellToCell(row + i, col - i, allCells).pieceId == undefined && checkMeNorthWest) {
                 availableCells.push({row: row + i, col: col - i});
                 availableMoves.push(moveEvent("Bishop", jToCol(col) + row, jToCol(col - i) + (row + i)));
+            } else {
+                checkMeNorthWest = false;
             }
-            else { checkMeNorthWest = false; }
         }
         // if (row - i <= 7 && row - i >= 1 && col - i <= 7 && col - i >= 0) {
         //     if (numericCellToCell(row - i, col - i, allCells).pieceId == undefined && checkMeSouthWest) {
@@ -606,9 +727,9 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
 }
 
 var board = [
-    ['*', '*', '*', '*', '*', '*', '*', '*'],
+    ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'],
 
-    ['*', '*', '*', '*', '*', '*', '*', '*'],
+    ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
 
     ['*', '*', '*', '*', '*', '*', '*', '*'],
 
@@ -624,9 +745,9 @@ var board = [
 ];
 
 ctx.bthread("BoardTrack", "Phase.Opening", function (entity) {
-    while(true) {
+    while (true) {
         let move = sync({waitFor: anyMoves});
-
+        //let move = mySync([], [anyMoves], []);
         bp.log.info(move)
 
         let srcRow = move.data.src[1] - '0';

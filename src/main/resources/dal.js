@@ -29,14 +29,20 @@ ctx.registerQuery("Cell.all", entity => entity.type == 'cell')
 
 ctx.registerQuery("Cell.all.nonOccupied", entity => entity.type == 'cell' && entity.pieceId == undefined)
 
-ctx.registerQuery("Piece.White.Pawn" ,
+ctx.registerQuery("Piece.White.All" ,
+    entity => entity.type == 'piece' && entity.color == 'white')
+
+ctx.registerQuery("Piece.Black.All" ,
+    entity => entity.type == 'piece' && entity.color == 'black')
+
+/*ctx.registerQuery("Piece.White.Pawn" ,
   entity => entity.type == 'piece' && entity.subtype == 'Pawn' && entity.color == 'white')
 
 ctx.registerQuery("Piece.White.Bishop" ,
     entity => entity.type == 'piece' && entity.subtype == 'Bishop' && entity.color == 'White')
 
 ctx.registerQuery("Piece.White.Rook" ,
-    entity => entity.type == 'piece' && entity.subtype == 'Rook' && entity.color == 'White')
+    entity => entity.type == 'piece' && entity.subtype == 'Rook' && entity.color == 'White')*/
 
 
 //ctx.registerQuery("Piece.All", entity => entity.type.equals('piece'))
@@ -44,6 +50,12 @@ ctx.registerQuery("Piece.White.Rook" ,
 ctx.registerQuery("Phase.Opening", entity => entity.id == 'phase' && entity.phase == 'Opening')
 ctx.registerQuery("Phase.MidGame", entity => entity.id=='phase' && entity.phase == 'mid game')
 //ctx.registerQuery("Phase.Developing.Pawn", entity => entity.id=='phase' && entity.phase == 'opening' && entity.innerPhase == 'develop pawn')
+
+function getSpecificType(type, color) {
+  return function(entity) {
+    return entity.type == 'piece' && entity.subtype == type && entity.color == color;
+  }
+}
 
 // Game phase changed event
 ctx.registerEffect("Game Phase", function(e) {
@@ -111,8 +123,13 @@ const prefix = ["", "N", "B", "R", "Q", "K"];
 const pieces = ["Pawn", "Knight", "Bishop", "Rook", "Queen", "King"];
 
 function moveEvent(piece, oldCell, newCell) {
-  // bp.log.info ("Move Event : " + piece + " " + newCell);
+  //bp.log.info ("Move Event : " + piece + " " + newCell);
   return bp.Event("Move", {piece: piece, src: oldCell, dst:newCell});
+}
+
+function moveEventPGN(piece, newCell) {
+  let srcCell = piece.data.cellId;
+  return bp.Event("Move", {piece: piece, src: srcCell, dst:newCell});
 }
 
 function prefixOfPiece(piece) {

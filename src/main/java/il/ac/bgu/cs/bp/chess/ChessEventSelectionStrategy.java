@@ -12,6 +12,8 @@ import il.ac.bgu.cs.bp.chess.eventSets.DevelopPawns;
 import il.ac.bgu.cs.bp.chess.eventSets.FianchettoPawns;
 import il.ac.bgu.cs.bp.chess.eventSets.StrengthenPawns;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.function.BiFunction;
@@ -21,6 +23,14 @@ import java.util.stream.Collectors;
 
 public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
 
+    private final String gameId;
+    private OutputStream file;
+
+    public ChessEventSelectionStrategy(String gameId, OutputStream file) {
+        this.gameId = gameId;
+        this.file = file;
+    }
+    
     private static DecimalFormat df2 = new DecimalFormat("#.##");
 
     private final Rule[] rules = new Rule[]
@@ -91,6 +101,11 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
 
         var counterDevelop = ctx.get("Strategy Counter: Developing moves");
         System.out.println("Developing moves -> " + counterDevelop);
+        try {
+            file.write(("Developing moves -> " + counterDevelop.toString() + "\n").getBytes());
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         var counterCenter = ctx.get("Strategy Counter: Center strengthen moves");
         System.out.println("center moves -> " + counterCenter);
         var counterFianchetto = ctx.get("Strategy Counter: Fianchetto moves");
