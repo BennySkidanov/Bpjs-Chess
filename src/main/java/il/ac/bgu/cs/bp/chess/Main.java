@@ -3,6 +3,7 @@ package il.ac.bgu.cs.bp.chess;
 import il.ac.bgu.cs.bp.bpjs.context.ContextBProgram;
 import il.ac.bgu.cs.bp.bpjs.context.PrintCOBProgramRunnerListener;
 import il.ac.bgu.cs.bp.bpjs.execution.BProgramRunner;
+import il.ac.bgu.cs.bp.bpjs.execution.listeners.PrintBProgramRunnerListener;
 import il.ac.bgu.cs.bp.bpjs.model.BEvent;
 import il.ac.bgu.cs.bp.bpjs.model.BProgram;
 
@@ -69,7 +70,7 @@ public class Main {
     rnr.run();
     t.join();*/
 
-            rnr.addListener(new PrintCOBProgramRunnerListener(Level.ALL));
+            rnr.addListener(new PrintCOBProgramRunnerListener(Level.ALL, new PrintBProgramRunnerListener()));
             rnr.run();
         });
 
