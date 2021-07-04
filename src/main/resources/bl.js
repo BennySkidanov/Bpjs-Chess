@@ -1,6 +1,6 @@
 function mySync(stmt, syncData) {
   if (generationMode) {
-    bp.log.info("In mySync")
+    // bp.log.info("In mySync")
     if(stmt.request) {
       if (!stmt.waitFor) {
         stmt.waitFor = []
@@ -14,7 +14,7 @@ function mySync(stmt, syncData) {
       stmt.request = []
     }
   }
-  sync(stmt, syncData);
+  return sync(stmt, syncData);
 }
 
 
@@ -40,29 +40,28 @@ function startsWithCapital(word) {
 }
 
 function canReachSquare(piece, dstCell) {
-  bp.log.info("In canReachSquare")
-  bp.log.info(piece.subtype)
-  bp.log.info(dstCell)
-  if (piece.subtype == "Pawn" && dstCell[0] == piece.id[0] &&
-    (dstCell[1] - 2 == piece.id[1] || dstCell[1] - 1 == piece.id[1]))
+  // bp.log.info("In canReachSquare")
+  // bp.log.info(piece.subtype)
+  // bp.log.info(dstCell)
+  if ( piece.subtype == "Pawn" && dstCell[0] == piece.cellId[0] &&
+    ( dstCell[1] - 2 == piece.cellId[1] || dstCell[1] - 1 == piece.cellId[1] ) )
     return true;
   return false;
 }
 
 function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, allPieces) {
-  bp.log.info("In findPieceThatCanReachToEndSquare")
-  bp.log.info(piecePrefix)
-  bp.log.info(dstCell)
+  // bp.log.info("In findPieceThatCanReachToEndSquare")
+  // bp.log.info(piecePrefix)
+  // bp.log.info(dstCell)
   let pieceType = prefixDictBL[piecePrefix];
-  bp.log.info('piece type={0}',pieceType)
-  //ACHIYA: the bug now is that pieceType is undefined
+  // bp.log.info('piece type={0}',pieceType)
   let allPiecesOfType = ctx.runQuery(getSpecificType(pieceType, 'white'))
-  bp.log.info('all pieces {0}', allPiecesOfType.size)
+  // bp.log.info('all pieces {0}', allPiecesOfType.size)
   // let allPiecesOfType = ctx.runQuery("Piece.White." + pieceType)
   let allPiecesOfTypeValues = Array.from(allPiecesOfType);
   for (let i = 0; i < allPiecesOfType.length; i++) {
     if (canReachSquare(allPiecesOfTypeValues[i], dstCell)) {
-      bp.log.info(allPiecesOfTypeValues[i]);
+      // bp.log.info(allPiecesOfTypeValues[i]);
       return allPiecesOfTypeValues[i];
     }
   }
@@ -90,19 +89,19 @@ const allMovesList = (function () {
 })()
 
 ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
-  bp.log.info(allMovesList)
+  // bp.log.info(allMovesList)
   for (let i = 0; i < allMovesList.length; i++) {
     let move = allMovesList[i]
     let pieces = ctx.runQuery("Piece.White.All");
-    bp.log.info("move is={0}",move)
+    // bp.log.info("move is={0}",move)
     let piece = findPieceThatCanReachToEndSquare(
-      startsWithCapital(move) ? move[0] : "",
+      startsWithCapital(move) ? move[0] : "P",
       startsWithCapital(move) ? move.substr(1) : move,
       pieces);
-    bp.log.info("REACHED SYNC")
-    bp.log.info("piece is {0}", piece)
-    let event = moveEvent(piece, piece.id, move);
-    bp.log.info(event);
+    // bp.log.info("REACHED SYNC")
+    // bp.log.info("piece is {0}", piece)
+    let event = moveEvent(piece, piece.cellId, move);
+    // bp.log.info(event);
     sync({request: event});
   }
 
@@ -281,7 +280,7 @@ ctx.bthread("Strengthen", "Phase.Opening", function (entity) {
     let pawnMovesToRequest = filterOccupiedCellsMoves(pawnMovesSet, cellsSet)
 
 
-    // ACHIYA: why request and waitFor are the same? redundant and makes no sense
+    // ACHIYA: why request and waitFor are the same? redundant and makes no sense I think you meant to wait for anyMove...
     mySync({request: pawnMovesToRequest, waitFor: pawnMovesToRequest})
     // mySync(pawnMovesToRequest, pawnMovesToRequest, []);
 
@@ -311,7 +310,7 @@ ctx.bthread("Fianchetto", "Phase.Opening", function (entity) {
     let pawnMovesSet = clearDuplicates(pawnMoves)
     let pawnMovesToRequest = filterOccupiedCellsMoves(pawnMovesSet, cellsSet)
 
-    // ACHIYA: why request and waitFor are the same? redundant and makes no sense
+    // ACHIYA: why request and waitFor are the same? redundant and makes no sense I think you meant to wait for anyMove...
     mySync({request: pawnMovesToRequest, waitFor: pawnMovesToRequest})
     // mySync(pawnMovesToRequest, pawnMovesToRequest, []);
 
@@ -342,6 +341,7 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
     let pawnMovesSet = clearDuplicates(pawnMoves)
     let pawnMovesToRequest = filterOccupiedCellsMoves(pawnMovesSet, cellsSet)
 
+    // ACHIYA: why request and waitFor are the same? redundant and makes no sense I think you meant to wait for anyMove...
     mySync({request: pawnMovesToRequest, waitFor: pawnMovesToRequest})
     // mySync(pawnMovesToRequest, pawnMovesToRequest, []);
 
@@ -661,7 +661,7 @@ function GiveMeCell(requestedID, allCells) {
     if (cell.id == requestedID)
       return cell;
   }
-  bp.log.info(requestedID)
+  // bp.log.info(requestedID)
   return null;
 }
 
