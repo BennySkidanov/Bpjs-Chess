@@ -70,7 +70,7 @@ public class Main {
     rnr.run();
     t.join();*/
 
-            rnr.addListener(new PrintCOBProgramRunnerListener(Level.ALL, new PrintBProgramRunnerListener()));
+            rnr.addListener(new PrintCOBProgramRunnerListener(Level.CtxChanged, new PrintBProgramRunnerListener()));
             rnr.run();
         });
 

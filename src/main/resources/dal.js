@@ -10,7 +10,7 @@ function Piece(subtype, number, color, cellId) {
 }
 
 /*  We have 64 cells on the chess board, we can identify them uniquely the combination of letters as columns and digits as rows, just like in the real gamke.
-    For example, let's suppose we are playing white, the board will look like :
+    For example, let's suppose we are playing White, the board will look like :
 
     a8 b8 c8 d8 e8 f8 g8 h8
     a7 b7 c7 d7 e7 f7 g7 h7
@@ -34,16 +34,16 @@ ctx.registerQuery("Cell.all.nonOccupied", function (entity) {
 
 ctx.registerQuery("Piece.White.All",
   function (entity) {
-    return entity.type == 'piece' && entity.color == 'white';
+    return entity.type == 'piece' && entity.color == 'White';
   })
 
 ctx.registerQuery("Piece.Black.All",
   function (entity) {
-    return entity.type == 'piece' && entity.color == 'black';
+    return entity.type == 'piece' && entity.color == 'Black';
   })
 
 /*ctx.registerQuery("Piece.White.Pawn" ,
-  entity => entity.type == 'piece' && entity.subtype == 'Pawn' && entity.color == 'white')
+  entity => entity.type == 'piece' && entity.subtype == 'Pawn' && entity.color == 'White')
 
 ctx.registerQuery("Piece.White.Bishop" ,
     entity => entity.type == 'piece' && entity.subtype == 'Bishop' && entity.color == 'White')
@@ -65,7 +65,9 @@ ctx.registerQuery("Phase.MidGame", function (entity) {
 
 function getSpecificType(type, color) {
   return function (entity) {
-    return entity.type.equals(String('piece')) && entity.subtype.equals(String(type)) && entity.color.equals(String(color));
+    return entity.type.equals(String('piece')) &&
+        entity.subtype.equals(String(type)) &&
+        entity.color.equals(String(color));
   }
 }
 
@@ -95,7 +97,7 @@ prefixDict["R"] = "Rook";
 
 
 ctx.registerEffect("Move", function (e) {
-  bp.log.info("Chosen Move : " + prefixDict[e.piece] + e.src + " => " + e.dst)
+  //bp.log.info("Chosen Move : " + e.subtype + " " + e.src + " => " + e.dst)
   //bp.log.info(" NOTICE : MOVE EVENT IS HAPPENING ")
   let srcCell = ctx.getEntityById(e.src.toString())
   let dstCell = ctx.getEntityById(e.dst.toString())
@@ -139,10 +141,10 @@ function moveEvent(piece, oldCell, newCell) {
   return bp.Event("Move", {piece: piece, src: oldCell, dst: newCell});
 }
 
-function moveEventPGN(piece, newCell) {
+/*function moveEventPGN(piece, newCell) {
   let srcCell = piece.data.cellId;
   return bp.Event("Move", {piece: piece, src: srcCell, dst: newCell});
-}
+}*/
 
 function prefixOfPiece(piece) {
   let idx = 0
@@ -175,9 +177,9 @@ function populateContext() {
     Piece("Rook", 16, "Black", "h8"),
 
 
-    Piece("Pawn", 21, "white", "a2"), Piece("Pawn", 22, "white", "b2"), Piece("Pawn", 23, "white", "c2"),
-    Piece("Pawn", 24, "white", "d2"), Piece("Pawn", 25, "white", "e2"), Piece("Pawn", 26, "white", "f2"),
-    Piece("Pawn", 27, "white", "g2"), Piece("Pawn", 28, "white", "h2"),
+    Piece("Pawn", 21, "White", "a2"), Piece("Pawn", 22, "White", "b2"), Piece("Pawn", 23, "White", "c2"),
+    Piece("Pawn", 24, "White", "d2"), Piece("Pawn", 25, "White", "e2"), Piece("Pawn", 26, "White", "f2"),
+    Piece("Pawn", 27, "White", "g2"), Piece("Pawn", 28, "White", "h2"),
     Piece("Pawn", 31, "Black", "a7"), Piece("Pawn", 32, "Black", "b7"), Piece("Pawn", 33, "Black", "c7"),
     Piece("Pawn", 34, "Black", "d7"), Piece("Pawn", 35, "Black", "e7"), Piece("Pawn", 36, "Black", "f7"),
     Piece("Pawn", 37, "Black", "g7"), Piece("Pawn", 38, "Black", "h7")]
