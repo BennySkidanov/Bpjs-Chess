@@ -1,5 +1,9 @@
 package il.ac.bgu.cs.bp.chess;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import il.ac.bgu.cs.bp.bpjs.internal.Pair;
 import il.ac.bgu.cs.bp.bpjs.internal.ScriptableUtils;
 import il.ac.bgu.cs.bp.bpjs.model.BEvent;
@@ -11,20 +15,25 @@ import il.ac.bgu.cs.bp.chess.eventSets.DevelopBishops;
 import il.ac.bgu.cs.bp.chess.eventSets.DevelopPawns;
 import il.ac.bgu.cs.bp.chess.eventSets.FianchettoPawns;
 import il.ac.bgu.cs.bp.chess.eventSets.StrengthenPawns;
+import org.json.simple.JSONArray;
+import org.json.simple.JSONObject;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.io.PrintWriter;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-
 public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
 
     private final String gameId;
     private OutputStream file;
+
+    private static FileWriter writer;
 
     public ChessEventSelectionStrategy(String gameId, OutputStream file) {
         this.gameId = gameId;
@@ -71,10 +80,65 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
 
     @Override
     public Optional<EventSelectionResult> select(BProgramSyncSnapshot bpss, Set<BEvent> selectableEvents) {
+        // System.out.println("--------------------------------- Select ---------------------------------");
         // Initialize probabilities of all events to 1
         Map<BEvent, Double> initialProbabilities;
-        if (selectableEvents.size() == 1)
+        JSONArray gameSequenceJsons = new JSONArray();
+        if (selectableEvents.size() == 1) {
+            var toPrint = false;
+            var ctx = bpss.getDataStore();
+            var counterDevelop = ctx.get("Strategy Counter: Developing moves");
+            var counterCenter = ctx.get("Strategy Counter: Center strengthen moves");
+            var counterFianchetto = ctx.get("Strategy Counter: Fianchetto moves");
+            var advisorCenter = ctx.get("Advisor: Center");;
+            var advisorDevelop = ctx.get("Advisor: Develop");
+            var advisorFianchetto = ctx.get("Advisor: Fianchetto");
+            for (BEvent e : selectableEvents) {
+                if(e.name.equals("Move")) toPrint = true;
+            }
+            if(toPrint) {
+                try {
+                    var data = (Map<String,Object>) selectableEvents.iterator().next().maybeData;
+                    var piece = (Map<String,Object>)data.get("piece");
+                    JSONObject move = new JSONObject();
+                    move.put("Move", data.get("dst"));
+                    move.put("Developing moves counter", counterDevelop.toString());
+                    move.put("Center moves counter", counterCenter.toString());
+                    move.put("Fianchetto moves counter", counterFianchetto.toString());
+                    move.put("Advisor - Develop", advisorDevelop.toString());
+                    move.put("Advisor - Center", advisorCenter.toString());
+                    move.put("Advisor - Fianchetto", advisorFianchetto.toString());
+/*                    file.write(("Move : " + data.get("dst") + "\n" +
+                            "Developing moves : " + counterDevelop.toString() + ", " +
+                            "Center moves : " + counterCenter.toString() + ", " +
+                            "Fianchetto moves : " + counterFianchetto.toString() + ", " +
+                            "Advisor - Center : " + advisorCenter.toString() + ", " +
+                            "Advisor - Develop : " + advisorDevelop.toString() + ", " +
+                            "Advisor - Fianchetto : " + advisorFianchetto.toString() +
+                            "\n\n").getBytes());*/
+                    PrintWriter clear = new PrintWriter(file);
+                    clear.print("");
+                    clear.close();
+
+                    writer = new FileWriter("C:\\Users\\benis\\Desktop\\University\\Thesis\\Bpjs-Chess\\Measurements.txt", true);
+                    writer.flush();
+                    Gson gson = new GsonBuilder().setPrettyPrinting().create();
+                    JsonParser jp = new JsonParser();
+                    JsonElement je = jp.parse("{ Move :" + data.get("dst") + ",\n" + "number:0"  + "}" );
+
+                    String prettyJsonString = gson.toJson(je);
+
+                    writer.write(je + "\n\n");
+
+                    writer.close();
+                    System.out.println(prettyJsonString);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            // Simulating PGN, only one move to choose
             return Optional.of(new EventSelectionResult(selectableEvents.iterator().next()));
+        }
         else if (selectableEvents.size() == 0) { // no selectable events
             return super.select(bpss, selectableEvents);
         } else {

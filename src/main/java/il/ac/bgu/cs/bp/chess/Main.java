@@ -40,7 +40,7 @@ public class Main {
 
         OutputStream file = null;
         try {
-            file = new FileOutputStream("output.txt");
+            file = new FileOutputStream("Measurements.txt");
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }

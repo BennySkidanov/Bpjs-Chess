@@ -1,6 +1,6 @@
 function mySync(stmt, syncData) {
     if (generationMode) {
-        //bp.log.info("In mySync")
+        // bp.log.info("In mySync")
         if (stmt.request) {
             if (!stmt.waitFor) {
                 stmt.waitFor = []
@@ -18,25 +18,19 @@ function mySync(stmt, syncData) {
 }
 
 let ANSI_RESET = "\u001B[0m";
-let ANSI_BLACK = "\u001B[30m";
+let ANSI_CYAN = "\u001B[36m";
+
+
+/*let ANSI_BLACK = "\u001B[30m";
 let ANSI_WHITE = "\u001B[37m";
 let ANSI_RED = "\u001B[31m";
-let ANSI_WHITE_BACKGROUND = "\u001B[47m";
-let ANSI_CYAN = "\u001B[36m";
+let ANSI_WHITE_BACKGROUND = "\u001B[47m";*/
+
 // ctx.bthread("Interleave", "Phase.Opening", function (entity) {
 //    while(true) {
 //
 //    }
 // });
-
-const prefixDictBL = {
-    "B": "Bishop",
-    "P": "Pawn",
-    "N": "Knight",
-    "K": "King",
-    "Q": "Queen",
-    "R": "Rook"
-};
 
 function startsWithCapital(word) {
     return word.charAt(0) === word.charAt(0).toUpperCase()
@@ -69,13 +63,88 @@ function canReachSquare(piece, dstCell) {
   } else if (piece.subtype == "Queen") {
     return true;
   }
+  else if (piece.subtype == "Bishop") {
+      if (
+          Math.abs(dstCell[1] - piece.cellId[1]) === Math.abs(dstCell[0].charCodeAt(0) - piece.cellId[0].charCodeAt(0))
+      ) {
+          bp.log.info("Found!!")
+          return true;
+      }}
+
+  else if (piece.subtype == "King") {
+      if (Math.abs(dstCell[1] - piece.cellId[1]) <= 1 &&
+          Math.abs(dstCell[0].charCodeAt(0) - piece.cellId[0].charCodeAt(0)) <= 1)
+          return true;
+  }
+  else if(piece.subtype == "Rook") {
+      return true;
+  }
+
+  return false;
+
 }
+
+function handleShortCastle(color, pieces ) {
+    bp.log.info("~~ handleShortCastle ~~ " + color)
+    let piecesValues = Array.from(pieces);
+    if (color == "White") {
+        let king, rook;
+        for (let i = 0; i < piecesValues.length; i++) {
+            if (piecesValues[i].subtype == "King") {
+                king = piecesValues[i];
+                bp.log.info("~~ handleShortCastle ~~ Found King");
+                continue;
+            } else if (piecesValues[i].subtype == "Rook" && piecesValues[i].cellId == "h1") {
+                rook = piecesValues[i];
+                bp.log.info("~~ handleShortCastle ~~ Found Rook");
+                continue;
+            }
+        }
+        // transaction
+        let eventKing = moveEvent(king, king.cellId,"g1");
+        bp.log.info(eventKing);
+        sync({request: eventKing});
+        let eventRook = moveEvent(rook, rook.cellId,"f1");
+        bp.log.info(eventKing);
+        sync({request: eventRook});
+        // transaction
+    }
+    else {
+        for (let i = 0; i < piecesValues.length; i++) {
+            if (piecesValues[i].subtype == "King") {
+                king = piecesValues[i];
+                bp.log.info("~~ handleShortCastle ~~ Found King");
+                continue;
+            } else if (piecesValues[i].subtype == "Rook" && piecesValues[i].cellId == "h8") {
+                rook = piecesValues[i];
+                bp.log.info("~~ handleShortCastle ~~ Found Rook");
+                continue;
+            }
+        }
+        // transaction
+        let eventKing = moveEvent(king, king.cellId,"g8");
+        bp.log.info(eventKing);
+        sync({request: eventKing});
+        let eventRook = moveEvent(rook, rook.cellId,"f8");
+        bp.log.info(eventKing);
+        sync({request: eventRook});
+    }
+}
+
 
 function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color) {
     /*bp.log.info("In findPieceThatCanReachToEndSquare")
     bp.log.info(piecePrefix)
     bp.log.info(dstCell)
     bp.log.info(color)*/
+    let optionalCol = "";
+    if (dstCell.length === 3) // Optional column appears
+    {
+        optionalCol = dstCell.charAt(0);
+        dstCell = dstCell.substr(1);
+        bp.log.info("optionalCol " + optionalCol)
+        bp.log.info("dstcell " + dstCell)
+    }
     let pieceType = prefixDictBL[piecePrefix];
     // bp.log.info('piece type={0}',pieceType)
     let allPiecesOfType = ctx.runQuery(getSpecificType(pieceType, color))
@@ -84,9 +153,21 @@ function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color) {
     let allPiecesOfTypeValues = Array.from(allPiecesOfType);
     bp.log.info(allPiecesOfTypeValues)
     for (let i = 0; i < allPiecesOfType.length; i++) {
-        if (canReachSquare(allPiecesOfTypeValues[i], dstCell)) {
-            // bp.log.info(allPiecesOfTypeValues[i]);
-            return allPiecesOfTypeValues[i];
+        if (optionalCol == '') {
+            if (canReachSquare(allPiecesOfTypeValues[i], dstCell)) {
+                // bp.log.info(allPiecesOfTypeValues[i]);
+                return allPiecesOfTypeValues[i];
+            }
+        }
+        else {
+            bp.log.info("Checking piece that fits optional col!!" + optionalCol  + " " + allPiecesOfTypeValues[i].cellId.charAt(0));
+            if (allPiecesOfTypeValues[i].cellId.charAt(0) == optionalCol) {
+                if (canReachSquare(allPiecesOfTypeValues[i], dstCell)) {
+                    // bp.log.info(allPiecesOfTypeValues[i]);
+                    bp.log.info("IN Checking piece that fits optional col!!");
+                    return allPiecesOfTypeValues[i];
+                }
+            }
         }
     }
 }
@@ -120,6 +201,9 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
         let move = allMovesList[i]
         let pieces = ctx.runQuery("Piece." + player + ".All");
         bp.log.info("Next PGN Move = {0}", move)
+        if (move.charAt(move.length - 1) == '+' || move.charAt(move.length - 1) == '#')
+            move = move.substr(0, move.length - 1)
+        bp.log.info("Next PGN Move (Again) = {0}", move)
         if (move.indexOf('x') > -1) {
           bp.log.info("Takes event!!")
           let piece = findPieceThatCanReachToEndSquare(
@@ -130,6 +214,12 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
           bp.log.info(event);
           sync({request: event});
         }
+        else if(move == "O-O" || move == "O-O-O")
+        {
+            bp.log.info("Castling event!!")
+            if(move == "O-O") handleShortCastle(player, pieces);
+            else if (move == "O-O-O") handleLongCastle(player, pieces);
+        }
         else {
           let piece = findPieceThatCanReachToEndSquare(
               startsWithCapital(move) ? move[0] : "P",
@@ -137,8 +227,8 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
               player);
           // bp.log.info("REACHED SYNC")
           // bp.log.info("piece is {0}", piece)
-          let event = moveEvent(piece, piece.cellId, startsWithCapital(move) ? move.substr(1) : move);
-          bp.log.info(event);
+          let event = moveEvent(piece, piece.cellId, startsWithCapital(move) ? move.length === 3 ? move.substr(1) : move.substr(2) : move);
+          bp.log.info("The Move -- " + event);
           sync({request: event});
         }
     }
@@ -212,7 +302,8 @@ const ESRookDevelopingMoves = bp.EventSet("ESRookDevelopingMoves", function (e) 
 })
 
 const ESFianchettoMoves = bp.EventSet("ESfianchettoMoves", function (e) {
-    return e.name == 'Move' && (e.data.dst[1] == '3' || e.data.dst[1] == '4') &&
+    return e.name == 'Move' && e.data.subtype == "Pawn" &&
+        (e.data.dst[1] == '3' || e.data.dst[1] == '4') &&
         (e.data.dst[0] == 'b' || e.data.dst[0] == 'g')
 })
 
@@ -324,8 +415,8 @@ ctx.bthread("Strengthen", "Phase.Opening", function (entity) {
         mySync({request: pawnMovesToRequest, waitFor: anyMoves})
         // mySync(pawnMovesToRequest, pawnMovesToRequest, []);
 
-        let receivedCounter = bp.store.get("Strategy Counter: Center strengthen moves")
-        bp.store.put("Strategy Counter: Center strengthen moves", receivedCounter + 1)
+        // let receivedCounter = bp.store.get("Strategy Counter: Center strengthen moves")
+        // bp.store.put("Strategy Counter: Center strengthen moves", receivedCounter + 1)
     }
 });
 
@@ -355,8 +446,8 @@ ctx.bthread("Fianchetto", "Phase.Opening", function (entity) {
         mySync({request: pawnMovesToRequest, waitFor: anyMoves})
         // mySync(pawnMovesToRequest, pawnMovesToRequest, []);
 
-        let receivedCounter = bp.store.get("Strategy Counter: Fianchetto moves")
-        bp.store.put("Strategy Counter: Fianchetto moves", receivedCounter + 1)
+        // let receivedCounter = bp.store.get("Strategy Counter: Fianchetto moves")
+        // bp.store.put("Strategy Counter: Fianchetto moves", receivedCounter + 1)
     }
 });
 
@@ -387,8 +478,8 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
         mySync({request: pawnMovesToRequest, waitFor: anyMoves})
         // mySync(pawnMovesToRequest, pawnMovesToRequest, []);
 
-        let receivedCounter = bp.store.get("Strategy Counter: Developing moves")
-        bp.store.put("Strategy Counter: Developing moves", receivedCounter + 1)
+        // let receivedCounter = bp.store.get("Strategy Counter: Developing moves")
+        // bp.store.put("Strategy Counter: Developing moves", receivedCounter + 1)
     }
 });
 
@@ -433,7 +524,7 @@ ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
 });
 
 
-ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
+/*ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
 
     while (true) {
 
@@ -471,38 +562,47 @@ ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
         // bp.store.put("Counter: Rook moves", receivedCounter + 1)
     }
 });
-
+*/
+/* bp.store.put("Strategy Counter: Center strengthen moves", 0)
+    bp.store.put("Strategy Counter: Fianchetto moves", 0)
+    bp.store.put("Strategy Counter: Developing moves", 0) */
 
 ctx.bthread("CenterTrackAndAdvice", "Phase.Opening", function (entity) {
     while (true) {
-        mySync({waitFor: ESCenterCaptureMoves})
+        sync({waitFor: ESCenterCaptureMoves})
         //([], [ESCenterCaptureMoves], []);
         let receivedCounter = bp.store.get("Advisor: Center")
-        bp.store.put("Advisor: Center", receivedCounter - 1)
+        bp.store.put("Advisor: Center", receivedCounter - 0.5)
+        receivedCounter = bp.store.get("Strategy Counter: Center strengthen moves")
+        bp.store.put("Strategy Counter: Center strengthen moves", receivedCounter + 1)
     }
 })
 
 ctx.bthread("DevelopTrackAndAdvice", "Phase.Opening", function (entity) {
     while (true) {
-        mySync({waitFor: [ESPawnDevelopingMoves, ESBishopDevelopingMoves]})
+        sync({waitFor: [ESPawnDevelopingMoves, ESBishopDevelopingMoves]})
         //mySync([], [ESCenterCaptureMoves, ESBishopDevelopingMoves], []);
         let receivedCounter = bp.store.get("Advisor: Develop")
-        bp.store.put("Advisor: Develop", receivedCounter - 1)
+        bp.store.put("Advisor: Develop", receivedCounter - 0.75)
+        receivedCounter = bp.store.get("Strategy Counter: Developing moves")
+        bp.store.put("Strategy Counter: Developing moves", receivedCounter + 1)
     }
 })
 
 ctx.bthread("FianchettoTrackAndAdvice", "Phase.Opening", function (entity) {
     while (true) {
-        mySync({waitFor: ESFianchettoMoves})
+        sync({waitFor: ESFianchettoMoves})
         //mySync([], [ESFianchettoMoves], []);
         let receivedCounter = bp.store.get("Advisor: Fianchetto")
-        bp.store.put("Advisor: Fianchetto", receivedCounter - 1)
+        bp.store.put("Advisor: Fianchetto", receivedCounter - 0.2 )
+        receivedCounter = bp.store.get("Strategy Counter: Fianchetto moves")
+        bp.store.put("Strategy Counter: Fianchetto moves", receivedCounter + 1)
     }
 })
 
 ctx.bthread("PawnMovesTrackAndAdvice", "Phase.Opening", function (entity) {
     while (true) {
-        let e = mySync({waitFor: anyMoves})
+        let e = sync({waitFor: anyMoves})
         //let e = mySync([], [anyMoves], []);
         if (e.data.piece == "Pawn") {
             let receivedAdvisor = bp.store.get("Piece Advisor: Pawn")
@@ -513,7 +613,7 @@ ctx.bthread("PawnMovesTrackAndAdvice", "Phase.Opening", function (entity) {
 
 ctx.bthread("BishopMovesTrackAndAdvice", "Phase.Opening", function (entity) {
     while (true) {
-        let e = mySync({waitFor: anyMoves})
+        let e = sync({waitFor: anyMoves})
         //let e = mySync([], [anyMoves], []);
         if (e.data.piece == "Bishop") {
             let receivedAdvisor = bp.store.get("Piece Advisor: Bishop")
@@ -524,7 +624,7 @@ ctx.bthread("BishopMovesTrackAndAdvice", "Phase.Opening", function (entity) {
 
 ctx.bthread("RookMovesTrackAndAdvice", "Phase.Opening", function (entity) {
     while (true) {
-        let e = mySync({waitFor: anyMoves})
+        let e = sync({waitFor: anyMoves})
         //let e = mySync([], [anyMoves], []);
         if (e.data.piece == "Rook") {
             let receivedAdvisor = bp.store.get("Piece Advisor: Rook")
@@ -798,9 +898,9 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
 }
 
 const board = [
-    ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'],
+    ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
 
-    ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+    ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
 
     ['*', '*', '*', '*', '*', '*', '*', '*'],
 

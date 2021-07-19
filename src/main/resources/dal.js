@@ -87,13 +87,14 @@ ctx.registerEffect("Develop", function(e) {
 })
 */
 
-const prefixDict = {};
-prefixDict["B"] = "Bishop";
-prefixDict["P"] = "Pawn";
-prefixDict["N"] = "Knight";
-prefixDict["K"] = "King";
-prefixDict["Q"] = "Queen";
-prefixDict["R"] = "Rook";
+const prefixDictBL = {
+  "B": "Bishop",
+  "P": "Pawn",
+  "N": "Knight",
+  "K": "King",
+  "Q": "Queen",
+  "R": "Rook"
+};
 
 
 ctx.registerEffect("Move", function (e) {
