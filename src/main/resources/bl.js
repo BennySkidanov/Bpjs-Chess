@@ -103,10 +103,10 @@ function handleShortCastle(color, pieces ) {
         // transaction
         let eventKing = moveEvent(king, king.cellId,"g1");
         bp.log.info(eventKing);
-        sync({request: eventKing});
+        sync({request: eventKing}, 100);
         let eventRook = moveEvent(rook, rook.cellId,"f1");
         bp.log.info(eventKing);
-        sync({request: eventRook});
+        sync({request: eventRook}, 100);
         // transaction
     }
     else {
@@ -124,10 +124,10 @@ function handleShortCastle(color, pieces ) {
         // transaction
         let eventKing = moveEvent(king, king.cellId,"g8");
         bp.log.info(eventKing);
-        sync({request: eventKing});
+        sync({request: eventKing}, 100);
         let eventRook = moveEvent(rook, rook.cellId,"f8");
         bp.log.info(eventKing);
-        sync({request: eventRook});
+        sync({request: eventRook}, 100);
     }
 }
 
@@ -196,13 +196,16 @@ const allMovesList = (function () {
 ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
     // bp.log.info(allMovesList)
     let player = '';
+    let checkmate = false;
     for (let i = 0; i < allMovesList.length; i++) {
         (i % 2 === 0) ? player = 'White' : player = 'Black';
         let move = allMovesList[i]
         let pieces = ctx.runQuery("Piece." + player + ".All");
         bp.log.info("Next PGN Move = {0}", move)
-        if (move.charAt(move.length - 1) == '+' || move.charAt(move.length - 1) == '#')
+        if (move.charAt(move.length - 1) == '+' || move.charAt(move.length - 1) == '#') {
+            if (move.charAt(move.length - 1) == '#') checkmate = true;
             move = move.substr(0, move.length - 1)
+        }
         bp.log.info("Next PGN Move (Again) = {0}", move)
         if (move.indexOf('x') > -1) {
           bp.log.info("Takes event!!")
@@ -212,7 +215,13 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
               player);
           let event = moveEvent(piece, piece.cellId,move.substr(2));
           bp.log.info(event);
-          sync({request: event});
+          if(!checkmate) {
+              sync({request: event}, 100);
+          }
+          else {
+              sync({request: event}, 100);
+              sync({block: anyMoves}, 100);
+          }
         }
         else if(move == "O-O" || move == "O-O-O")
         {
@@ -229,7 +238,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
           // bp.log.info("piece is {0}", piece)
           let event = moveEvent(piece, piece.cellId, startsWithCapital(move) ? move.length === 3 ? move.substr(1) : move.substr(2) : move);
           bp.log.info("The Move -- " + event);
-          sync({request: event});
+          sync({request: event}, 100);
         }
     }
 
@@ -272,7 +281,6 @@ const AnyCastling = bp.EventSet("AnyCastling", function (e) {
 const anyMoves = bp.EventSet("anyMove", function (e) {
     return e.name.startsWith("Move")
 })
-
 
 const ESCenterCaptureMoves = bp.EventSet("EScenterCaptureMoves", function (e) {
     return e.name == 'Move' && (e.data.dst[1] == '3' || e.data.dst[1] == '4')
@@ -412,6 +420,7 @@ ctx.bthread("Strengthen", "Phase.Opening", function (entity) {
 
         // ACHIYA: why request and waitFor are the same? redundant and makes no sense I think you meant to wait for anyMove...
         //("mySync : Requesting center moves")
+        bp.log.info("Strengthen : {0}" ,pawnMovesToRequest)
         mySync({request: pawnMovesToRequest, waitFor: anyMoves})
         // mySync(pawnMovesToRequest, pawnMovesToRequest, []);
 
@@ -443,6 +452,7 @@ ctx.bthread("Fianchetto", "Phase.Opening", function (entity) {
 
         //bp.log.info("mySync : Requesting Fianchetto moves")
         // ACHIYA: why request and waitFor are the same? redundant and makes no sense I think you meant to wait for anyMove...
+        bp.log.info("Fianchetto : {0}" , pawnMovesToRequest == null ? pawnMovesToRequest : "null" )
         mySync({request: pawnMovesToRequest, waitFor: anyMoves})
         // mySync(pawnMovesToRequest, pawnMovesToRequest, []);
 
@@ -474,7 +484,6 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
         let pawnMovesToRequest = filterOccupiedCellsMoves(pawnMovesSet, cellsSet)
 
         //("mySync : Requesting pawn developing moves")
-        // ACHIYA: why request and waitFor are the same? redundant and makes no sense I think you meant to wait for anyMove...
         mySync({request: pawnMovesToRequest, waitFor: anyMoves})
         // mySync(pawnMovesToRequest, pawnMovesToRequest, []);
 
@@ -706,8 +715,6 @@ function availableStraightCellsFromPawn(pawn, distance, allCells) {
         if (numericCellToCell(row + 1, col, allCells).pieceId == undefined) {
             availableCells.push({row: row + 1, col: col});
             availableMoves.push(moveEvent("Pawn", jToCol(col) + row, jToCol(col) + (row + 1)));
-        } else {
-            return availableMoves;
         }
     }
 
@@ -715,11 +722,22 @@ function availableStraightCellsFromPawn(pawn, distance, allCells) {
         if (numericCellToCell(row + 2, col, allCells).pieceId == undefined) {
             availableCells.push({row: row + 2, col: col});
             availableMoves.push(moveEvent("Pawn", jToCol(col) + row, jToCol(col) + (row + 2)));
-        } else {
-            return availableMoves;
         }
     }
 
+    if(col + 1 <= 7 && col + 1 >= 0) {
+        if (numericCellToCell(row + 1, col + 1, allCells).pieceId != undefined) {
+            availableCells.push({row: row + 1, col: col + 1});
+            availableMoves.push(moveEvent("Pawn", jToCol(col) + row, jToCol(col + 1) + (row + 1)));
+        }
+    }
+
+    if(col - 1 <= 7 && col - 1 >= 0) {
+        if (numericCellToCell(row + 1, col - 1, allCells).pieceId != undefined) {
+            availableCells.push({row: row + 1, col: col - 1});
+            availableMoves.push(moveEvent("Pawn", jToCol(col) + row, jToCol(col - 1) + (row + 1)));
+        }
+    }
 
     return availableMoves
 }

@@ -47,8 +47,9 @@ public class Main {
 
         OutputStream outputFile = file;
         games.forEach(g->{
-            bprog.setEventSelectionStrategy(new ChessEventSelectionStrategy(g[0], outputFile));
-            bprog.putInGlobalScope("generationMode",true);
+            var ess = new ChessEventSelectionStrategy(g[0], outputFile);
+            bprog.setEventSelectionStrategy(ess);
+            bprog.putInGlobalScope("generationMode",false);
             bprog.putInGlobalScope("game_id",g[0]);
             bprog.putInGlobalScope("pgn",g[1]);
 
@@ -72,6 +73,7 @@ public class Main {
 
             rnr.addListener(new PrintCOBProgramRunnerListener(Level.CtxChanged, new PrintBProgramRunnerListener()));
             rnr.run();
+            var gameData = ess.getGameData();
         });
 
     }

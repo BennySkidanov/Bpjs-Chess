@@ -133,6 +133,46 @@ ctx.registerEffect("Move", function (e) {
 
 })
 
+// ctx.registerEffect("Short Castle White", function (e) {
+//   let srcCell = ctx.getEntityById("e1")
+//   let dstCell = ctx.getEntityById(e.dst.toString())
+//   //bp.log.info(srcCell)
+//   //bp.log.info(dstCell)
+//
+//   let srcPiece = null
+//   let dstPiece = null
+//   if (srcCell.pieceId != null) {
+//     srcPiece = ctx.getEntityById(srcCell.pieceId.toString())
+//   }
+//   if (dstCell.pieceId != null) {
+//     dstPiece = ctx.getEntityById(dstCell.pieceId.toString())
+//   }
+//   //bp.log.info(srcPiece)
+//   //bp.log.info(dstPiece)
+//
+//
+//   dstCell.pieceId = srcPiece.id
+//   ctx.updateEntity(dstCell)
+//
+//   srcCell.pieceId = undefined
+//   ctx.updateEntity(srcCell)
+//
+//   srcPiece.cellId = dstCell.id
+//   ctx.updateEntity(srcPiece)
+//
+//   if (dstPiece)
+//     ctx.removeEntity(dstPiece)
+//
+//   //bp.log.info("MOVE HAS FINISHED")
+//
+// })
+
+// function shortCastleEvent(color) {
+//   if (color == "White") {
+//     return bp.Event("Short Castle " + color);
+//   }
+// }
+
 
 const prefix = ["", "N", "B", "R", "Q", "K"];
 const pieces = ["Pawn", "Knight", "Bishop", "Rook", "Queen", "King"];
@@ -141,6 +181,8 @@ function moveEvent(piece, oldCell, newCell) {
   //bp.log.info ("Move Event : " + piece + " " + newCell);
   return bp.Event("Move", {piece: piece, src: oldCell, dst: newCell});
 }
+
+
 
 /*function moveEventPGN(piece, newCell) {
   let srcCell = piece.data.cellId;

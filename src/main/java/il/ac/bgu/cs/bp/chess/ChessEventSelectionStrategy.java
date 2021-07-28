@@ -1,37 +1,46 @@
 package il.ac.bgu.cs.bp.chess;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParser;
+import il.ac.bgu.cs.bp.bpjs.BPjs;
 import il.ac.bgu.cs.bp.bpjs.internal.Pair;
 import il.ac.bgu.cs.bp.bpjs.internal.ScriptableUtils;
 import il.ac.bgu.cs.bp.bpjs.model.BEvent;
 import il.ac.bgu.cs.bp.bpjs.model.BProgramSyncSnapshot;
+import il.ac.bgu.cs.bp.bpjs.model.SyncStatement;
 import il.ac.bgu.cs.bp.bpjs.model.eventselection.EventSelectionResult;
 import il.ac.bgu.cs.bp.bpjs.model.eventselection.SimpleEventSelectionStrategy;
 import il.ac.bgu.cs.bp.bpjs.model.eventsets.EventSet;
+import il.ac.bgu.cs.bp.bpjs.model.eventsets.EventSets;
 import il.ac.bgu.cs.bp.chess.eventSets.DevelopBishops;
 import il.ac.bgu.cs.bp.chess.eventSets.DevelopPawns;
 import il.ac.bgu.cs.bp.chess.eventSets.FianchettoPawns;
 import il.ac.bgu.cs.bp.chess.eventSets.StrengthenPawns;
 import org.json.simple.JSONArray;
 import org.json.simple.JSONObject;
+import org.mozilla.javascript.Context;
+import org.mozilla.javascript.Scriptable;
 
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.text.DecimalFormat;
 import java.util.*;
 import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
+import static java.util.stream.Collectors.toSet;
 
+public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
+    private int defaultPriority = Integer.MIN_VALUE;
     private final String gameId;
     private OutputStream file;
+    private Optional<BEvent> maxEvent;
+
+    private String gameData;
+
+    public String getGameData() {
+        return gameData;
+    }
 
     private static FileWriter writer;
 
@@ -39,7 +48,29 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
         this.gameId = gameId;
         this.file = file;
     }
-    
+
+    private static String toJson(BEvent o) {
+        String code = toJson((Scriptable) o.maybeData);
+        return "{\"name\": \"" + o.name + "\"" + (code == null ? "}" : ", \"data\":" + code + "}");
+    }
+
+    private static String toJson(Scriptable o) {
+        if (o == null) return null;
+        String code = "return JSON.stringify(o);";
+        try {
+            Context curCtx = BPjs.enterRhinoContext();
+            Scriptable tlScope = BPjs.makeBPjsSubScope();
+            tlScope.put("o", tlScope, o);
+            // Benny : The problem is here, the execution throws exception, so the functions returns null every time
+            curCtx.evaluateString(tlScope, code, "", 1, (Object) null);
+            return "";
+        } catch (Exception e) {
+            return null;
+        } finally {
+            Context.exit();
+        }
+    }
+
     private static DecimalFormat df2 = new DecimalFormat("#.##");
 
     private final Rule[] rules = new Rule[]
@@ -50,98 +81,106 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
                             "As a rule of thumb, it is not favorable to move / develop too " +
                                     "many pawns at the opening, 3 is certainly enough",
                             (store, events) -> {
-                                    var es = new DevelopPawns();
-                                    var advisorDevelop = (double)store.get("Advisor: Center");
-                                    return Optional.of(new Pair(0.1 * advisorDevelop, es));
+                                var es = new DevelopPawns();
+                                var advisorDevelop = (double) store.get("Advisor: Center");
+                                return Optional.of(new Pair(0.1 * advisorDevelop, es));
                             }),
                     new Rule("Center is strengthened",
                             "The center has been strengthened by 4 moves, it may be time to try and " +
                                     "get other strategies into play", (store, events) -> {
-                            var es = new StrengthenPawns();
-                            var advisorCenter = (double)store.get("Advisor: Center");
-                            return Optional.of(new Pair(0.1 * advisorCenter, es));
+                        var es = new StrengthenPawns();
+                        var advisorCenter = (double) store.get("Advisor: Center");
+                        return Optional.of(new Pair(0.1 * advisorCenter, es));
                     }),
                     new Rule("Fianchetto strategy advanced",
                             "The Fianchetto strategy advanced by the player, it may be time to try and " +
                                     "get other strategies into play", (store, events) -> {
-                            var es = new FianchettoPawns();
-                            var advisorFianchetto = (double)store.get("Advisor: Fianchetto");
-                            return Optional.of(new Pair(0.05 * advisorFianchetto, es));
+                        var es = new FianchettoPawns();
+                        var advisorFianchetto = (double) store.get("Advisor: Fianchetto");
+                        return Optional.of(new Pair(0.05 * advisorFianchetto, es));
                     }),
                     new Rule("Rule 4",
                             "ddd",
                             (store, events) -> {
-                        var es = new DevelopBishops();
-                        var advisorBishop = (double)store.get("Piece Advisor: Bishop");
-                        return Optional.of(new Pair(0.2 * advisorBishop, es));
-                    }),
+                                var es = new DevelopBishops();
+                                var advisorBishop = (double) store.get("Piece Advisor: Bishop");
+                                return Optional.of(new Pair(0.2 * advisorBishop, es));
+                            }),
             };
 
+    @Override
+    public Set<BEvent> selectableEvents(BProgramSyncSnapshot bpss) {
+
+        Set<SyncStatement> statements = bpss.getStatements();
+        List<BEvent> externalEvents = bpss.getExternalEvents();
+
+        EventSet blocked = EventSets.anyOf(statements.stream()
+                .filter(stmt -> stmt != null)
+                .map(SyncStatement::getBlock)
+                .filter(r -> r != EventSets.none)
+                .collect(toSet()));
+
+        OptionalInt maxValueOpt = statements.stream()
+                .filter(s -> !getRequestedAndNotBlocked(s, blocked).isEmpty())
+                .mapToInt(this::getValue)
+                .max();
+
+        try {
+            BPjs.enterRhinoContext();
+            if (maxValueOpt.isPresent()) {
+                int maxValue = maxValueOpt.getAsInt();
+                maxEvent = statements.stream().filter(s -> getValue(s) == maxValue)
+                        .flatMap(s -> getRequestedAndNotBlocked(s, blocked).stream()).findFirst();
+            } else {
+                maxEvent = Optional.empty();
+            }
+        } finally {
+            Context.exit();
+        }
+        return super.selectableEvents(bpss);
+    }
+
+    private int getValue(SyncStatement stmt) {
+        return (stmt.hasData() && (stmt.getData() instanceof Number)) ?
+                ((Number) stmt.getData()).intValue() : defaultPriority;
+    }
+
+    public int getDefaultPriority() {
+        return defaultPriority;
+    }
+
+    public void setDefaultPriority(int defaultPriority) {
+        this.defaultPriority = defaultPriority;
+    }
 
     @Override
     public Optional<EventSelectionResult> select(BProgramSyncSnapshot bpss, Set<BEvent> selectableEvents) {
-        // System.out.println("--------------------------------- Select ---------------------------------");
+        //System.out.println("--------------------------------- Select ( " + selectableEvents.size() + " selectable events ) ---------------------------------");
+
         // Initialize probabilities of all events to 1
         Map<BEvent, Double> initialProbabilities;
+
+        String gameSequenceString;
+        String gameStateString;
         JSONArray gameSequenceJsons = new JSONArray();
-        if (selectableEvents.size() == 1) {
-            var toPrint = false;
-            var ctx = bpss.getDataStore();
-            var counterDevelop = ctx.get("Strategy Counter: Developing moves");
-            var counterCenter = ctx.get("Strategy Counter: Center strengthen moves");
-            var counterFianchetto = ctx.get("Strategy Counter: Fianchetto moves");
-            var advisorCenter = ctx.get("Advisor: Center");;
-            var advisorDevelop = ctx.get("Advisor: Develop");
-            var advisorFianchetto = ctx.get("Advisor: Fianchetto");
-            for (BEvent e : selectableEvents) {
-                if(e.name.equals("Move")) toPrint = true;
-            }
-            if(toPrint) {
-                try {
-                    var data = (Map<String,Object>) selectableEvents.iterator().next().maybeData;
-                    var piece = (Map<String,Object>)data.get("piece");
-                    JSONObject move = new JSONObject();
-                    move.put("Move", data.get("dst"));
-                    move.put("Developing moves counter", counterDevelop.toString());
-                    move.put("Center moves counter", counterCenter.toString());
-                    move.put("Fianchetto moves counter", counterFianchetto.toString());
-                    move.put("Advisor - Develop", advisorDevelop.toString());
-                    move.put("Advisor - Center", advisorCenter.toString());
-                    move.put("Advisor - Fianchetto", advisorFianchetto.toString());
-/*                    file.write(("Move : " + data.get("dst") + "\n" +
-                            "Developing moves : " + counterDevelop.toString() + ", " +
-                            "Center moves : " + counterCenter.toString() + ", " +
-                            "Fianchetto moves : " + counterFianchetto.toString() + ", " +
-                            "Advisor - Center : " + advisorCenter.toString() + ", " +
-                            "Advisor - Develop : " + advisorDevelop.toString() + ", " +
-                            "Advisor - Fianchetto : " + advisorFianchetto.toString() +
-                            "\n\n").getBytes());*/
-                    PrintWriter clear = new PrintWriter(file);
-                    clear.print("");
-                    clear.close();
+        JSONArray gameStateJsons = new JSONArray();
 
-                    writer = new FileWriter("C:\\Users\\benis\\Desktop\\University\\Thesis\\Bpjs-Chess\\Measurements.txt", true);
-                    writer.flush();
-                    Gson gson = new GsonBuilder().setPrettyPrinting().create();
-                    JsonParser jp = new JsonParser();
-                    JsonElement je = jp.parse("{ Move :" + data.get("dst") + ",\n" + "number:0"  + "}" );
+        /*
+         * Sometimes, select function is reached without any moves are requested, for example in case of a
+         * _____CTX_LOCK_____ event. In this case, we need to catch the event, and continue.
+        */
 
-                    String prettyJsonString = gson.toJson(je);
+        Iterator<BEvent> iterator = selectableEvents.iterator();
 
-                    writer.write(je + "\n\n");
-
-                    writer.close();
-                    System.out.println(prettyJsonString);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-            // Simulating PGN, only one move to choose
+        if(selectableEvents.size() == 1 && ! (iterator.next().name.startsWith("name")))
+        {
             return Optional.of(new EventSelectionResult(selectableEvents.iterator().next()));
         }
-        else if (selectableEvents.size() == 0) { // no selectable events
+        else if (selectableEvents.size() == 0) {
+            // No selectable events
             return super.select(bpss, selectableEvents);
-        } else {
+        }
+        else {
             initialProbabilities = selectableEvents.stream().collect(Collectors.toMap(Function.identity(), e -> 1.0));
         }
 
@@ -153,7 +192,26 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
         FianchettoPawns esFianchetto = new FianchettoPawns();
         StrengthenPawns esCenter = new StrengthenPawns();
 
-        System.out.println("--------------------------------- selectableEvents ---------------------------------");
+//       JSONArray selectableEventsJSON = new JSONArray();
+
+        String selectableEventsString = selectableEvents.stream().map(ChessEventSelectionStrategy::toJson).collect(Collectors.joining(",", "[", "]"));
+
+        gameData += selectableEventsString;
+
+        /*for (BEvent e : selectableEvents) {
+            JSONObject selectableMove = new JSONObject();
+            selectableMove.put("Selectable Event, name", e.name);
+            Map<String, Object> dataMap = e.getDataField().isPresent() ? (Map<String, Object>) e.getData() : null;
+            JSONObject selectableMoveData = new JSONObject();
+            selectableMoveData.put("Piece", dataMap.get("piece").toString());
+            selectableMoveData.put("src", dataMap.get("src").toString());
+            selectableMoveData.put("dst", dataMap.get("dst").toString());
+            selectableMove.put("Selectable Event, data", selectableMoveData);
+            selectableEventsJSON.add(selectableMove);
+            System.out.println(e.toString());
+        }*/
+
+        /*System.out.println("--------------------------------- selectableEvents ---------------------------------");
         for (BEvent e : selectableEvents) {
             System.out.print("| " + e.name + " " + ScriptableUtils.stringify(e.maybeData) + " |");
             if (esDevelop.contains(e)) System.out.print("\t=> Developing");
@@ -161,15 +219,9 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
             if (esCenter.contains(e)) System.out.print("\t, Center");
             System.out.print("\n");
         }
-        System.out.println("--------------------------------- Finished ---------------------------------");
+        System.out.println("--------------------------------- Finished ---------------------------------");*/
 
         var counterDevelop = ctx.get("Strategy Counter: Developing moves");
-        System.out.println("Developing moves -> " + counterDevelop);
-        try {
-            file.write(("Developing moves -> " + counterDevelop.toString() + "\n").getBytes());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
         var counterCenter = ctx.get("Strategy Counter: Center strengthen moves");
         System.out.println("center moves -> " + counterCenter);
         var counterFianchetto = ctx.get("Strategy Counter: Fianchetto moves");
@@ -181,19 +233,19 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
         var advisorFianchetto = ctx.get("Advisor: Fianchetto");
         System.out.println("Fianchetto Advice => " + advisorFianchetto);
 
-        // Now it's time to apply the rules
-        for (Rule rule : rules) {
-            var res = rule.rule.apply(ctx, selectableEvents);
-            if (res.isPresent()) {
-                EventSet es = res.get().getRight();
-                initialProbabilities = initialProbabilities.entrySet().stream()
-                        .collect(Collectors.toMap(Map.Entry::getKey, e -> {
-                            if (es.contains(e.getKey()))
-                                return e.getValue() + res.get().getLeft();
-                            return e.getValue();
-                        }));
-            }
-        }
+//        // Now it's time to apply the rules
+//        for (Rule rule : rules) {
+//            var res = rule.rule.apply(ctx, selectableEvents);
+//            if (res.isPresent()) {
+//                EventSet es = res.get().getRight();
+//                initialProbabilities = initialProbabilities.entrySet().stream()
+//                        .collect(Collectors.toMap(Map.Entry::getKey, e -> {
+//                            if (es.contains(e.getKey()))
+//                                return e.getValue() + res.get().getLeft();
+//                            return e.getValue();
+//                        }));
+//            }
+//        }
 
         Map<BEvent, Double> probabilities = normalize(initialProbabilities);
 
@@ -210,17 +262,38 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
         if (probabilities.size() == 0) {
             System.out.println("empty => Choose randomly");
         }
-        System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~ Finished ~~~~~~~~~~~~~~~~~~~~~~~~");
+        //System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~ Finished ~~~~~~~~~~~~~~~~~~~~~~~~");
+
+//        gameSequenceJsons.add(Gson.parse( selectableEventsString));
 
 
-        double rnd = Math.random();
+        /*double rnd = Math.random();
         double sum = 0;
         List<BEvent> events = new ArrayList<>(probabilities.keySet());
         for (int i = 0; i < events.size(); i++) {
             sum += probabilities.get(events.get(i));
-            if (sum > rnd)
+            if (sum > rnd) {
+                if (maxEvent.isPresent()) {
+                    System.out.println("Max Event is present (1) -- " + maxEvent.get());
+                    JSONObject selectedMove = new JSONObject();
+                    selectedMove.put("name of chosen move", maxEvent.get().name);
+                    selectedMove.put("data of chosen move", maxEvent.get().maybeData);
+                    gameSequenceJsons.add(selectedMove);
+
+                    FileWriter JSONWriter = null;
+                    try {
+                        JSONWriter = new FileWriter("C:\\Users\\benis\\Desktop\\University\\Thesis\\Bpjs-Chess\\MeasurementsArray.json", true);
+                        JSONWriter.write(gameSequenceJsons.toJSONString());
+                        JSONWriter.flush();
+                        JSONWriter.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    return Optional.of(new EventSelectionResult(maxEvent.get()));
+                }
                 return Optional.of(new EventSelectionResult(events.get(Math.max(i - 1, 0))));
-        }
+            }
+        }*/
     /*
       ctx includes a lot of information that should help to decide which BEvent to select next
 
@@ -267,8 +340,32 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
         |> Counter for each strategy moves
     */
 
+        //if (maxEvent.isPresent()) {
+        if (maxEvent != null) {
+            System.out.println("Max Event is present -- " + maxEvent.get());
+            JSONObject selectedMove = new JSONObject();
+            selectedMove.put("name of chosen move", maxEvent.get().name);
+            selectedMove.put("data of chosen move", maxEvent.get().maybeData);
+            gameSequenceJsons.add(selectedMove);
+            FileWriter JSONWriter = null;
+            try {
+                JSONWriter = new FileWriter("C:\\Users\\benis\\Desktop\\University\\Thesis\\Bpjs-Chess\\MeasurementsArray.json", true);
+                JSONWriter.write(gameSequenceJsons.toJSONString());
+                JSONWriter.flush();
+                JSONWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+
+            return Optional.of(new EventSelectionResult(maxEvent.get()));
+        }
+
         return super.select(bpss, selectableEvents);
     }
+
+
+
+
 
     private static class Rule {
         public final String title;
