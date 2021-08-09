@@ -23,14 +23,9 @@
     </repositories>
     <dependencies>
         <dependency>
-            <groupId>com.github.bthink-bgu</groupId>
-            <artifactId>BPjs</artifactId>
-            <version>0.12.0</version>
-        </dependency>
-        <dependency>
             <groupId>com.github.bThink-BGU</groupId>
             <artifactId>BPjs-Context</artifactId>
-            <version>0.1.11</version>
+            <version>0.2.5</version>
         </dependency>
         <dependency>
             <groupId>com.googlecode.json-simple</groupId>

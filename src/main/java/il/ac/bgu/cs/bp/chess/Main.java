@@ -7,12 +7,11 @@ import il.ac.bgu.cs.bp.bpjs.execution.listeners.PrintBProgramRunnerListener;
 import il.ac.bgu.cs.bp.bpjs.model.BEvent;
 import il.ac.bgu.cs.bp.bpjs.model.BProgram;
 
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.OutputStream;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static il.ac.bgu.cs.bp.bpjs.context.PrintCOBProgramRunnerListener.Level;
 
@@ -38,16 +37,8 @@ public class Main {
         String [] arr = {id, pgn};
         games.add(arr);
 
-        OutputStream file = null;
-        try {
-            file = new FileOutputStream("Measurements.txt");
-        } catch (FileNotFoundException e) {
-            e.printStackTrace();
-        }
-
-        OutputStream outputFile = file;
         games.forEach(g->{
-            var ess = new ChessEventSelectionStrategy(g[0], outputFile);
+            var ess = new ChessEventSelectionStrategy(g[0]);
             bprog.setEventSelectionStrategy(ess);
             bprog.putInGlobalScope("generationMode",false);
             bprog.putInGlobalScope("game_id",g[0]);
@@ -73,7 +64,14 @@ public class Main {
 
             rnr.addListener(new PrintCOBProgramRunnerListener(Level.CtxChanged, new PrintBProgramRunnerListener()));
             rnr.run();
-            var gameData = ess.getGameData();
+            FileWriter JSONWriter = null;
+            try {
+                JSONWriter = new FileWriter("GameSequence.json");
+                JSONWriter.write(ess.getGameData().stream().collect(Collectors.joining(",","[","]")));
+                JSONWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         });
 
     }

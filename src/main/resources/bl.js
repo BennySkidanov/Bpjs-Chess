@@ -37,17 +37,22 @@ function startsWithCapital(word) {
 }
 
 function canReachSquare(piece, dstCell) {
-  /* bp.log.info("In canReachSquare")
-   bp.log.info(piece.subtype)
-   bp.log.info(piece.cellId)*/
+/*    bp.log.info("In canReachSquare")
+    bp.log.info(piece.subtype)
+    bp.log.info(piece.cellId)
+    bp.log.info(dstCell)*/
+    let colToTakePawn = dstCell[0].charCodeAt(0) - 'a'.charCodeAt(0);
+    let rowToTakePawn = (dstCell[1] - '0');
+    let allCells = ctx.runQuery("Cell.all")
 
   if (piece.subtype == "Pawn") {
     if (dstCell[0] == piece.cellId[0] && (Math.abs(dstCell[1] - piece.cellId[1]) == 2 || Math.abs(dstCell[1] - piece.cellId[1]) == 1)) {
-      bp.log.info("Found!!")
+      bp.log.info("Found!! ( pawn Advances )")
       return true;
     } else if ((Math.abs(dstCell[1] - piece.cellId[1]) == 1) &&
-        Math.abs(dstCell[0].charCodeAt(0) - piece.cellId[0].charCodeAt(0)) == 1) {
-      bp.log.info("Found!!")
+        Math.abs(dstCell[0].charCodeAt(0) - piece.cellId[0].charCodeAt(0)) == 1 &&
+        numericCellToCell(rowToTakePawn, colToTakePawn, allCells).pieceId != undefined) {
+      bp.log.info("Found!! ( pawn Takes ) ")
       return true;
     }
     return false;
@@ -143,7 +148,7 @@ function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color) {
         optionalCol = dstCell.charAt(0);
         dstCell = dstCell.substr(1);
         bp.log.info("optionalCol " + optionalCol)
-        bp.log.info("dstcell " + dstCell)
+        bp.log.info("dst cell " + dstCell)
     }
     let pieceType = prefixDictBL[piecePrefix];
     // bp.log.info('piece type={0}',pieceType)
@@ -405,9 +410,9 @@ ctx.bthread("Strengthen", "Phase.Opening", function (entity) {
         let allCells = ctx.runQuery("Cell.all")
         let allCellsArr = Array.from(allCells);
 
-        for (let pawn of pawnsSet.values()) {
+        for (let i = 0; i < pawnsSet.length; i++) {
             pawnMoves = pawnMoves.concat(
-                availableStraightCellsFromPawn(pawn, 2, allCellsArr)
+                availableStraightCellsFromPawn(pawnsSet[i], 2, allCellsArr)
                     .filter(function (m) {
                         return ESCenterCaptureMoves.contains(m)
                     })
@@ -439,9 +444,9 @@ ctx.bthread("Fianchetto", "Phase.Opening", function (entity) {
         let allCells = ctx.runQuery("Cell.all")
         let allCellsArr = Array.from(allCells);
 
-        for (let pawn of pawnsSet.values()) {
+        for (let i = 0; i < pawnsSet.length; i++) {
             pawnMoves = pawnMoves.concat(
-                availableStraightCellsFromPawn(pawn, 2, allCellsArr)
+                availableStraightCellsFromPawn(pawnsSet[i], 2, allCellsArr)
                     .filter(function (m) {
                         return ESFianchettoMoves.contains(m);
                     })
@@ -471,9 +476,9 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
         let allCells = ctx.runQuery("Cell.all")
         let allCellsArr = Array.from(allCells);
 
-        for (let pawn of pawnsSet.values()) {
+        for (let i = 0; i < pawnsSet.length; i++) {
             pawnMoves = pawnMoves.concat(
-                availableStraightCellsFromPawn(pawn, 2, allCellsArr)
+                availableStraightCellsFromPawn(pawnsSet[i], 2, allCellsArr)
                     .filter(function (m) {
                         return ESPawnDevelopingMoves.contains(m);
                     })
@@ -497,14 +502,14 @@ ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
     while (true) {
 
         let bishopsMoves = []
-        let bishopsSet = ctx.runQuery(getSpecificType('Bishop', 'White'))
+        let bishopsArray = ctx.runQuery(getSpecificType('Bishop', 'White'))
         // let bishopsSet = ctx.runQuery("Piece.White.Bishop")
         let cellsSet = ctx.runQuery("Cell.all.nonOccupied")
         let allCells = ctx.runQuery("Cell.all")
         let allCellsArr = Array.from(allCells);
 
-        for (let bishop of bishopsSet.values()) {
-            let avlble = availableDiagonalCellsFromPiece(bishop, 7, allCellsArr);
+        for (let i = 0; i < bishopsArray.length; i++) {
+            let avlble = availableDiagonalCellsFromPiece(bishopsArray[i], 7, allCellsArr);
             bishopsMoves = bishopsMoves.concat(avlble
                 .filter(function (m) {
                     return ESBishopDevelopingMoves.contains(m);
@@ -915,25 +920,25 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
 
 }
 
-const board = [
-    ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
-
-    ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
-
-    ['*', '*', '*', '*', '*', '*', '*', '*'],
-
-    ['*', '*', '*', '*', '*', '*', '*', '*'],
-
-    ['*', '*', '*', '*', '*', '*', '*', '*'],
-
-    ['*', '*', '*', '*', '*', '*', '*', '*'],
-
-    ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
-
-    ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'],
-]
-
 ctx.bthread("BoardTrack", "Phase.Opening", function (entity) {
+    const board = [
+        ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
+
+        ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
+
+        ['*', '*', '*', '*', '*', '*', '*', '*'],
+
+        ['*', '*', '*', '*', '*', '*', '*', '*'],
+
+        ['*', '*', '*', '*', '*', '*', '*', '*'],
+
+        ['*', '*', '*', '*', '*', '*', '*', '*'],
+
+        ['P', 'P', 'P', 'P', 'P', 'P', 'P', 'P'],
+
+        ['R', 'N', 'B', 'Q', 'K', 'B', 'N', 'R'],
+    ]
+
     while (true) {
         let move = mySync({waitFor: anyMoves});
         //let move = mySync([], [anyMoves], []);
