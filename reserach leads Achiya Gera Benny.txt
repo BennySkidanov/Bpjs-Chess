@@ -1,0 +1,65 @@
+selectable event : Pawn e2 - > e4 , bthread id / name ,  
+selectable event : Pawn g2 - > g4 , 
+selectable event : Bishop c1 - > f4
+
+develop advisor : 8.0
+devleoping moves counter : 4.0
+center advisor : -4.4
+
+chosen event : Pawn e2 - > e4 
+
+
+some game data | selectable events | measurements | chosen move | 
+
+
+
+
+
+Lead taken :  
+
+train - 70%, test - 30% 
+data : some game data | [bpss0 attributes] | {[ei(bpss0) attributes], s.t. ei is in R\B} | index of best
+
+currently, state attributes = [bpss0 attributes] | {[ei(bpss0) attributes], s.t. ei is in R\B}
+
+individual : action grader in event selection strateegy = function ( state attributes ) -> grade ( 0-100, may be normalized by |R\B| ) . The lower the grade the better the individual  
+fittnes: calc grade of each ei(state), sort events by grade in an array -> the most left events are favorable 
+fitness = 2 (Const) * ( index of best * 100.0 / |R\B| )  
+
+attribute = only major values ( advisors, strategy counters, etc. ) 
+
+Action items : 
+1. finish data prep
+2. tutorial ECJ - GP in ECJ
+
+individual option 1:
+given that statedata=["counter0",.., "counterm","advisor0",..,"advisorn"]
+then individual genotype is an array of length n+m of integers in the range of [-50,50]. The phenotype is: sigma from 0 to m+n (weighti* statedata_i)
+
+function double fitness (Integer[] individual) {
+	double fitness = 0;
+	for(int si=0; si<tranningSet.length; i++){
+		var actionGrades = new Pair<BEvent,double>[|R\B|];
+		for(int actioni=0; actioni< trainingSet[si].RnotB.length; actioni++){
+			for(int i=0; i<individual.length; i++)
+				actionGrades[actioni] = individual[i]* statedata.RnotB[actioni]
+		}
+		Arrays.sort(actionGrades, compartor by pair.right);
+		fintess += 2 (Const) * ( index of trainingSet[si].best * 100.0 / |R\B| )
+	}
+	return fitness
+}
+
+individual option 2:
+given that statedata=["counter0",.., "counterm","advisor0",..,"advisorn"]
+then individual genotype is an array of length n+m of math expressions. The phenotype is: sigma from 0 to m+n (expr_i(statedata_i))
+
+individual option 3:
+given that statedata=["counter0",.., "counterm","advisor0",..,"advisorn"]
+then individual genotype is a math expression on statedata
+
+individual option 4:
+			grade = 0
+				if
+		cond(devCounter>=3)	true(grade++) 			false(if)
+						cond(centerCounter<4)	true(...)	false(...)
