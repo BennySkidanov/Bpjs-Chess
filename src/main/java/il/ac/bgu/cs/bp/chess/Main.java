@@ -7,7 +7,8 @@ import il.ac.bgu.cs.bp.bpjs.execution.listeners.PrintBProgramRunnerListener;
 import il.ac.bgu.cs.bp.bpjs.model.BEvent;
 import il.ac.bgu.cs.bp.bpjs.model.BProgram;
 
-import java.io.*;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -19,7 +20,7 @@ public class Main {
     private static String pgn = "";
 
     public static void main(final String[] args) throws InterruptedException {
-
+//        System.out.println(MessageFormat.format("'{'\"hhh\":{0}'}'",3));
         /** Choose the desired COBP program... */
         var bprog = new ContextBProgram("dal.js", "bl.js");
 //    BProgram bprog = new ContextBProgram("chess/dal.js", "chess/bl.js");

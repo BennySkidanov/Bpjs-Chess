@@ -91,16 +91,16 @@ function canReachSquare(piece, dstCell) {
 
 function handleShortCastle(color, pieces ) {
     bp.log.info("~~ handleShortCastle ~~ " + color)
-    let piecesValues = Array.from(pieces);
+    //let piecesValues = Array.from(pieces);
     if (color == "White") {
         let king, rook;
-        for (let i = 0; i < piecesValues.length; i++) {
-            if (piecesValues[i].subtype == "King") {
-                king = piecesValues[i];
+        for (let i = 0; i < pieces.length; i++) {
+            if (pieces[i].subtype == "King") {
+                king = pieces[i];
                 bp.log.info("~~ handleShortCastle ~~ Found King");
                 continue;
-            } else if (piecesValues[i].subtype == "Rook" && piecesValues[i].cellId == "h1") {
-                rook = piecesValues[i];
+            } else if (pieces[i].subtype == "Rook" && pieces[i].cellId == "h1") {
+                rook = pieces[i];
                 bp.log.info("~~ handleShortCastle ~~ Found Rook");
                 continue;
             }
@@ -115,13 +115,13 @@ function handleShortCastle(color, pieces ) {
         // transaction
     }
     else {
-        for (let i = 0; i < piecesValues.length; i++) {
-            if (piecesValues[i].subtype == "King") {
-                king = piecesValues[i];
+        for (let i = 0; i < pieces.length; i++) {
+            if (pieces[i].subtype == "King") {
+                king = pieces[i];
                 bp.log.info("~~ handleShortCastle ~~ Found King");
                 continue;
-            } else if (piecesValues[i].subtype == "Rook" && piecesValues[i].cellId == "h8") {
-                rook = piecesValues[i];
+            } else if (pieces[i].subtype == "Rook" && pieces[i].cellId == "h8") {
+                rook = pieces[i];
                 bp.log.info("~~ handleShortCastle ~~ Found Rook");
                 continue;
             }
@@ -155,22 +155,22 @@ function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color) {
     let allPiecesOfType = ctx.runQuery(getSpecificType(pieceType, color))
     bp.log.info('all pieces returned {0}', allPiecesOfType.length)
     // let allPiecesOfType = ctx.runQuery("Piece.White." + pieceType)
-    let allPiecesOfTypeValues = Array.from(allPiecesOfType);
-    bp.log.info(allPiecesOfTypeValues)
+    //let allPiecesOfTypeValues = Array.from(allPiecesOfType);
+    bp.log.info(allPiecesOfType)
     for (let i = 0; i < allPiecesOfType.length; i++) {
         if (optionalCol == '') {
-            if (canReachSquare(allPiecesOfTypeValues[i], dstCell)) {
+            if (canReachSquare(allPiecesOfType[i], dstCell)) {
                 // bp.log.info(allPiecesOfTypeValues[i]);
-                return allPiecesOfTypeValues[i];
+                return allPiecesOfType[i];
             }
         }
         else {
-            bp.log.info("Checking piece that fits optional col!!" + optionalCol  + " " + allPiecesOfTypeValues[i].cellId.charAt(0));
-            if (allPiecesOfTypeValues[i].cellId.charAt(0) == optionalCol) {
-                if (canReachSquare(allPiecesOfTypeValues[i], dstCell)) {
+            bp.log.info("Checking piece that fits optional col!!" + optionalCol  + " " + allPiecesOfType[i].cellId.charAt(0));
+            if (allPiecesOfType[i].cellId.charAt(0) == optionalCol) {
+                if (canReachSquare(allPiecesOfType[i], dstCell)) {
                     // bp.log.info(allPiecesOfTypeValues[i]);
                     bp.log.info("IN Checking piece that fits optional col!!");
-                    return allPiecesOfTypeValues[i];
+                    return allPiecesOfType[i];
                 }
             }
         }
@@ -218,7 +218,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
               startsWithCapital(move) ? move[0] : "P",
               move.substr(2),
               player);
-          let event = moveEvent(piece, piece.cellId,move.substr(2));
+          let event = moveEvent(piece.subtype, piece.cellId,move.substr(2));
           bp.log.info(event);
           if(!checkmate) {
               sync({request: event}, 100);
@@ -232,7 +232,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
         {
             bp.log.info("Castling event!!")
             if(move == "O-O") handleShortCastle(player, pieces);
-            else if (move == "O-O-O") handleLongCastle(player, pieces);
+            //else if (move == "O-O-O") handleLongCastle(player, pieces);
         }
         else {
           let piece = findPieceThatCanReachToEndSquare(
@@ -241,7 +241,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
               player);
           // bp.log.info("REACHED SYNC")
           // bp.log.info("piece is {0}", piece)
-          let event = moveEvent(piece, piece.cellId, startsWithCapital(move) ? move.length === 3 ? move.substr(1) : move.substr(2) : move);
+          let event = moveEvent(piece.subtype, piece.cellId, startsWithCapital(move) ? move.length === 3 ? move.substr(1) : move.substr(2) : move);
           bp.log.info("The Move -- " + event);
           sync({request: event}, 100);
         }
@@ -289,7 +289,8 @@ const anyMoves = bp.EventSet("anyMove", function (e) {
 
 const ESCenterCaptureMoves = bp.EventSet("EScenterCaptureMoves", function (e) {
     return e.name == 'Move' && (e.data.dst[1] == '3' || e.data.dst[1] == '4')
-        && (e.data.src[0] == 'c' || e.data.src[0] == 'd' || e.data.src[0] == 'e' || e.data.src[0] == 'f' || e.data.src[0] == 'b' || e.data.src[0] == 'g')
+        && (e.data.src[0] == 'c' || e.data.src[0] == 'd' || e.data.src[0] == 'e' || e.data.src[0] == 'f' ||
+            e.data.src[0] == 'b' || e.data.src[0] == 'g')
         && (e.data.dst[0] == 'c' || e.data.dst[0] == 'd' || e.data.dst[0] == 'e' || e.data.dst[0] == 'f')
 
 })
@@ -408,15 +409,17 @@ ctx.bthread("Strengthen", "Phase.Opening", function (entity) {
         let pawnsSet = ctx.runQuery(getSpecificType('Pawn', 'White'))
         let cellsSet = ctx.runQuery("Cell.all.nonOccupied")
         let allCells = ctx.runQuery("Cell.all")
-        let allCellsArr = Array.from(allCells);
+        // let allCellsArr = Array.from(allCells);
 
         for (let i = 0; i < pawnsSet.length; i++) {
-            pawnMoves = pawnMoves.concat(
-                availableStraightCellsFromPawn(pawnsSet[i], 2, allCellsArr)
-                    .filter(function (m) {
-                        return ESCenterCaptureMoves.contains(m)
-                    })
-            )
+            let aval =  availableStraightCellsFromPawn(pawnsSet[i], 2, allCells);
+            let aval2 = [];
+            for (let j = 0; j < aval.length; j++) {
+                if(ESCenterCaptureMoves.contains(aval[j])) {
+                    aval2.push(aval[j]);
+                }
+            }
+            pawnMoves = pawnMoves.concat(aval2);
         }
 
         let pawnMovesSet = clearDuplicates(pawnMoves)
@@ -442,16 +445,19 @@ ctx.bthread("Fianchetto", "Phase.Opening", function (entity) {
         let pawnsSet = ctx.runQuery(getSpecificType('Pawn', 'White'))
         let cellsSet = ctx.runQuery("Cell.all.nonOccupied")
         let allCells = ctx.runQuery("Cell.all")
-        let allCellsArr = Array.from(allCells);
+        //let allCellsArr = Array.from(allCells);
 
         for (let i = 0; i < pawnsSet.length; i++) {
-            pawnMoves = pawnMoves.concat(
-                availableStraightCellsFromPawn(pawnsSet[i], 2, allCellsArr)
-                    .filter(function (m) {
-                        return ESFianchettoMoves.contains(m);
-                    })
-            )
+            let aval =  availableStraightCellsFromPawn(pawnsSet[i], 2, allCells);
+            let aval2 = [];
+            for (let j = 0; j < aval.length; j++) {
+                if(ESCenterCaptureMoves.contains(aval[j])) {
+                    aval2.push(aval[j]);
+                }
+            }
+            pawnMoves = pawnMoves.concat(aval2);
         }
+
         let pawnMovesSet = clearDuplicates(pawnMoves)
         let pawnMovesToRequest = filterOccupiedCellsMoves(pawnMovesSet, cellsSet)
 
@@ -474,15 +480,17 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
         let pawnsSet = ctx.runQuery(getSpecificType('Pawn', 'White'))
         let cellsSet = ctx.runQuery("Cell.all.nonOccupied")
         let allCells = ctx.runQuery("Cell.all")
-        let allCellsArr = Array.from(allCells);
+        //let allCellsArr = Array.from(allCells);
 
         for (let i = 0; i < pawnsSet.length; i++) {
-            pawnMoves = pawnMoves.concat(
-                availableStraightCellsFromPawn(pawnsSet[i], 2, allCellsArr)
-                    .filter(function (m) {
-                        return ESPawnDevelopingMoves.contains(m);
-                    })
-            )
+            let aval =  availableStraightCellsFromPawn(pawnsSet[i], 2, allCells);
+            let aval2 = [];
+            for (let j = 0; j < aval.length; j++) {
+                if(ESCenterCaptureMoves.contains(aval[j])) {
+                    aval2.push(aval[j]);
+                }
+            }
+            pawnMoves = pawnMoves.concat(aval2);
         }
 
         let pawnMovesSet = clearDuplicates(pawnMoves)
@@ -506,15 +514,17 @@ ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
         // let bishopsSet = ctx.runQuery("Piece.White.Bishop")
         let cellsSet = ctx.runQuery("Cell.all.nonOccupied")
         let allCells = ctx.runQuery("Cell.all")
-        let allCellsArr = Array.from(allCells);
+        //let allCellsArr = Array.from(allCells);
 
         for (let i = 0; i < bishopsArray.length; i++) {
-            let avlble = availableDiagonalCellsFromPiece(bishopsArray[i], 7, allCellsArr);
-            bishopsMoves = bishopsMoves.concat(avlble
-                .filter(function (m) {
-                    return ESBishopDevelopingMoves.contains(m);
-                })
-            )
+            let aval = availableDiagonalCellsFromPiece(bishopsArray[i], 7, allCells);
+            let aval2 = [];
+            for (let j = 0; j < aval.length; j++) {
+                if(ESBishopDevelopingMoves.contains(aval[j])) {
+                    aval2.push(aval[j]);
+                }
+            }
+            bishopsMoves = bishopsMoves.concat(aval2);
         }
 
         let bishopsMovesSet = clearDuplicates(bishopsMoves)

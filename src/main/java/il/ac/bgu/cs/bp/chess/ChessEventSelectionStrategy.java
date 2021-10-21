@@ -1,5 +1,7 @@
 package il.ac.bgu.cs.bp.chess;
 
+import com.google.common.base.Predicate;
+import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import il.ac.bgu.cs.bp.bpjs.BPjs;
 import il.ac.bgu.cs.bp.bpjs.bprogramio.BProgramSyncSnapshotCloner;
@@ -34,52 +36,8 @@ import static java.util.stream.Collectors.toSet;
 
 public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
     private static final AtomicInteger INSTANCE_COUNTER = new AtomicInteger(0);
-
-    private ExecutorService execSvc;
-    private int defaultPriority = Integer.MIN_VALUE;
-    private final String gameId;
-    private Optional<BEvent> maxEvent;
-
-    private List<String> gameData;
-
-    public List<String> getGameData() {
-        return gameData;
-    }
-
-    public ChessEventSelectionStrategy(String gameId) {
-        this.execSvc = new ExecutorServiceMaker().makeWithName("ChessEventSelectionStrategy-" + INSTANCE_COUNTER.getAndIncrement());
-        this.gameId = gameId;
-        gameData = new LinkedList<>();
-    }
-
-    private static String toJson(BEvent o) {
-        String code = toJson((Scriptable) o.maybeData);
-        return "{\"name\": \"" + o.name + "\"" + (code == null ? "}" : ", \"data\":" + code + "}");
-    }
-
-    private static String toJsonContinuation(BEvent o) {
-        String code = toJson((Scriptable) o.maybeData);
-        return ",{\"Chosen move name\": \"" + o.name + "\"" + (code == null ? "}" : ", \"Chosen move data\":" + code + "}");
-    }
-
-    private static String toJson(Scriptable o) {
-        if (o == null) return null;
-        String code = "JSON.stringify(o);";
-        try {
-            Context curCtx = BPjs.enterRhinoContext();
-            Scriptable tlScope = BPjs.makeBPjsSubScope();
-            tlScope.put("o", tlScope, o);
-            // Benny : The problem is here, the execution throws exception, so the functions returns null every time
-            return (String) curCtx.evaluateString(tlScope, code, "", 1, (Object) null);
-        } catch (Exception e) {
-            return null;
-        } finally {
-            Context.exit();
-        }
-    }
-
     private static DecimalFormat df2 = new DecimalFormat("#.##");
-
+    private final String gameId;
     private final Rule[] rules = new Rule[]
             {
                     // counter, advice
@@ -114,6 +72,41 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
                                 return Optional.of(new Pair(0.2 * advisorBishop, es));
                             }),
             };
+    private ExecutorService execSvc;
+    private int defaultPriority = Integer.MIN_VALUE;
+    private Optional<BEvent> maxEvent;
+    private List<String> gameData;
+
+    public ChessEventSelectionStrategy(String gameId) {
+        this.execSvc = new ExecutorServiceMaker().makeWithName("ChessEventSelectionStrategy-" + INSTANCE_COUNTER.getAndIncrement());
+        this.gameId = gameId;
+        gameData = new LinkedList<>();
+    }
+
+    private static String toJson(BEvent o) {
+        String code = toJson((Scriptable) o.maybeData);
+        return "{\"name\": \"" + o.name + "\"" + (code == null ? "}" : ", \"data\":" + code + "}");
+    }
+
+    private static String toJson(Scriptable o) {
+        if (o == null) return null;
+        String code = "JSON.stringify(o);";
+        try {
+            Context curCtx = BPjs.enterRhinoContext();
+            Scriptable tlScope = BPjs.makeBPjsSubScope();
+            tlScope.put("o", tlScope, o);
+            // Benny : The problem is here, the execution throws exception, so the functions returns null every time
+            return (String) curCtx.evaluateString(tlScope, code, "", 1, (Object) null);
+        } catch (Exception e) {
+            return null;
+        } finally {
+            Context.exit();
+        }
+    }
+
+    public List<String> getGameData() {
+        return gameData;
+    }
 
     @Override
     public Set<BEvent> selectableEvents(BProgramSyncSnapshot bpss) {
@@ -167,25 +160,31 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
 
         String selectedEvent = toJson(maxEvent.get());
 
-        String currentAttributes = toJson(bpss.getDataStore());
+        String currentAttributes = toJson(bpss.getDataStore(), true);
 
         var nextAttributes = nextBpss.entrySet().stream()
-                .map(entry-> MessageFormat.format("{ \"event\": \"{0}\", \"Attributes\": [{1}]}",toJson(entry.getKey()),toJson(entry.getValue().getDataStore())))
+                .map(entry -> MessageFormat.format("'{' \"event\": {0}, \"Attributes\": [{1}]'}'", toJson(entry.getKey()), toJson(entry.getValue().getDataStore(), false)))
                 .collect(Collectors.joining(", "));
 
-        return (MessageFormat.format("{ \"SelectableEvents\": [{0}]," +
-                "\"CurrentAttributes\": {{1}}"+
-                "\"NextAttributes\": [{2}]"+
-                "\"SelectedEvent\": \"+ {3}} + \"}",
+        return (MessageFormat.format("'{' \"SelectableEvents\": [{0}]," +
+                        "\"CurrentAttributes\": {1}," +
+                        "\"SelectableEventsLookAhead\": [{2}]," +
+                        "\"SelectedEvent\":  {3} '}'",
                 selectableEventsString, currentAttributes, nextAttributes, selectedEvent
         ));
     }
 
-    private String toJson(Map<String, Object> dataStore) {
+    private String toJson(Map<String, Object> dataStore, boolean includeMinorAttributes) {
         Gson gson = new Gson();
-        return dataStore.entrySet().stream()
+        var modifiedEntrySet = dataStore.entrySet();
+        if (!includeMinorAttributes) {
+            Map<String, Object> newDataStore =
+                    Maps.filterEntries(dataStore, new MyEntryPredicate());
+            modifiedEntrySet = newDataStore.entrySet();
+        }
+        return modifiedEntrySet.stream()
                 .map(e -> "\"" + e.getKey() + "\":" + gson.toJson(e.getValue()))
-                .collect(Collectors.joining(","));
+                .collect(Collectors.joining(",", "{", "}"));
     }
 
     @Override
@@ -210,16 +209,18 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
         } else {
             initialProbabilities = selectableEvents.stream().collect(Collectors.toMap(Function.identity(), e -> 1.0));
             var nextBpss = selectableEvents.stream()
-                    .collect(Collectors.toMap(Function.identity(), e-> {
+                    .collect(Collectors.toMap(Function.identity(), e -> {
                         try {
-                            return BProgramSyncSnapshotCloner.clone(bpss).triggerEvent(e, execSvc, new ArrayList<>(),bpss.getBProgram().getStorageModificationStrategy());
+                            return BProgramSyncSnapshotCloner.clone(bpss).triggerEvent(e, execSvc, new ArrayList<>(),
+                                    bpss.getBProgram().getStorageModificationStrategy());
                         } catch (InterruptedException ex) {
                             ex.printStackTrace();
                             System.exit(1);
                             return null;
                         }
                     }));
-            gameData.add(toJson(bpss, nextBpss, selectableEvents));
+            var singleGameData = (toJson(bpss, nextBpss, selectableEvents));
+            gameData.add(singleGameData);
         }
 
         // Event sets
@@ -376,12 +377,22 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
         if (maxEvent != null) {
 //            System.out.println("Max Event is present -- " + maxEvent.get());
 //            gameData += toJsonContinuation(maxEvent.get());
-           return Optional.of(new EventSelectionResult(maxEvent.get()));
+            return Optional.of(new EventSelectionResult(maxEvent.get()));
         }
 
         return super.select(bpss, selectableEvents);
     }
 
+    private Map<BEvent, Double> normalize(Map<BEvent, Double> map) {
+        double sum = 0;
+        for (Map.Entry<BEvent, Double> entry : map.entrySet()) {
+            sum += Math.abs(entry.getValue());
+        }
+        for (Map.Entry<BEvent, Double> entry : map.entrySet()) {
+            entry.setValue(entry.getValue() / sum);
+        }
+        return map;
+    }
 
     private static class Rule {
         public final String title;
@@ -395,14 +406,14 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
         }
     }
 
-    private Map<BEvent, Double> normalize(Map<BEvent, Double> map) {
-        double sum = 0;
-        for (Map.Entry<BEvent, Double> entry : map.entrySet()) {
-            sum += Math.abs(entry.getValue());
+    private static class MyEntryPredicate implements Predicate<Map.Entry<String, Object>> {
+
+        private MyEntryPredicate() {
         }
-        for (Map.Entry<BEvent, Double> entry : map.entrySet()) {
-            entry.setValue(entry.getValue() / sum);
+
+        @Override
+        public boolean apply(Map.Entry<String, Object> input) {
+            return !input.getKey().startsWith("CTX") && !input.getKey().startsWith("transaction");
         }
-        return map;
     }
 }
