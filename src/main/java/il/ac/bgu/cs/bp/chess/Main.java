@@ -1,7 +1,6 @@
 package il.ac.bgu.cs.bp.chess;
 
 import il.ac.bgu.cs.bp.bpjs.context.ContextBProgram;
-import il.ac.bgu.cs.bp.bpjs.context.PrintCOBProgramRunnerListener;
 import il.ac.bgu.cs.bp.bpjs.execution.BProgramRunner;
 import il.ac.bgu.cs.bp.bpjs.execution.listeners.PrintBProgramRunnerListener;
 import il.ac.bgu.cs.bp.bpjs.model.BEvent;
@@ -14,7 +13,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-import static il.ac.bgu.cs.bp.bpjs.context.PrintCOBProgramRunnerListener.Level;
 
 public class Main {
     private static String pgn = "";
@@ -70,7 +68,7 @@ public class Main {
     rnr.run();
     t.join();*/
 
-            rnr.addListener(new PrintCOBProgramRunnerListener(Level.ALL, new PrintBProgramRunnerListener()));
+            rnr.addListener(new PrintBProgramRunnerListener());
             rnr.run();
         });
 
