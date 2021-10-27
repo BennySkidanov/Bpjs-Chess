@@ -1,7 +1,6 @@
 package il.ac.bgu.cs.bp.chess;
 
 import il.ac.bgu.cs.bp.bpjs.context.ContextBProgram;
-import il.ac.bgu.cs.bp.bpjs.context.PrintCOBProgramRunnerListener;
 import il.ac.bgu.cs.bp.bpjs.execution.BProgramRunner;
 import il.ac.bgu.cs.bp.bpjs.execution.listeners.PrintBProgramRunnerListener;
 import il.ac.bgu.cs.bp.bpjs.model.BEvent;
@@ -13,8 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
-
-import static il.ac.bgu.cs.bp.bpjs.context.PrintCOBProgramRunnerListener.Level;
 
 public class Main {
     private static String pgn = "";
@@ -47,12 +44,7 @@ public class Main {
 
             bprog.setWaitForExternalEvents(false);
             final BProgramRunner rnr = new BProgramRunner(bprog);
-            /** internal context events are: "CTX.Changed", "_____CTX_LOCK_____", "_____CTX_RELEASE_____"
-             * You can filter these event from printing on console using the Level:
-             * Level.ALL : print all
-             * Level.NONE : print none
-             * Level.CtxChanged: print only CTX.Changed events (i.e., filter the transaction lock/release events)
-             */
+
 /*//    rnr.addListener(new PrintCOBProgramRunnerListener(Level.CtxChanged));
     rnr.addListener(new Explanations());
     bprog.setLogLevel(BpLog.LogLevel.Warn);
@@ -63,7 +55,7 @@ public class Main {
     rnr.run();
     t.join();*/
 
-            rnr.addListener(new PrintCOBProgramRunnerListener(Level.CtxChanged, new PrintBProgramRunnerListener()));
+            rnr.addListener(new PrintBProgramRunnerListener());
             rnr.run();
             FileWriter JSONWriter = null;
             try {
