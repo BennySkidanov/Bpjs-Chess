@@ -33,14 +33,14 @@ ctx.registerQuery("Cell.all.nonOccupied", function (entity) {
 })
 
 ctx.registerQuery("Piece.White.All",
-  function (entity) {
-    return entity.type == 'piece' && entity.color == 'White';
-  })
+    function (entity) {
+      return entity.type == 'piece' && entity.color == 'White';
+    })
 
 ctx.registerQuery("Piece.Black.All",
-  function (entity) {
-    return entity.type == 'piece' && entity.color == 'Black';
-  })
+    function (entity) {
+      return entity.type == 'piece' && entity.color == 'Black';
+    })
 
 /*ctx.registerQuery("Piece.White.Pawn" ,
   entity => entity.type == 'piece' && entity.subtype == 'Pawn' && entity.color == 'White')

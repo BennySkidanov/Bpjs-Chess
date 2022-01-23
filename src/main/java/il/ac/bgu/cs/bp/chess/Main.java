@@ -22,14 +22,8 @@ public class Main {
         var bprog = new ContextBProgram("dal.js", "bl.js");
 //    BProgram bprog = new ContextBProgram("chess/dal.js", "chess/bl.js");
         List<String> game;
-        String id ="911433767";
-        String pgn = "1. e4 1... e5 2. Nf3 2... Nc6 3. d4 3... exd4 4. Nxd4 4... Nxd4 5. Qxd4 5... d6 " +
-                "6. Bc4 6... Be6 7. Nc3 7... Nf6 8. O-O 8... Be7 9. Nd5 9... O-O 10. Be3 10... c6 11. Nxe7+ " +
-                "11... Qxe7 12. Bd3 12... Rfd8 13. Rad1 13... c5 14. Qc3 14... d5 15. exd5 15... Nxd5 16. Qxc5 " +
-                "16... Qh4 17. Qd4 17... Qh5 18. c4 18... Nf6 19. Qc3 19... Rac8 20. b3 20... Ng4 21. h3 21... Nf6 " +
-                "22. Qc2 22... Nd5 23. Bxh7+ 23... Kf8 24. Be4 24... Nxe3 25. Rxd8+ 25... Rxd8 26. fxe3 26... Qg5 " +"" +
-                "27. Rf3 27... Qe5 28. Rf2 28... Bxh3 29. gxh3 29... Qg3+ 30. Bg2 30... Qxe3 31. Qe2 31... Qc5 " +
-                "32. Qf3 32... Rd7 33. Qg4 33... Rd2 34. Qf3 34... Rxa2 35. Qxf7#";
+        String id ="6363026990";
+        String pgn = "1. e4 1... e5 2. Nf3 2... Nf6 3. d3 3... Nc6 4. Bg5 4... Be7 5. Bxf6 5... Bxf6 6. Nc3 6... O-O 7. Nd5 7... d6 8. Nxf6+ 8... Qxf6 9. Be2 9... Bg4 10. Nd2 10... Bxe2 11. Qxe2 11... Nd4 12. Qd1 12... a5 13. O-O 13... Rad8 14. c3 14... Ne6 15. Qg4 15... Nf4 16. Qf3 16... g5 17. Nc4 17... b6 18. Ne3 18... Kg7 19. Ng4 19... Qg6 20. g3 20... Ne6 21. Kg2 21... h5 22. Ne3 22... g4 23. Qe2 23... h4 24. Nf5+ 24... Kh7 25. Nxh4 25... Qg5 26. Qe3 26... Rg8 27. Qxg5 27... Rxg5 28. Nf5 28... Kg6 29. f3 29... Rh8 30. Nh4+ 30... Kg7 31. Nf5+ 31... Kf8 32. fxg4 32... Rxg4 33. h3 33... Nf4+ 34. Kf3 34... Rg5 35. gxf4 35... Rxh3+ 36. Ke2 36... exf4 37. Rxf4 37... f6 38. Raf1 38... Kf7 39. Nd4 39... Rg6 40. Nb5 40... Ke6 41. Nxc7+ 41... Ke5 42. Rf5#";
 
         List<String[]> games = new ArrayList<>();
         String [] arr = {id, pgn};

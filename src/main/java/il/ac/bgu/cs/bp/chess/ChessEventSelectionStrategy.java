@@ -14,7 +14,6 @@ import il.ac.bgu.cs.bp.bpjs.model.eventselection.EventSelectionResult;
 import il.ac.bgu.cs.bp.bpjs.model.eventselection.SimpleEventSelectionStrategy;
 import il.ac.bgu.cs.bp.bpjs.model.eventsets.EventSet;
 import il.ac.bgu.cs.bp.bpjs.model.eventsets.EventSets;
-import il.ac.bgu.cs.bp.chess.eventSets.DevelopBishops;
 import il.ac.bgu.cs.bp.chess.eventSets.DevelopPawns;
 import il.ac.bgu.cs.bp.chess.eventSets.FianchettoPawns;
 import il.ac.bgu.cs.bp.chess.eventSets.StrengthenPawns;
@@ -48,29 +47,30 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
                             (store, events) -> {
                                 var es = new DevelopPawns();
                                 var advisorDevelop = (double) store.get("Advisor: Center");
-                                return Optional.of(new Pair(0.1 * advisorDevelop, es));
+                                return Optional.of(new Pair(0.5 * advisorDevelop, es));
                             }),
                     new Rule("Center is strengthened",
                             "The center has been strengthened by 4 moves, it may be time to try and " +
                                     "get other strategies into play", (store, events) -> {
                         var es = new StrengthenPawns();
                         var advisorCenter = (double) store.get("Advisor: Center");
-                        return Optional.of(new Pair(0.1 * advisorCenter, es));
+                        return Optional.of(new Pair(0.3 * advisorCenter, es));
                     }),
                     new Rule("Fianchetto strategy advanced",
                             "The Fianchetto strategy advanced by the player, it may be time to try and " +
                                     "get other strategies into play", (store, events) -> {
                         var es = new FianchettoPawns();
                         var advisorFianchetto = (double) store.get("Advisor: Fianchetto");
-                        return Optional.of(new Pair(0.05 * advisorFianchetto, es));
+                        return Optional.of(new Pair(0.1 * advisorFianchetto, es));
                     }),
-                    new Rule("Rule 4",
-                            "ddd",
-                            (store, events) -> {
-                                var es = new DevelopBishops();
-                                var advisorBishop = (double) store.get("Piece Advisor: Bishop");
-                                return Optional.of(new Pair(0.2 * advisorBishop, es));
-                            }),
+//                    new Rule("Don't bring your queen out too early",
+//                            "You should not move your queen too many times in the opening",
+//                            (store, events) -> {
+//                                var queenMoves = (int) store.get("Counter: Queen moves");
+//                                var advisorQueen = (double) store.get("Piece Advisor: Queen");
+//                                if (queenMoves >= 2)
+//                                    return Optional.of(new Pair(0.2 * advisorQueen, ));
+//                            }),
             };
     private ExecutorService execSvc;
     private int defaultPriority = Integer.MIN_VALUE;
@@ -189,7 +189,7 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
 
     @Override
     public Optional<EventSelectionResult> select(BProgramSyncSnapshot bpss, Set<BEvent> selectableEvents) {
-        //System.out.println("--------------------------------- Select  ---------------------------------");
+        System.out.println("--------------------------------- Select ---------------------------------");
 
         // Initialize probabilities of all events to 1
         Map<BEvent, Double> initialProbabilities;
@@ -201,12 +201,14 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
 
         Iterator<BEvent> iterator = selectableEvents.iterator();
 
-        if (selectableEvents.size() == 1 && !(iterator.next().name.startsWith("move"))) {
+        if (selectableEvents.size() == 1 && !(iterator.next().name.toLowerCase().startsWith("move"))) {
             return Optional.of(new EventSelectionResult(selectableEvents.iterator().next()));
         } else if (selectableEvents.size() == 0) {
             // No selectable events
             return super.select(bpss, selectableEvents);
         } else {
+            System.out.println("--------------------------------- Select ( |Selectable Moves| > 1 ) ---------------------------------");
+            System.out.println(selectableEvents);
             initialProbabilities = selectableEvents.stream().collect(Collectors.toMap(Function.identity(), e -> 1.0));
             var nextBpss = selectableEvents.stream()
                     .collect(Collectors.toMap(Function.identity(), e -> {
@@ -219,9 +221,12 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
                             return null;
                         }
                     }));
+            System.out.println("--------------------------------- Select ( Finished Init ) ---------------------------------");
             var singleGameData = (toJson(bpss, nextBpss, selectableEvents));
             gameData.add(singleGameData);
         }
+
+        System.out.println("--------------------------------- Select ( Finished Init ) ---------------------------------");
 
         // Event sets
         DevelopPawns esDevelop = new DevelopPawns();
