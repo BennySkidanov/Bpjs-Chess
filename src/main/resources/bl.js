@@ -649,7 +649,7 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
     }
 });*/
 
-/*ctx.bthread("DevelopingKnights", "Phase.Opening", function (entity) {
+ctx.bthread("DevelopingKnights", "Phase.Opening", function (entity) {
     while (true) {
         let knightMoves = []
         let knightsArray = ctx.runQuery(getSpecificType('Knight', 'White'))
@@ -668,13 +668,13 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
 
         let knightsMovesSet = clearDuplicates(knightMoves)
         let knightsMovesToRequest = filterOccupiedCellsMoves(knightsMovesSet, nonOccupiedCellsSet)
-
+        nonOccupiedCellsSet = knightsArray = knightMoves =  knightsMovesSet = null;
         //bp.log.info("mySync : Requesting knights developing moves")
 
         mySync({request: knightsMovesToRequest, waitFor: anyMoves})
 
     }
-});*/
+});
 
 /*ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
 
