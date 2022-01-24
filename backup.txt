@@ -1,0 +1,251 @@
+ @Override
+    public Optional<EventSelectionResult> select(BProgramSyncSnapshot bpss, Set<BEvent> selectableEvents) {
+        // System.out.println("--------------------------------- Select ---------------------------------");
+
+        // Initialize probabilities of all events to 1
+        Map<BEvent, Double> initialProbabilities;
+
+        /*String gameSequenceString;
+        String gameStateString;*/
+        JSONArray gameSequenceJsons = new JSONArray();
+//        JSONArray gameStateJsons = new JSONArray();
+
+
+        if (selectableEvents.size() == 1) {
+            var toPrint = false;
+            var ctx = bpss.getDataStore();
+            var counterDevelop = ctx.get("Strategy Counter: Developing moves");
+            var counterCenter = ctx.get("Strategy Counter: Center strengthen moves");
+            var counterFianchetto = ctx.get("Strategy Counter: Fianchetto moves");
+            var advisorCenter = ctx.get("Advisor: Center");
+            ;
+            var advisorDevelop = ctx.get("Advisor: Develop");
+            var advisorFianchetto = ctx.get("Advisor: Fianchetto");
+            for (BEvent e : selectableEvents) {
+                if (e.name.equals("Move")) toPrint = true;
+            }
+            if (toPrint) {
+                try {
+                    var data = (Map<String, Object>) selectableEvents.iterator().next().maybeData;
+                    var piece = (Map<String, Object>) data.get("piece");
+                    JSONObject move = new JSONObject();
+                    move.put("Move", data.get("dst"));
+                    move.put("Developing moves counter", counterDevelop.toString());
+                    move.put("Center moves counter", counterCenter.toString());
+                    move.put("Fianchetto moves counter", counterFianchetto.toString());
+                    move.put("Advisor - Develop", advisorDevelop.toString());
+                    move.put("Advisor - Center", advisorCenter.toString());
+                    move.put("Advisor - Fianchetto", advisorFianchetto.toString());
+
+                    PrintWriter clear = new PrintWriter(file);
+                    clear.print("");
+                    clear.close();
+
+                    writer = new FileWriter("C:\\Users\\benis\\Desktop\\University\\Thesis\\Bpjs-Chess\\Measurements.json", true);
+                    writer.flush();
+
+                    Gson gson = new GsonBuilder().setPrettyPrinting().create();
+
+                    String prettyJsonString = gson.toJson(move);
+
+                    writer.write(move.toJSONString() + "\n\n");
+
+                    writer.close();
+
+                    System.out.println(prettyJsonString);
+
+                    gameSequenceJsons.add(move);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+
+                FileWriter JSONWriter = null;
+                try {
+                    JSONWriter = new FileWriter("C:\\Users\\benis\\Desktop\\University\\Thesis\\Bpjs-Chess\\MeasurementsArray.json", true);
+                    JSONWriter.write(gameSequenceJsons.toJSONString());
+                    JSONWriter.flush();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            // Simulating PGN, only one move to choose
+            return Optional.of(new EventSelectionResult(selectableEvents.iterator().next()));
+        } else if (selectableEvents.size() == 0) {
+            // no selectable events
+            return super.select(bpss, selectableEvents);
+        } else {
+            initialProbabilities = selectableEvents.stream().collect(Collectors.toMap(Function.identity(), e -> 1.0));
+        }
+
+        // ctx var to access global system data
+        var ctx = bpss.getDataStore();
+
+        // Event sets
+        DevelopPawns esDevelop = new DevelopPawns();
+        FianchettoPawns esFianchetto = new FianchettoPawns();
+        StrengthenPawns esCenter = new StrengthenPawns();
+
+//        JSONArray selectableEventsJSON = new JSONArray();
+        String selectableEventsString = selectableEvents.stream().map(ChessEventSelectionStrategy::toJson).collect(Collectors.joining(",","[","]"));
+//        for (BEvent e : selectableEvents) {
+            /*JSONObject selectableMove = new JSONObject();
+            selectableMove.put("Selectable Event, name", e.name);
+            Map<String, Object> dataMap = e.getDataField().isPresent() ? (Map<String, Object>) e.getData() : null;
+            JSONObject selectableMoveData = new JSONObject();
+            selectableMoveData.put("Piece", dataMap.get("piece").toString());
+            selectableMoveData.put("src", dataMap.get("src").toString());
+            selectableMoveData.put("dst", dataMap.get("dst").toString());
+            selectableMove.put("Selectable Event, data", selectableMoveData);
+            selectableEventsJSON.add(selectableMove);*/
+//        }
+
+
+        /*System.out.println("--------------------------------- selectableEvents ---------------------------------");
+        for (BEvent e : selectableEvents) {
+            System.out.print("| " + e.name + " " + ScriptableUtils.stringify(e.maybeData) + " |");
+            if (esDevelop.contains(e)) System.out.print("\t=> Developing");
+            if (esFianchetto.contains(e)) System.out.print("\t, Fianchetto");
+            if (esCenter.contains(e)) System.out.print("\t, Center");
+            System.out.print("\n");
+        }
+        System.out.println("--------------------------------- Finished ---------------------------------");*/
+
+        var counterDevelop = ctx.get("Strategy Counter: Developing moves");
+        var counterCenter = ctx.get("Strategy Counter: Center strengthen moves");
+        System.out.println("center moves -> " + counterCenter);
+        var counterFianchetto = ctx.get("Strategy Counter: Fianchetto moves");
+        System.out.println("Fianchetto moves -> " + counterFianchetto);
+        var advisorCenter = ctx.get("Advisor: Center");
+        System.out.println("Center Advice => " + advisorCenter);
+        var advisorDevelop = ctx.get("Advisor: Develop");
+        System.out.println("Develop Advice => " + advisorDevelop);
+        var advisorFianchetto = ctx.get("Advisor: Fianchetto");
+        System.out.println("Fianchetto Advice => " + advisorFianchetto);
+
+        // Now it's time to apply the rules
+        for (Rule rule : rules) {
+            var res = rule.rule.apply(ctx, selectableEvents);
+            if (res.isPresent()) {
+                EventSet es = res.get().getRight();
+                initialProbabilities = initialProbabilities.entrySet().stream()
+                        .collect(Collectors.toMap(Map.Entry::getKey, e -> {
+                            if (es.contains(e.getKey()))
+                                return e.getValue() + res.get().getLeft();
+                            return e.getValue();
+                        }));
+            }
+        }
+
+        Map<BEvent, Double> probabilities = normalize(initialProbabilities);
+
+        System.out.println("~~~~~~~~~~~~~~~~~~~~~~ Probabilities ~~~~~~~~~~~~~~~~~~~~~~");
+        for (BEvent e : probabilities.keySet()) {
+            String key = e.name;
+            Object data = null;
+            if (e.getDataField().isPresent()) {
+                data = e.getDataField().get();
+            }
+            Double value = probabilities.get(e);
+            System.out.println(key + " " + ScriptableUtils.stringify(data) + " " + df2.format(value).toString());
+        }
+        if (probabilities.size() == 0) {
+            System.out.println("empty => Choose randomly");
+        }
+        System.out.println("~~~~~~~~~~~~~~~~~~~~~~~~ Finished ~~~~~~~~~~~~~~~~~~~~~~~~");
+
+//        gameSequenceJsons.add(Gson.parse( selectableEventsString));
+
+
+        double rnd = Math.random();
+        double sum = 0;
+        List<BEvent> events = new ArrayList<>(probabilities.keySet());
+        for (int i = 0; i < events.size(); i++) {
+            sum += probabilities.get(events.get(i));
+            if (sum > rnd) {
+                if (maxEvent.isPresent()) {
+                    System.out.println("Max Event is present (1) -- " + maxEvent.get());
+                    JSONObject selectedMove = new JSONObject();
+                    selectedMove.put("name of chosen move", maxEvent.get().name);
+                    selectedMove.put("data of chosen move", maxEvent.get().maybeData);
+                    gameSequenceJsons.add(selectedMove);
+
+                    FileWriter JSONWriter = null;
+                    try {
+                        JSONWriter = new FileWriter("C:\\Users\\benis\\Desktop\\University\\Thesis\\Bpjs-Chess\\MeasurementsArray.json", true);
+                        JSONWriter.write(gameSequenceJsons.toJSONString());
+                        JSONWriter.flush();
+                        JSONWriter.close();
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                    return Optional.of(new EventSelectionResult(maxEvent.get()));
+                }
+                return Optional.of(new EventSelectionResult(events.get(Math.max(i - 1, 0))));
+            }
+        }
+    /*
+      ctx includes a lot of information that should help to decide which BEvent to select next
+
+      3 Strategies for now ;
+        1. Developing pieces
+        2. Center capturing / strengthening
+        3. Fianchetto
+
+      Considerations:
+        1. pawn moves >= 3 && ->
+              increase development prob. , decrease center prob.
+
+        2. g / b column pawn moves >= 1 ->
+              increase fianchetto prob. , decrease center prob.
+
+        2. knight, bishop, rook ( minor pieces ) moves >= 2 ->
+              increase strengthen center prob. , decrease development prob.
+
+        3. queen moves > 1 ->
+              increase development prob. by a lot, decrease both center and fianchetto prob.
+
+        4. fianchetto influence pieces ( pawn, knight, rook , queen ) >= 2 ->
+              increase fianchetto prob. , decrease development prob.
+
+        5. strengthen center >= 2 ->
+              increase fianchetto prob. , decrease center prob.
+
+        6. (if possible to check) Pawn on d3 / e3 ->
+              increase fianchetto prob. , decrease development prob.
+
+        To do that, we first encounter the fact that we need few counters.
+        Some of those counters share the same subset of moves to count.
+
+        |> Pawn moves counter
+        |> Knight moves counter
+        |> Bishop moves counter
+        |> Rook moves counter
+        |> Queen moves counter
+
+
+        |> Minor pieces ( all of the above except queen ) moves counter
+        |> fianchetto influence pieces ( all of the above except queen and bishop ) moves counter
+
+        |> Counter for each strategy moves
+    */
+
+        if (maxEvent.isPresent()) {
+            System.out.println("Max Event is present (2) -- " + maxEvent.get());
+            JSONObject selectedMove = new JSONObject();
+            selectedMove.put("name of chosen move", maxEvent.get().name);
+            selectedMove.put("data of chosen move", maxEvent.get().maybeData);
+            gameSequenceJsons.add(selectedMove);
+            FileWriter JSONWriter = null;
+            try {
+                JSONWriter = new FileWriter("C:\\Users\\benis\\Desktop\\University\\Thesis\\Bpjs-Chess\\MeasurementsArray.json", true);
+                JSONWriter.write(gameSequenceJsons.toJSONString());
+                JSONWriter.flush();
+                JSONWriter.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            return Optional.of(new EventSelectionResult(maxEvent.get()));
+        }
+
+        return super.select(bpss, selectableEvents);
+    }
