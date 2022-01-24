@@ -51,11 +51,8 @@ public class Main {
 
             rnr.addListener(new PrintBProgramRunnerListener());
             rnr.run();
-            FileWriter JSONWriter = null;
-            try {
-                JSONWriter = new FileWriter("GameSequence.json");
+            try (FileWriter JSONWriter = new FileWriter("GameSequence.json")) {
                 JSONWriter.write(ess.getGameData().stream().collect(Collectors.joining(",","[","]")));
-                JSONWriter.close();
             } catch (IOException e) {
                 e.printStackTrace();
             }

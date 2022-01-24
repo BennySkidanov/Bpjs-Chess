@@ -18,7 +18,9 @@ function mySync(stmt, syncData) {
             stmt.request = []
         }
     }
-    return sync(stmt, syncData);
+    if(syncData)
+        return sync(stmt, syncData);
+    return sync(stmt)
 }
 
 let ANSI_RESET = "\u001B[0m";
@@ -458,7 +460,10 @@ bthread("Game thread", function (entity) {
  */
 
 function clearDuplicates(pawnMoves) {
-    let pawnMovesToRequest = []
+    return new Set(pawnMoves)
+
+    // BENNY: BAD CODE
+    /*let pawnMovesToRequest = []
     let dup = false
     for (let i = 0; i < pawnMoves.length; i++) {
         dup = false
@@ -472,7 +477,7 @@ function clearDuplicates(pawnMoves) {
         if (!dup)
             pawnMovesToRequest.push(pawnMoves[i])
     }
-    return pawnMovesToRequest
+    return pawnMovesToRequest*/
 }
 
 function filterOccupiedCellsMoves(pawnMovesSet, cellsArr) {
@@ -495,7 +500,7 @@ function filterOccupiedCellsMoves(pawnMovesSet, cellsArr) {
     return retArr
 }
 
-ctx.bthread("Strengthen", "Phase.Opening", function (entity) {
+/*ctx.bthread("Strengthen", "Phase.Opening", function (entity) {
 
     while (true) {
         let pawnMoves = []
@@ -528,9 +533,9 @@ ctx.bthread("Strengthen", "Phase.Opening", function (entity) {
         // let receivedCounter = bp.store.get("Strategy Counter: Center strengthen moves")
         // bp.store.put("Strategy Counter: Center strengthen moves", receivedCounter + 1)
     }
-});
+});*/
 
-ctx.bthread("Fianchetto", "Phase.Opening", function (entity) {
+/*ctx.bthread("Fianchetto", "Phase.Opening", function (entity) {
 
     while (true) {
 
@@ -563,7 +568,7 @@ ctx.bthread("Fianchetto", "Phase.Opening", function (entity) {
         // let receivedCounter = bp.store.get("Strategy Counter: Fianchetto moves")
         // bp.store.put("Strategy Counter: Fianchetto moves", receivedCounter + 1)
     }
-});
+});*/
 
 ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
 
@@ -589,6 +594,11 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
         let pawnMovesSet = clearDuplicates(pawnMoves)
         let pawnMovesToRequest = filterOccupiedCellsMoves(pawnMovesSet, cellsSet)
 
+        bp.log.info("the object is {0}", pawnMovesSet)
+
+        pawnsSet = cellsSet = allCells = pawnMoves =  pawnMovesSet = null;
+
+
         //("mySync : Requesting pawn developing moves")
         mySync({request: pawnMovesToRequest, waitFor: anyMoves})
         // mySync(pawnMovesToRequest, pawnMovesToRequest, []);
@@ -598,7 +608,7 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
     }
 });
 
-ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
+/*ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
 
     while (true) {
 
@@ -637,25 +647,20 @@ ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
         // bp.store.put("Counter: Bishop moves", receivedCounter + 1)
 
     }
-});
+});*/
 
-/*
-ctx.bthread("DevelopingKnights", "Phase.Opening", function (entity) {
-
+/*ctx.bthread("DevelopingKnights", "Phase.Opening", function (entity) {
     while (true) {
-
         let knightMoves = []
         let knightsArray = ctx.runQuery(getSpecificType('Knight', 'White'))
-
         let nonOccupiedCellsSet = ctx.runQuery("Cell.all.nonOccupied")
-        let allCells = ctx.runQuery("Cell.all")
 
         for (let i = 0; i < knightsArray.length; i++) {
-            let availableKnightMoves = availableKnightMoves(knightsArray[i]);
+            let availKnightMoves = availableKnightMoves(knightsArray[i]);
             let availableKnightMovesTotal = [];
-            for (let j = 0; j < availableKnightMoves.length; j++) {
-                if (ESKnightDevelopingMoves.contains(availableKnightMoves[j])) {
-                    availableKnightMovesTotal.push(availableKnightMoves[j]);
+            for (let j = 0; j < availKnightMoves.length; j++) {
+                if (ESKnightDevelopingMoves.contains(availKnightMoves[j])) {
+                    availableKnightMovesTotal.push(availKnightMoves[j]);
                 }
             }
             knightMoves = knightMoves.concat(availableKnightMovesTotal);
@@ -669,9 +674,9 @@ ctx.bthread("DevelopingKnights", "Phase.Opening", function (entity) {
         mySync({request: knightsMovesToRequest, waitFor: anyMoves})
 
     }
-});
+});*/
 
-ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
+/*ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
 
     while (true) {
 
@@ -698,8 +703,7 @@ ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
         mySync({request: RooksMovesToRequest, waitFor: anyMoves})
 
     }
-});
-*/
+});*/
 
 
 
