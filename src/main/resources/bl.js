@@ -459,8 +459,10 @@ bthread("Game thread", function (entity) {
     What is the probability of each of the strategies to be executed given a certain move \ situation ?
  */
 
-function clearDuplicates(pawnMoves) {
-    return new Set(pawnMoves)
+function clearDuplicates(moves) {
+    let arr = []
+    new Set(moves).forEach(e=>arr.push(e))
+    return arr
 
     // BENNY: BAD CODE
     /*let pawnMovesToRequest = []
