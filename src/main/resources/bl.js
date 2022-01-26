@@ -669,7 +669,37 @@ ctx.bthread("DevelopingKnights", "Phase.Opening", function (entity) {
     }
 });
 
-/*ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
+ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
+    while (true) {
+        let allCells = ctx.runQuery("Cell.all")
+        let rookMoves = []
+        let rooksArray = ctx.runQuery(getSpecificType('Rook', 'White'))
+        let nonOccupiedCellsSet = ctx.runQuery("Cell.all.nonOccupied")
+
+        for (let i = 0; i < rooksArray.length; i++) {
+            let availRookMoves = availableStraightCellsFromPiece(rooksArray[i], 7, allCells);
+            let availableRookMovesTotal = [];
+            for (let j = 0; j < availRookMoves.length; j++) {
+                if (ESRookDevelopingMoves.contains(availRookMoves[j])) {
+                    availableRookMovesTotal.push(availRookMoves[j]);
+                }
+            }
+            rookMoves = rookMoves.concat(availableRookMovesTotal);
+        }
+
+        let rooksMovesSet = clearDuplicates(rookMoves)
+        let rooksMovesToRequest = filterOccupiedCellsMoves(rooksMovesSet, nonOccupiedCellsSet)
+        nonOccupiedCellsSet = rooksArray = rookMoves =  rooksMovesSet = null;
+        //bp.log.info("mySync : Requesting knights developing moves")
+
+        mySync({request: rooksMovesToRequest, waitFor: anyMoves})
+
+    }
+});
+
+/*
+
+ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
 
     while (true) {
 
@@ -691,12 +721,13 @@ ctx.bthread("DevelopingKnights", "Phase.Opening", function (entity) {
 
         let RooksMovesSet = clearDuplicates(RooksMoves)
         let RooksMovesToRequest = filterOccupiedCellsMoves(RooksMovesSet, cellsSet)
-
+        cellsSet = RooksSet = RooksMoves =  RooksMovesSet = null;
         bp.log.info("mySync : Requesting rooks developing moves")
         mySync({request: RooksMovesToRequest, waitFor: anyMoves})
 
     }
-});*/
+});
+*/
 
 
 
@@ -796,20 +827,20 @@ function availableStraightCellsFromPiece(piece, distance, allCells) {
                 return availableMoves
             }
         }
-        if (row - i <= 7 && row - i >= 0) {
-            if (numericCellToCell(row - i, col).pieceId == undefined) {
+        if (row - i <= 7 && row - i > 0) {
+            if (numericCellToCell(row - i, col, allCells).pieceId == undefined) {
                 availableCells.push({row: row - distance, col: col});
                 availableMoves.push(moveEvent("Rook", jToCol(col) + row, jToCol(col) + (row - i)));
             }
         }
         if (col + i <= 7 && col + i >= 0) {
-            if (numericCellToCell(row, col + i).pieceId == undefined) {
+            if (numericCellToCell(row, col + i, allCells).pieceId == undefined) {
                 availableCells.push({row: row, col: col + distance});
                 availableMoves.push(moveEvent("Rook", jToCol(col) + row, jToCol(col + i) + (row)));
             }
         }
-        if (col - i <= 7 && col - i >= 0) {
-            if (numericCellToCell(row, col - i).pieceId == undefined) {
+        if (col - i <= 7 && col - i > 0) {
+            if (numericCellToCell(row, col - i, allCells).pieceId == undefined) {
                 availableCells.push({row: row, col: col - distance});
                 availableMoves.push(moveEvent("Rook", jToCol(col) + row, jToCol(col - i) + (row)));
             }
@@ -883,12 +914,12 @@ function availableKnightMoves(knight) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col - 2) + (row + 1)));
         }
     }
-    if (row - 1 <= 7 && row - 1 > 0 && col + 2 <= 7 && col + 2 > 0) {
+    if (row - 1 <= 7 && (row - 1) > 0 && col + 2 <= 7 && col + 2 > 0) {
         if (numericCellToCell(row - 1, col + 2, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col + 2) + (row - 1)));
         }
     }
-    if (row - 1 <= 7 && row - 1 > 0 && col - 2 <= 7 && col - 2 > 0) {
+    if (row - 1 <= 7 && (row - 1) > 0 && col - 2 <= 7 && col - 2 > 0) {
         if (numericCellToCell(row - 1, col - 2, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col - 2) + (row - 1)));
         }
@@ -899,7 +930,7 @@ function availableKnightMoves(knight) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col + 1) + (row + 2)));
         }
     }
-    if (row - 2 <= 7 && row - 2 > 0 && col + 1 <= 7 && col + 1 > 0) {
+    if (row - 2 <= 7 && (row - 2) > 0 && col + 1 <= 7 && col + 1 > 0) {
         if (numericCellToCell(row - 2, col + 1, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col + 1) + (row - 2)));
         }
@@ -909,7 +940,7 @@ function availableKnightMoves(knight) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col - 1) + (row + 2)));
         }
     }
-    if (row - 2 <= 7 && row - 2 > 0 && col - 1 <= 7 && col - 1 > 0) {
+    if (row - 2 <= 7 && (row - 2) > 0 && col - 1 <= 7 && col - 1 > 0) {
         if (numericCellToCell(row - 2, col - 1, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col - 1) + (row - 2)));
         }
@@ -953,7 +984,8 @@ function jToCol(j) {
 }
 
 function GiveMeCell(requestedID, allCells) {
-    bp.log.info("*** GiveMeCell : requestedID - " + requestedID + " ***")
+    bp.log.info("*** GiveMeCell : requestedID - " + requestedID + "\t allcells - " + allCells + " ***")
+    // bp.log.info(("*** GiveMeCell : requestedID - " + requestedID + " ***"))
     for (let i = 0; i < allCells.length; i++) {
         let cell = allCells[i]
         if (cell.id === requestedID) {
@@ -966,7 +998,7 @@ function GiveMeCell(requestedID, allCells) {
 }
 
 function numericCellToCell(i, j, allCells) {
-    // bp.log.info ( "NumericCellToCell : " + j + ", " + i + ", allCells: " + allCells)
+    bp.log.info ( "NumericCellToCell : " + j + ", " + i + ", allCells: " + allCells)
     let j_char = '0';
     switch (j) {
         case 0:
@@ -1028,7 +1060,7 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
                 checkMeSouthEast = false;
             }
         }
-        if (row + i <= 7 && row + i >= 0 && col - i <= 7 && col - i >= 0) {
+        if (row + i <= 7 && row + i >= 0 && col - i <= 7 && col - i >= 1) {
             if (numericCellToCell(row + i, col - i, allCells).pieceId == undefined && checkMeNorthWest) {
                 availableCells.push({row: row + i, col: col - i});
                 availableMoves.push(moveEvent("Bishop", jToCol(col) + row, jToCol(col - i) + (row + i)));
@@ -1036,7 +1068,7 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
                 checkMeNorthWest = false;
             }
         }
-        if (row - i <= 7 && row - i >= 1 && col - i <= 7 && col - i >= 0) {
+        if (row - i <= 7 && row - i >= 1 && col - i <= 7 && col - i >= 1) {
             if (numericCellToCell(row - i, col - i, allCells).pieceId == undefined && checkMeSouthWest) {
                 availableCells.push({row: row - i, col: col - i});
                 availableMoves.push(moveEvent("Bishop", jToCol(col) + row, jToCol(col - i) + (row - i)));
