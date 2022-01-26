@@ -870,43 +870,43 @@ function availableKnightMoves(knight) {
     let row = (knight.cellId[1] - '0');
     bp.log.info("Row - " + row)
     let availableMoves = []
-    if (row + 1 <= 7 && row + 1 >= 0 && col + 2 <= 7 && col + 2 >= 0) {
+    if (row + 1 <= 7 && row + 1 >= 0 && col + 2 <= 7 && col + 2 > 0) {
         if (numericCellToCell(row + 1, col + 2, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col + 2) + (row + 1)));
         }
     }
-    if (row + 1 <= 7 && row + 1 >= 0 && col - 2 <= 7 && col - 2 >= 0) {
+    if (row + 1 <= 7 && row + 1 >= 0 && col - 2 <= 7 && col - 2 > 0) {
         if (numericCellToCell(row + 1, col - 2, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col - 2) + (row + 1)));
         }
     }
-    if (row - 1 <= 7 && row - 1 > 0 && col + 2 <= 7 && col + 2 >= 0) {
+    if (row - 1 <= 7 && row - 1 > 0 && col + 2 <= 7 && col + 2 > 0) {
         if (numericCellToCell(row - 1, col + 2, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col + 2) + (row - 1)));
         }
     }
-    if (row - 1 <= 7 && row - 1 > 0 && col - 2 <= 7 && col - 2 >= 0) {
+    if (row - 1 <= 7 && row - 1 > 0 && col - 2 <= 7 && col - 2 > 0) {
         if (numericCellToCell(row - 1, col - 2, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col - 2) + (row - 1)));
         }
     }
 
-    if (row + 2 <= 7 && row + 2 >= 0 && col + 1 <= 7 && col + 1 >= 0) {
+    if (row + 2 <= 7 && row + 2 > 0 && col + 1 <= 7 && col + 1 > 0) {
         if (numericCellToCell(row + 2, col + 1, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col + 1) + (row + 2)));
         }
     }
-    if (row - 2 <= 7 && row - 2 >= 0 && col + 1 <= 7 && col + 1 >= 0) {
+    if (row - 2 <= 7 && row - 2 > 0 && col + 1 <= 7 && col + 1 > 0) {
         if (numericCellToCell(row - 2, col + 1, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col + 1) + (row - 2)));
         }
     }
-    if (row + 2 <= 7 && row + 2 > 0 && col - 1 <= 7 && col - 1 >= 0) {
+    if (row + 2 <= 7 && row + 2 > 0 && col - 1 <= 7 && col - 1 > 0) {
         if (numericCellToCell(row + 2, col - 1, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col - 1) + (row + 2)));
         }
     }
-    if (row - 2 <= 7 && row - 2 > 0 && col - 1 <= 7 && col - 1 >= 0) {
+    if (row - 2 <= 7 && row - 2 > 0 && col - 1 <= 7 && col - 1 > 0) {
         if (numericCellToCell(row - 2, col - 1, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col - 1) + (row - 2)));
         }
