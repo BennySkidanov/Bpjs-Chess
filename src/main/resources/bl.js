@@ -633,6 +633,7 @@ ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
         let bishopsMovesSet = clearDuplicates(bishopsMoves)
         let bishopsMovesToRequest = filterOccupiedCellsMoves(bishopsMovesSet, cellsSet)
 
+      bishopsMovesSet = bishopsMoves = bishopsArray = cellsSet = allCells = null
         //bp.log.info("mySync : Requesting bishop developing moves")
         mySync({request: bishopsMovesToRequest, waitFor: anyMoves})
 
