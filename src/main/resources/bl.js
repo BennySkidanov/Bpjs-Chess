@@ -658,7 +658,7 @@ ctx.bthread("DevelopingKnights", "Phase.Opening", function (entity) {
 
         let knightsMovesSet = clearDuplicates(knightMoves)
         let knightsMovesToRequest = filterOccupiedCellsMoves(knightsMovesSet, nonOccupiedCellsSet)
-
+        nonOccupiedCellsSet = knightsArray = knightMoves =  knightsMovesSet = null;
         //bp.log.info("mySync : Requesting knights developing moves")
 
         mySync({request: knightsMovesToRequest, waitFor: anyMoves})
