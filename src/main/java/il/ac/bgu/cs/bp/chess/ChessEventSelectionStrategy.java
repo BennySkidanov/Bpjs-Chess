@@ -154,9 +154,12 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
   }
 
   private String toJson(BProgramSyncSnapshot bpss, Map<BEvent, BProgramSyncSnapshot> nextBpss, Set<BEvent> selectableEvents) {
-    String selectableEventsString = selectableEvents.stream()
-        .map(ChessEventSelectionStrategy::toJson)
-        .collect(Collectors.joining(","));
+    StringJoiner joiner = new StringJoiner(",");
+    for (BEvent selectableEvent : selectableEvents) {
+      String s = toJson(selectableEvent);
+      joiner.add(s);
+    }
+    String selectableEventsString = joiner.toString();
 
     String selectedEvent = toJson(maxEvent.get());
 
@@ -219,8 +222,9 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
       // No selectable events
       return super.select(bpss, selectableEvents);
     } else {
-      System.out.println("--------------------------------- Select ( |Selectable Moves| > 1 ) ---------------------------------");
+      System.out.println("--------------------------------- Select ( |Selectable Moves| >= 1 ) ---------------------------------");
       System.out.println(selectableEvents);
+      System.out.println(selectableEvents.size());
       initialProbabilities = selectableEvents.stream().collect(Collectors.toMap(Function.identity(), e -> 1.0));
       var nextBpss = selectableEvents.stream()
           .collect(Collectors.toMap(Function.identity(), e -> {

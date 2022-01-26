@@ -250,7 +250,7 @@ function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color, takes) {
     let pieceType = prefixDictBL[piecePrefix];
     // bp.log.info('piece type={0}',pieceType)
     let allPiecesOfType = ctx.runQuery(getSpecificType(pieceType, color))
-    bp.log.info('all pieces returned {0}', allPiecesOfType.length)
+    bp.log.info('{0} pieces fit the description of the move', allPiecesOfType.length)
     // let allPiecesOfType = ctx.runQuery("Piece.White." + pieceType)
     //let allPiecesOfTypeValues = Array.from(allPiecesOfType);
     bp.log.info(allPiecesOfType)
@@ -636,20 +636,10 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
         //bp.log.info("mySync : Requesting bishop developing moves")
         mySync({request: bishopsMovesToRequest, waitFor: anyMoves})
 
-        //let e = sync({request: bishopsMovesToRequest, waitFor: anyMoves})
-        // //let e = mySync(bishopsMovesToRequest, bishopsMovesToRequest, []);
-        // if (e.data.piece == "Bishop") {
-        //     let receivedCounter = bp.store.get("Strategy Counter: Developing moves")
-        //     bp.store.put("Strategy Counter: Developing moves", receivedCounter + 1)
-        // }
-        //
-        // let receivedCounter = bp.store.get("Counter: Bishop moves")
-        // bp.store.put("Counter: Bishop moves", receivedCounter + 1)
-
     }
 });*/
 
-/*ctx.bthread("DevelopingKnights", "Phase.Opening", function (entity) {
+ctx.bthread("DevelopingKnights", "Phase.Opening", function (entity) {
     while (true) {
         let knightMoves = []
         let knightsArray = ctx.runQuery(getSpecificType('Knight', 'White'))
@@ -674,7 +664,7 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
         mySync({request: knightsMovesToRequest, waitFor: anyMoves})
 
     }
-});*/
+});
 
 /*ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
 
@@ -875,50 +865,54 @@ function availableStraightCellsFromPawn(pawn, distance, allCells) {
 
 function availableKnightMoves(knight) {
     bp.log.info("availableKnightMoves")
+    let allCells = ctx.runQuery("Cell.all")
     let col = knight.cellId[0].charCodeAt(0) - 'a'.charCodeAt(0);
     let row = (knight.cellId[1] - '0');
+    bp.log.info("Row - " + row)
     let availableMoves = []
-    if (row + 1 <= 7 && row + 1 >= 0 && col + 2 <= 7 && col + 2 <= 0) {
-        if (numericCellToCell(row + 1, col + 2).pieceId == undefined) {
+    if (row + 1 <= 7 && row + 1 >= 0 && col + 2 <= 7 && col + 2 >= 0) {
+        if (numericCellToCell(row + 1, col + 2, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col + 2) + (row + 1)));
         }
     }
-    if (row + 1 <= 7 && row + 1 >= 0 && col - 2 <= 7 && col - 2 <= 0) {
-        if (numericCellToCell(row + 1, col - 2).pieceId == undefined) {
+    if (row + 1 <= 7 && row + 1 >= 0 && col - 2 <= 7 && col - 2 >= 0) {
+        if (numericCellToCell(row + 1, col - 2, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col - 2) + (row + 1)));
         }
     }
-    if (row - 1 <= 7 && row - 1 >= 0 && col + 2 <= 7 && col + 2 <= 0) {
-        if (numericCellToCell(row - 1, col + 2).pieceId == undefined) {
+    if (row - 1 <= 7 && row - 1 > 0 && col + 2 <= 7 && col + 2 >= 0) {
+        if (numericCellToCell(row - 1, col + 2, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col + 2) + (row - 1)));
         }
     }
-    if (row - 1 <= 7 && row - 1 >= 0 && col - 2 <= 7 && col - 2 <= 0) {
-        if (numericCellToCell(row - 1, col - 2).pieceId == undefined) {
+    if (row - 1 <= 7 && row - 1 > 0 && col - 2 <= 7 && col - 2 >= 0) {
+        if (numericCellToCell(row - 1, col - 2, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col - 2) + (row - 1)));
         }
     }
 
-    if (row + 2 <= 7 && row + 2 >= 0 && col + 1 <= 7 && col + 1 <= 0) {
-        if (numericCellToCell(row + 2, col + 1).pieceId == undefined) {
+    if (row + 2 <= 7 && row + 2 >= 0 && col + 1 <= 7 && col + 1 >= 0) {
+        if (numericCellToCell(row + 2, col + 1, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col + 1) + (row + 2)));
         }
     }
-    if (row - 2 <= 7 && row - 2 >= 0 && col + 1 <= 7 && col + 1 <= 0) {
-        if (numericCellToCell(row - 2, col + 1).pieceId == undefined) {
+    if (row - 2 <= 7 && row - 2 >= 0 && col + 1 <= 7 && col + 1 >= 0) {
+        if (numericCellToCell(row - 2, col + 1, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col + 1) + (row - 2)));
         }
     }
-    if (row + 2 <= 7 && row + 2 >= 0 && col - 1 <= 7 && col - 1 <= 0) {
-        if (numericCellToCell(row + 2, col - 1).pieceId == undefined) {
+    if (row + 2 <= 7 && row + 2 > 0 && col - 1 <= 7 && col - 1 >= 0) {
+        if (numericCellToCell(row + 2, col - 1, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col - 1) + (row + 2)));
         }
     }
-    if (row - 2 <= 7 && row - 2 >= 0 && col - 1 <= 7 && col - 1 <= 0) {
-        if (numericCellToCell(row - 2, col - 1).pieceId == undefined) {
+    if (row - 2 <= 7 && row - 2 > 0 && col - 1 <= 7 && col - 1 >= 0) {
+        if (numericCellToCell(row - 2, col - 1, allCells).pieceId == undefined) {
             availableMoves.push(moveEvent("Knight", jToCol(col) + row, jToCol(col - 1) + (row - 2)));
         }
     }
+
+    bp.log.info("Available Knight Moves Returned - " + availableMoves)
 
     return availableMoves
 
@@ -956,17 +950,21 @@ function jToCol(j) {
 }
 
 function GiveMeCell(requestedID, allCells) {
+    bp.log.info("*** GiveMeCell : requestedID - " + requestedID + " ***")
     for (let i = 0; i < allCells.length; i++) {
         let cell = allCells[i]
-        if (cell.id == requestedID)
+        if (cell.id === requestedID) {
+            bp.log.info("*** GiveMeCell : Returned - " + requestedID + " ***")
             return cell;
+        }
     }
-    // bp.log.info(requestedID)
+    bp.log.info("*** GiveMeCell : Returned Null!! ***")
     return null;
 }
 
 function numericCellToCell(i, j, allCells) {
-    let j_char = ''
+    // bp.log.info ( "NumericCellToCell : " + j + ", " + i + ", allCells: " + allCells)
+    let j_char = '0';
     switch (j) {
         case 0:
             j_char = 'a';
@@ -993,7 +991,7 @@ function numericCellToCell(i, j, allCells) {
             j_char = 'h';
             break;
     }
-    // bp.log.info ( j_char + i )
+    // bp.log.info ( "NumericCellToCell : " + (j_char + i) )
     return GiveMeCell(j_char + i, allCells);
 
 }
