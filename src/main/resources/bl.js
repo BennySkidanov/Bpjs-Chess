@@ -608,7 +608,7 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
     }
 });
 
-/*ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
+ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
 
     while (true) {
 
@@ -637,7 +637,7 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
         mySync({request: bishopsMovesToRequest, waitFor: anyMoves})
 
     }
-});*/
+});
 
 ctx.bthread("DevelopingKnights", "Phase.Opening", function (entity) {
     while (true) {
