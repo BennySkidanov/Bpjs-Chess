@@ -1,12 +1,12 @@
 function Cell(i, j, pieceId) {
-  return ctx.Entity(i + j, 'cell', {i: i, j: j, pieceId: pieceId})
+    return ctx.Entity(i + j, 'cell', {i: i, j: j, pieceId: pieceId})
 }
 
 function Piece(subtype, number, color, cellId) {
-  return ctx.Entity('piece' + "_" + number, 'piece', {
-    subtype: subtype,
-    number: number, color: color, cellId: cellId
-  })
+    return ctx.Entity('piece' + "_" + number, 'piece', {
+        subtype: subtype,
+        number: number, color: color, cellId: cellId
+    })
 }
 
 /*  We have 64 cells on the chess board, we can identify them uniquely the combination of letters as columns and digits as rows, just like in the real gamke.
@@ -25,21 +25,21 @@ function Piece(subtype, number, color, cellId) {
 
 
 ctx.registerQuery("Cell.all", function (entity) {
-  return entity.type == 'cell';
+    return entity.type == 'cell';
 })
 
 ctx.registerQuery("Cell.all.nonOccupied", function (entity) {
-  return entity.type == 'cell' && entity.pieceId == undefined;
+    return entity.type == 'cell' && entity.pieceId == undefined;
 })
 
 ctx.registerQuery("Piece.White.All",
     function (entity) {
-      return entity.type == 'piece' && entity.color == 'White';
+        return entity.type == 'piece' && entity.color == 'White';
     })
 
 ctx.registerQuery("Piece.Black.All",
     function (entity) {
-      return entity.type == 'piece' && entity.color == 'Black';
+        return entity.type == 'piece' && entity.color == 'Black';
     })
 
 /*ctx.registerQuery("Piece.White.Pawn" ,
@@ -55,29 +55,29 @@ ctx.registerQuery("Piece.White.Rook" ,
 //ctx.registerQuery("Piece.All", entity => entity.type.equals('piece'))
 //ctx.registerQuery("Piece.Pawn", entity => entity.type.equals('piece') && entity.data.type.equals('Pawn'))
 ctx.registerQuery("Phase.Opening", function (entity) {
-  return entity.id == 'phase' && entity.phase == 'Opening';
+    return entity.id == 'phase' && entity.phase == 'Opening';
 })
 ctx.registerQuery("Phase.MidGame", function (entity) {
-  return entity.id == 'phase' && entity.phase == 'mid game';
+    return entity.id == 'phase' && entity.phase == 'mid game';
 })
 
 //ctx.registerQuery("Phase.Developing.Pawn", entity => entity.id=='phase' && entity.phase == 'opening' && entity.innerPhase == 'develop pawn')
 
 function getSpecificType(type, color) {
-  return function (entity) {
-    return entity.type.equals(String('piece')) &&
-        entity.subtype.equals(String(type)) &&
-        entity.color.equals(String(color));
-  }
+    return function (entity) {
+        return entity.type.equals(String('piece')) &&
+            entity.subtype.equals(String(type)) &&
+            entity.color.equals(String(color));
+    }
 }
 
 // Game phase changed event
 ctx.registerEffect("Game Phase", function (e) {
-  bp.log.info("PHASE CHANGE")
-  let phase = ctx.getEntityById("phase")
-  phase.phase = e
-  bp.log.info(phase)
-  ctx.updateEntity(phase)
+    bp.log.info("PHASE CHANGE")
+    let phase = ctx.getEntityById("phase")
+    phase.phase = e
+    bp.log.info(phase)
+    ctx.updateEntity(phase)
 })
 /*
 ctx.registerEffect("Develop", function(e) {
@@ -88,48 +88,65 @@ ctx.registerEffect("Develop", function(e) {
 */
 
 const prefixDictBL = {
-  "B": "Bishop",
-  "P": "Pawn",
-  "N": "Knight",
-  "K": "King",
-  "Q": "Queen",
-  "R": "Rook"
+    "B": "Bishop",
+    "P": "Pawn",
+    "N": "Knight",
+    "K": "King",
+    "Q": "Queen",
+    "R": "Rook"
 };
 
 
 ctx.registerEffect("Move", function (e) {
-  //bp.log.info("Chosen Move : " + e.subtype + " " + e.src + " => " + e.dst)
-  //bp.log.info(" NOTICE : MOVE EVENT IS HAPPENING ")
-  let srcCell = ctx.getEntityById(e.src.toString())
-  let dstCell = ctx.getEntityById(e.dst.toString())
-  //bp.log.info(srcCell)
-  //bp.log.info(dstCell)
+    // bp.log.info("Chosen Move : " + e.subtype + " " + e.src + " => " + e.dst)
+    bp.log.info(" Move Effect ")
+    let srcCell = ctx.getEntityById(e.src.toString())
+    let dstCell = ctx.getEntityById(e.dst.toString())
+    // bp.log.info(srcCell.id)
+    // bp.log.info(dstCell.id)
+    let srcPiece = null
+    let dstPiece = null
+    if (srcCell.pieceId != null) {
+        srcPiece = ctx.getEntityById(srcCell.pieceId.toString())
+    }
+    if (dstCell.pieceId != null) {
+        dstPiece = ctx.getEntityById(dstCell.pieceId.toString())
+    }
+    // bp.log.info(srcPiece.subtype)
+    // bp.log.info(dstPiece)
 
-  let srcPiece = null
-  let dstPiece = null
-  if (srcCell.pieceId != null) {
-    srcPiece = ctx.getEntityById(srcCell.pieceId.toString())
-  }
-  if (dstCell.pieceId != null) {
-    dstPiece = ctx.getEntityById(dstCell.pieceId.toString())
-  }
-  //bp.log.info(srcPiece)
-  //bp.log.info(dstPiece)
+    if ((dstCell.id[1] === '8' || dstCell.id[1] === '1') && srcPiece.subtype === "Pawn") {
+        // Queening, Create new piece
+        bp.log.info("Queening, Changing Piece [dal.js]")
+        let color = dstCell[1] === '8' ? "White" : "Black"
+        let newQueen = Piece("Queen", 100, color, dstCell.id);
+        let newdstCell = Cell(dstCell.id[0], dstCell.id[1], 'piece' + "_" + 100)
+        dstCell = newdstCell
+        ctx.removeEntity(dstCell)
+        ctx.insertEntity(newQueen)
+        ctx.insertEntity(newdstCell)
+        ctx.updateEntity(newQueen)
+        ctx.updateEntity(newdstCell)
+        ctx.removeEntity(srcPiece)
 
+        srcPiece = newQueen
+        dstCell.pieceId = newQueen.id
 
-  dstCell.pieceId = srcPiece.id
-  ctx.updateEntity(dstCell)
+    } else {
+        dstCell.pieceId = srcPiece.id
+    }
+    ctx.updateEntity(dstCell)
 
-  srcCell.pieceId = undefined
-  ctx.updateEntity(srcCell)
+    srcCell.pieceId = undefined
+    ctx.updateEntity(srcCell)
 
-  srcPiece.cellId = dstCell.id
-  ctx.updateEntity(srcPiece)
+    srcPiece.cellId = dstCell.id
+    ctx.updateEntity(srcPiece)
 
-  if (dstPiece)
-    ctx.removeEntity(dstPiece)
+    if (dstPiece)
+        ctx.removeEntity(dstPiece)
 
-  //bp.log.info("MOVE HAS FINISHED")
+    //bp.log.info("MOVE HAS FINISHED")
 
 })
 
@@ -178,10 +195,9 @@ const prefix = ["", "N", "B", "R", "Q", "K"];
 const pieces = ["Pawn", "Knight", "Bishop", "Rook", "Queen", "King"];
 
 function moveEvent(piece, oldCell, newCell) {
-  //bp.log.info ("Move Event : " + piece + " " + newCell);
-  return bp.Event("Move", {piece: piece, src: oldCell, dst: newCell});
+    // bp.log.info ("Move Event : " + piece + " " + newCell);
+    return bp.Event("Move", {piece: piece, src: oldCell, dst: newCell});
 }
-
 
 
 /*function moveEventPGN(piece, newCell) {
@@ -190,104 +206,104 @@ function moveEvent(piece, oldCell, newCell) {
 }*/
 
 function prefixOfPiece(piece) {
-  let idx = 0
-  for (let i = 0; i < pieces.length; i++) {
-    if (pieces[i] == piece) {
-      return prefix[idx]
-    } else {
-      idx++
+    let idx = 0
+    for (let i = 0; i < pieces.length; i++) {
+        if (pieces[i] == piece) {
+            return prefix[idx]
+        } else {
+            idx++
+        }
     }
-  }
 }
 
 
 function populateContext() {
-  let pieces = [Piece("King", 1, "White", "e1"),
-    Piece("King", 2, "Black", "e8"),
-    Piece("Queen", 3, "White", "d1"),
-    Piece("Queen", 4, "Black", "d8"),
-    Piece("Bishop", 5, "White", "c1"),
-    Piece("Bishop", 6, "White", "f1"),
-    Piece("Bishop", 7, "Black", "c8"),
-    Piece("Bishop", 8, "Black", "f8"),
-    Piece("Knight", 9, "White", "b1"),
-    Piece("Knight", 10, "White", "g1"),
-    Piece("Knight", 11, "Black", "b8"),
-    Piece("Knight", 12, "Black", "g8"),
-    Piece("Rook", 13, "White", "a1"),
-    Piece("Rook", 14, "White", "h1"),
-    Piece("Rook", 15, "Black", "a8"),
-    Piece("Rook", 16, "Black", "h8"),
+    let pieces = [Piece("King", 1, "White", "e1"),
+        Piece("King", 2, "Black", "e8"),
+        Piece("Queen", 3, "White", "d1"),
+        Piece("Queen", 4, "Black", "d8"),
+        Piece("Bishop", 5, "White", "c1"),
+        Piece("Bishop", 6, "White", "f1"),
+        Piece("Bishop", 7, "Black", "c8"),
+        Piece("Bishop", 8, "Black", "f8"),
+        Piece("Knight", 9, "White", "b1"),
+        Piece("Knight", 10, "White", "g1"),
+        Piece("Knight", 11, "Black", "b8"),
+        Piece("Knight", 12, "Black", "g8"),
+        Piece("Rook", 13, "White", "a1"),
+        Piece("Rook", 14, "White", "h1"),
+        Piece("Rook", 15, "Black", "a8"),
+        Piece("Rook", 16, "Black", "h8"),
 
 
-    Piece("Pawn", 21, "White", "a2"), Piece("Pawn", 22, "White", "b2"), Piece("Pawn", 23, "White", "c2"),
-    Piece("Pawn", 24, "White", "d2"), Piece("Pawn", 25, "White", "e2"), Piece("Pawn", 26, "White", "f2"),
-    Piece("Pawn", 27, "White", "g2"), Piece("Pawn", 28, "White", "h2"),
-    Piece("Pawn", 31, "Black", "a7"), Piece("Pawn", 32, "Black", "b7"), Piece("Pawn", 33, "Black", "c7"),
-    Piece("Pawn", 34, "Black", "d7"), Piece("Pawn", 35, "Black", "e7"), Piece("Pawn", 36, "Black", "f7"),
-    Piece("Pawn", 37, "Black", "g7"), Piece("Pawn", 38, "Black", "h7")]
+        Piece("Pawn", 21, "White", "a2"), Piece("Pawn", 22, "White", "b2"), Piece("Pawn", 23, "White", "c2"),
+        Piece("Pawn", 24, "White", "d2"), Piece("Pawn", 25, "White", "e2"), Piece("Pawn", 26, "White", "f2"),
+        Piece("Pawn", 27, "White", "g2"), Piece("Pawn", 28, "White", "h2"),
+        Piece("Pawn", 31, "Black", "a7"), Piece("Pawn", 32, "Black", "b7"), Piece("Pawn", 33, "Black", "c7"),
+        Piece("Pawn", 34, "Black", "d7"), Piece("Pawn", 35, "Black", "e7"), Piece("Pawn", 36, "Black", "f7"),
+        Piece("Pawn", 37, "Black", "g7"), Piece("Pawn", 38, "Black", "h7")]
 
-  let cells = [
+    let cells = [
 
-    Cell('a', '1', 'piece' + "_" + 13),
-    Cell('b', '1', 'piece' + "_" + 9),
-    Cell('c', '1', 'piece' + "_" + 5),
-    Cell('d', '1', 'piece' + "_" + 3),
-    Cell('e', '1', 'piece' + "_" + 1),
-    Cell('f', '1', 'piece' + "_" + 6),
-    Cell('g', '1', 'piece' + "_" + 10),
-    Cell('h', '1', 'piece' + "_" + 14),
+        Cell('a', '1', 'piece' + "_" + 13),
+        Cell('b', '1', 'piece' + "_" + 9),
+        Cell('c', '1', 'piece' + "_" + 5),
+        Cell('d', '1', 'piece' + "_" + 3),
+        Cell('e', '1', 'piece' + "_" + 1),
+        Cell('f', '1', 'piece' + "_" + 6),
+        Cell('g', '1', 'piece' + "_" + 10),
+        Cell('h', '1', 'piece' + "_" + 14),
 
-    Cell('a', '8', 'piece' + "_" + 15),
-    Cell('b', '8', 'piece' + "_" + 11),
-    Cell('c', '8', 'piece' + "_" + 7),
-    Cell('d', '8', 'piece' + "_" + 4),
-    Cell('e', '8', 'piece' + "_" + 2),
-    Cell('f', '8', 'piece' + "_" + 8),
-    Cell('g', '8', 'piece' + "_" + 12),
-    Cell('h', '8', 'piece' + "_" + 16),
+        Cell('a', '8', 'piece' + "_" + 15),
+        Cell('b', '8', 'piece' + "_" + 11),
+        Cell('c', '8', 'piece' + "_" + 7),
+        Cell('d', '8', 'piece' + "_" + 4),
+        Cell('e', '8', 'piece' + "_" + 2),
+        Cell('f', '8', 'piece' + "_" + 8),
+        Cell('g', '8', 'piece' + "_" + 12),
+        Cell('h', '8', 'piece' + "_" + 16),
 
-    Cell('a', '2', 'piece' + "_" + 21),
-    Cell('b', '2', 'piece' + "_" + 22),
-    Cell('c', '2', 'piece' + "_" + 23),
-    Cell('d', '2', 'piece' + "_" + 24),
-    Cell('e', '2', 'piece' + "_" + 25),
-    Cell('f', '2', 'piece' + "_" + 26),
-    Cell('g', '2', 'piece' + "_" + 27),
-    Cell('h', '2', 'piece' + "_" + 28),
-    Cell('a', '7', 'piece' + "_" + 31),
-    Cell('b', '7', 'piece' + "_" + 32),
-    Cell('c', '7', 'piece' + "_" + 33),
-    Cell('d', '7', 'piece' + "_" + 34),
-    Cell('e', '7', 'piece' + "_" + 35),
-    Cell('f', '7', 'piece' + "_" + 36),
-    Cell('g', '7', 'piece' + "_" + 37),
-    Cell('h', '7', 'piece' + "_" + 38),
+        Cell('a', '2', 'piece' + "_" + 21),
+        Cell('b', '2', 'piece' + "_" + 22),
+        Cell('c', '2', 'piece' + "_" + 23),
+        Cell('d', '2', 'piece' + "_" + 24),
+        Cell('e', '2', 'piece' + "_" + 25),
+        Cell('f', '2', 'piece' + "_" + 26),
+        Cell('g', '2', 'piece' + "_" + 27),
+        Cell('h', '2', 'piece' + "_" + 28),
+        Cell('a', '7', 'piece' + "_" + 31),
+        Cell('b', '7', 'piece' + "_" + 32),
+        Cell('c', '7', 'piece' + "_" + 33),
+        Cell('d', '7', 'piece' + "_" + 34),
+        Cell('e', '7', 'piece' + "_" + 35),
+        Cell('f', '7', 'piece' + "_" + 36),
+        Cell('g', '7', 'piece' + "_" + 37),
+        Cell('h', '7', 'piece' + "_" + 38),
 
-    Cell('a', '3', undefined), Cell('b', '3', undefined), Cell('c', '3', undefined), Cell('d', '3', undefined),
-    Cell('e', '3', undefined), Cell('f', '3', undefined), Cell('g', '3', undefined), Cell('h', '3', undefined),
-    Cell('a', '4', undefined), Cell('b', '4', undefined), Cell('c', '4', undefined), Cell('d', '4', undefined),
-    Cell('e', '4', undefined), Cell('f', '4', undefined), Cell('g', '4', undefined), Cell('h', '4', undefined),
-    Cell('a', '5', undefined), Cell('b', '5', undefined), Cell('c', '5', undefined), Cell('d', '5', undefined),
-    Cell('e', '5', undefined), Cell('f', '5', undefined), Cell('g', '5', undefined), Cell('h', '5', undefined),
-    Cell('a', '6', undefined), Cell('b', '6', undefined), Cell('c', '6', undefined), Cell('d', '6', undefined),
-    Cell('e', '6', undefined), Cell('f', '6', undefined), Cell('g', '6', undefined), Cell('h', '6', undefined),
-  ]
+        Cell('a', '3', undefined), Cell('b', '3', undefined), Cell('c', '3', undefined), Cell('d', '3', undefined),
+        Cell('e', '3', undefined), Cell('f', '3', undefined), Cell('g', '3', undefined), Cell('h', '3', undefined),
+        Cell('a', '4', undefined), Cell('b', '4', undefined), Cell('c', '4', undefined), Cell('d', '4', undefined),
+        Cell('e', '4', undefined), Cell('f', '4', undefined), Cell('g', '4', undefined), Cell('h', '4', undefined),
+        Cell('a', '5', undefined), Cell('b', '5', undefined), Cell('c', '5', undefined), Cell('d', '5', undefined),
+        Cell('e', '5', undefined), Cell('f', '5', undefined), Cell('g', '5', undefined), Cell('h', '5', undefined),
+        Cell('a', '6', undefined), Cell('b', '6', undefined), Cell('c', '6', undefined), Cell('d', '6', undefined),
+        Cell('e', '6', undefined), Cell('f', '6', undefined), Cell('g', '6', undefined), Cell('h', '6', undefined),
+    ]
 
-  ctx.populateContext(pieces)
-  ctx.populateContext(cells)
-  ctx.populateContext([ctx.Entity("phase", "phase", {phase: ""})])
+    ctx.populateContext(pieces)
+    ctx.populateContext(cells)
+    ctx.populateContext([ctx.Entity("phase", "phase", {phase: ""})])
 
-  // ctx.insertEntity("explanations", "explanation",{explanations: new Set()})
-  // cells.forEach(function(c) { ctx.insertEntity(c.id,'cell', c) })
-  /*for (let i = 0; i < cells.size; i++) {
-    ctx.insertEntity(cells[i].id, 'cell', cells[i])
-  }
+    // ctx.insertEntity("explanations", "explanation",{explanations: new Set()})
+    // cells.forEach(function(c) { ctx.insertEntity(c.id,'cell', c) })
+    /*for (let i = 0; i < cells.size; i++) {
+      ctx.insertEntity(cells[i].id, 'cell', cells[i])
+    }
 
-  //pieces.forEach(function(p) { ctx.insertEntity(p.id,'piece', p) })
-  for (let i = 0; i < pieces.size; i++) {
-    ctx.insertEntity(pieces[i].id, 'piece', pieces[i])
-  }*/
+    //pieces.forEach(function(p) { ctx.insertEntity(p.id,'piece', p) })
+    for (let i = 0; i < pieces.size; i++) {
+      ctx.insertEntity(pieces[i].id, 'piece', pieces[i])
+    }*/
 }
 
 populateContext()

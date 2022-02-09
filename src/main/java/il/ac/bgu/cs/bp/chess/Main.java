@@ -23,7 +23,9 @@ public class Main {
 //    BProgram bprog = new ContextBProgram("chess/dal.js", "chess/bl.js");
         List<String> game;
         String id ="6363026990";
-        String pgn = "1. e4 1... e5 2. Nf3 2... Nf6 3. d3 3... Nc6 4. Bg5 4... Be7 5. Bxf6 5... Bxf6 6. Nc3 6... O-O 7. Nd5 7... d6 8. Nxf6+ 8... Qxf6 9. Be2 9... Bg4 10. Nd2 10... Bxe2 11. Qxe2 11... Nd4 12. Qd1 12... a5 13. O-O 13... Rad8 14. c3 14... Ne6 15. Qg4 15... Nf4 16. Qf3 16... g5 17. Nc4 17... b6 18. Ne3 18... Kg7 19. Ng4 19... Qg6 20. g3 20... Ne6 21. Kg2 21... h5 22. Ne3 22... g4 23. Qe2 23... h4 24. Nf5+ 24... Kh7 25. Nxh4 25... Qg5 26. Qe3 26... Rg8 27. Qxg5 27... Rxg5 28. Nf5 28... Kg6 29. f3 29... Rh8 30. Nh4+ 30... Kg7 31. Nf5+ 31... Kf8 32. fxg4 32... Rxg4 33. h3 33... Nf4+ 34. Kf3 34... Rg5 35. gxf4 35... Rxh3+ 36. Ke2 36... exf4 37. Rxf4 37... f6 38. Raf1 38... Kf7 39. Nd4 39... Rg6 40. Nb5 40... Ke6 41. Nxc7+ 41... Ke5 42. Rf5#";
+        // String pgn = "1. d4 1... d5 2. c4 2... Nf6 3. Nc3 3... e6 4. a3 4... c5 5. Nf3 5... a6 6. a4 6... b6 7. Be3 7... Bb7 8. dxc5 8... Bxc5 9. Bxc5 9... bxc5 10. e3 10... O-O 11. Be2 11... Qe7 12. Ne5 12... Nbd7 13. Nxd7 13... Nxd7 14. O-O 14... Nf6 15. Qd2 15... Rad8 16. Rfd1 16... Rd7 17. Bf3 17... Rfd8 18. cxd5 18... Bxd5 19. Nxd5 19... Nxd5 20. Rac1 20... Nb4 21. Qc3 21... Na2 22. Qxc5 22... Rxd1+ 23. Rxd1 23... Qxc5 24. Rxd8+ 24... Qf8 25. Rxf8+ 25... Kxf8 26. h4 26... Nb4 27. Kh2 27... f5 28. g4 28... Nd3 29. gxf5 29... exf5 30. Be2 30... Nxb2 31. a5 31... Na4 32. Bxa6 32... Nc5 33. Be2 33... Ke7 34. Kg3 34... Kd6 35. Kf4 35... g6 36. h5 36... Kc6 37. a6 37... Kb6 38. hxg6 38... hxg6 39. Kg5 39... Ne4+ 40. Kxg6 40... Nxf2 41. Kxf5 41... Ka7 42. e4 42... Nh1 43. Bc4 43... Ng3+ 44. Ke5 44... Nh5 45. Ke6 45... Ng7+ 46. Kf6 46... Ne8+ 47. Ke7 47... Nc7 48. e5 48... Kb8 49. Kd7 49... Na8 50. Kc6 50... Nc7 51. a7+ 51... Kc8 52. e6 52... Kd8 53. e7+ 53... Kc8 54. e8=Q+ 54... Nxe8 55. a8=Q#";
+        String pgn = "1. e4 1... f5 2. exf5 2... g6 3. fxg6 3... h5 4. g7 4... a5 5. gxh8=Q 5... b5 6. Qhxh5#";
+
 
         List<String[]> games = new ArrayList<>();
         String [] arr = {id, pgn};
