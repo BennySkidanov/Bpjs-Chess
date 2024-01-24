@@ -1,3 +1,13 @@
+const prefixDictBL = {
+    "B": "Bishop",
+    "P": "Pawn",
+    "N": "Knight",
+    "K": "King",
+    "Q": "Queen",
+    "R": "Rook"
+};
+bp.store.put("NON-FEATURE: QUEENING_COUNTER", 0);
+
 function Cell(i, j, pieceId) {
     return ctx.Entity(i + j, 'cell', {i: i, j: j, pieceId: pieceId})
 }
@@ -28,6 +38,38 @@ ctx.registerQuery("Cell.all", function (entity) {
     return entity.type == 'cell';
 })
 
+ctx.registerQuery("ready to mate on f7", function (entity) {
+    if (entity.id != 'phase') return false
+    // let bishops = ctx.runQuery(getSpecificType('Bishop', 'White'))
+    // let whiteCellBishop = null
+    // for (let i = 0; i < bishops.length; i++) {
+    //     if ( (bishops[i].cellId[0].charCodeAt(0) - 'a'.charCodeAt(0) + (bishops[i].cellId[1] - '0')) % 2 == 1) {
+    //         whiteCellBishop = bishops[i];
+    //         break;
+    //     }
+    // }
+    let pieces = ctx.runQuery('Piece.White.All')
+    let queen = null
+    let found = false
+    let returnValue = false
+    bp.log.info("Searching White Queen")
+    bp.log.info(pieces)
+    for (let i = 0; i < pieces.length; i++) {
+        if (pieces[i].subtype === 'Queen') {
+            queen = pieces[i]
+            found = true
+            break
+        }
+    }
+    if (found) {
+        bp.log.info("White queen => " + queen)
+        returnValue = canReachSquare(queen, 'f7', false, false)
+        bp.log.info("Can queen reach f7? answer : " + returnValue)
+    }
+    // bp.store.put("ready to mate on f7", retval ? 1 : 0)
+    return returnValue
+})
+
 ctx.registerQuery("Cell.all.nonOccupied", function (entity) {
     return entity.type == 'cell' && entity.pieceId == undefined;
 })
@@ -41,6 +83,10 @@ ctx.registerQuery("Piece.Black.All",
     function (entity) {
         return entity.type == 'piece' && entity.color == 'Black';
     })
+ctx.registerQuery("Piece.All",
+    function (entity) {
+        return entity.type == 'piece';
+    })
 
 /*ctx.registerQuery("Piece.White.Pawn" ,
   entity => entity.type == 'piece' && entity.subtype == 'Pawn' && entity.color == 'White')
@@ -50,7 +96,6 @@ ctx.registerQuery("Piece.White.Bishop" ,
 
 ctx.registerQuery("Piece.White.Rook" ,
     entity => entity.type == 'piece' && entity.subtype == 'Rook' && entity.color == 'White')*/
-
 
 //ctx.registerQuery("Piece.All", entity => entity.type.equals('piece'))
 //ctx.registerQuery("Piece.Pawn", entity => entity.type.equals('piece') && entity.data.type.equals('Pawn'))
@@ -77,7 +122,7 @@ ctx.registerEffect("Game Phase", function (e) {
     let phase = ctx.getEntityById("phase")
     phase.phase = e
     bp.log.info(phase)
-    ctx.updateEntity(phase)
+    // ctx.updateEntity(phase) // no need in COBPjs 0.6.0
 })
 /*
 ctx.registerEffect("Develop", function(e) {
@@ -87,19 +132,10 @@ ctx.registerEffect("Develop", function(e) {
 })
 */
 
-const prefixDictBL = {
-    "B": "Bishop",
-    "P": "Pawn",
-    "N": "Knight",
-    "K": "King",
-    "Q": "Queen",
-    "R": "Rook"
-};
-
 
 ctx.registerEffect("Move", function (e) {
     // bp.log.info("Chosen Move : " + e.subtype + " " + e.src + " => " + e.dst)
-    bp.log.info(" Move Effect ")
+    // bp.log.info(" Move Effect ")
     let srcCell = ctx.getEntityById(e.src.toString())
     let dstCell = ctx.getEntityById(e.dst.toString())
     // bp.log.info(srcCell.id)
@@ -111,37 +147,36 @@ ctx.registerEffect("Move", function (e) {
     }
     if (dstCell.pieceId != null) {
         dstPiece = ctx.getEntityById(dstCell.pieceId.toString())
+        bp.log.info("TAKEN PIECE " + dstPiece.subtype)
+        bp.store.put("NON-FEATURE: TAKEN PIECE", dstPiece.subtype);
     }
+
+
     // bp.log.info(srcPiece.subtype)
-    // bp.log.info(dstPiece)
+
 
     if ((dstCell.id[1] === '8' || dstCell.id[1] === '1') && srcPiece.subtype === "Pawn") {
+        let QUEENING_COUNTER = bp.store.get("NON-FEATURE: QUEENING_COUNTER") + 100;
         // Queening, Create new piece
-        bp.log.info("Queening, Changing Piece [dal.js]")
-        let color = dstCell[1] === '8' ? "White" : "Black"
-        let newQueen = Piece("Queen", 100, color, dstCell.id);
-        let newdstCell = Cell(dstCell.id[0], dstCell.id[1], 'piece' + "_" + 100)
-        dstCell = newdstCell
-        ctx.removeEntity(dstCell)
-        ctx.insertEntity(newQueen)
-        ctx.insertEntity(newdstCell)
-        ctx.updateEntity(newQueen)
-        ctx.updateEntity(newdstCell)
-        ctx.removeEntity(srcPiece)
-
-        srcPiece = newQueen
+        bp.log.info("Queening, Changing Piece [dal.js], dstcell[1] = " + dstCell.id[1])
+        let color = dstCell.id[1] === '8' ? "White" : "Black"
+        bp.log.info("Color of new queen : " + color)
+        let newQueen = Piece("Queen", QUEENING_COUNTER, color, dstCell.id);
         dstCell.pieceId = newQueen.id
-
+        bp.store.put("NON-FEATURE: QUEENING_COUNTER", QUEENING_COUNTER);
+        ctx.insertEntity(newQueen)
+        // ctx.updateEntity(dstCell) // no need in COBPjs 0.6.0
+        ctx.removeEntity(srcPiece)
     } else {
         dstCell.pieceId = srcPiece.id
     }
-    ctx.updateEntity(dstCell)
+    // ctx.updateEntity(dstCell) // no need in COBPjs 0.6.0
 
     srcCell.pieceId = undefined
-    ctx.updateEntity(srcCell)
+    // ctx.updateEntity(srcCell) // no need in COBPjs 0.6.0
 
     srcPiece.cellId = dstCell.id
-    ctx.updateEntity(srcPiece)
+    // ctx.updateEntity(srcPiece) // no need in COBPjs 0.6.0
 
     if (dstPiece)
         ctx.removeEntity(dstPiece)
@@ -194,9 +229,17 @@ ctx.registerEffect("Move", function (e) {
 const prefix = ["", "N", "B", "R", "Q", "K"];
 const pieces = ["Pawn", "Knight", "Bishop", "Rook", "Queen", "King"];
 
-function moveEvent(piece, oldCell, newCell) {
-    // bp.log.info ("Move Event : " + piece + " " + newCell);
-    return bp.Event("Move", {piece: piece, src: oldCell, dst: newCell});
+function moveEvent(piece, oldCell, newCell, color, takes, checkmate, check) {
+    // bp.log.info("Move Event : " + color + " " + piece + " : " + oldCell + " => " + newCell);
+    return bp.Event("Move", {
+        piece: piece,
+        src: oldCell,
+        dst: newCell,
+        color: color,
+        takes: takes,
+        checkmate: checkmate,
+        check: check
+    });
 }
 
 

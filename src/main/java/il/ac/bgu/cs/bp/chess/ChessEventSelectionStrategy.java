@@ -197,7 +197,7 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
       Map<String, Object> newDataStore = dataStore.entrySet().stream().filter(pred).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
       modifiedEntrySet = newDataStore.entrySet();
     }
-    return modifiedEntrySet.stream()
+    return modifiedEntrySet.stream().filter(entry -> !(entry.getKey().startsWith("NON")))
         .map(e -> "\"" + e.getKey() + "\":" + toJson(e.getValue()))
         .collect(Collectors.joining(",", "{", "}"));
   }
@@ -229,8 +229,9 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
       var nextBpss = selectableEvents.stream()
           .collect(Collectors.toMap(Function.identity(), e -> {
             try {
-              return BProgramSyncSnapshotCloner.clone(bpss).triggerEvent(e, execSvc, new ArrayList<>(),
-                  bpss.getBProgram().getStorageModificationStrategy());
+              var clonedBpss = BProgramSyncSnapshotCloner.clone(bpss);
+              return clonedBpss.triggerEvent(e, execSvc, new ArrayList<>(),
+                      clonedBpss.getBProgram().getStorageModificationStrategy());
             } catch (InterruptedException ex) {
               ex.printStackTrace();
               System.exit(1);
