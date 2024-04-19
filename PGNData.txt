@@ -1,1 +1,1 @@
-1. e4 1... d5 2. exd5 2... Nf6 3. Nc3 3... Na6 4. Bc4 4... b6 5. Qg4 5... e6 6. dxe6 6... Bb7 7. exf7+ 7... Ke7 8. Qe6#
+1. e4 d5 2. exd5 Nf6 3. Nc3 Na6 4. Bc4 4... b6 5. Qg4 5... e6 6. dxe6 6... Bb7 7. exf7+ 7... Ke7 8. Qe6#

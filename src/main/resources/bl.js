@@ -28,18 +28,26 @@ function getPrevChar(char) {
 }
 
 const ANSI_RESET = "\u001B[0m";
+const ANSI_PURPLE = "\u001B[35m";
 const ANSI_CYAN = "\u001B[36m";
 const TAKES = 'x';
 const QUEENING = '=';
 const KING_INFINITE_VALUE = 100;
+
 const allMovesList = (function () {
     let moves = pgn.split(" ");
+
+    bp.log.info("moves after splitting => " + moves)
+
     let allMovesList = [];
+
     for (let i = 0; i < moves.length; i++) {
-        if (i % 2 === 1) { // index is even
+        if (i % 3 !== 0) { // index is even
             allMovesList.push(moves[i]);
         }
     }
+
+
     return allMovesList
     /*
         let whiteMoves = [];
@@ -65,6 +73,7 @@ const ESCenterCaptureMoves = bp.EventSet("EScenterCaptureMoves", function (e) {
         && (e.data.dst[0] == 'c' || e.data.dst[0] == 'd' || e.data.dst[0] == 'e' || e.data.dst[0] == 'f')
 
 })
+// Todo: fix source checking and destination rows ( 3 & 4 -> 4 & 5)
 
 const ESPawnDevelopingMoves = bp.EventSet("ESpawnDevelopingMoves", function (e) {
     return e.name == 'Move' && e.data.color == "White" && e.data.piece === "Pawn" &&
@@ -663,17 +672,19 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
         (i % 2 === 0) ? player = 'White' : player = 'Black';
         let move = allMovesList[i]
         let pieces = ctx.runQuery("Piece." + player + ".All");
-        bp.log.info("Next PGN Move = {0}", move)
+        bp.log.info("~~ LOG ~~ Next PGN Move = {0}", move)
 
         // Game Tactics + Flags Update
 
-        if (move.charAt(move.length - 1) == '+' || move.charAt(move.length - 1) == '#') {
-            // bp.log.info("CheckMate!!")
+        if (move.charAt(move.length - 1) == '+' || move.charAt(move.length - 1) == '#') { // Special Handling: Check & Checkmate
+            bp.log.info("~~ LOG ~~ Special Handling")
             if (move.charAt(move.length - 1) == '#') {
+                bp.log.info("~~ LOG ~~ Checkmate")
                 checkmate = true;
                 //bp.store.put("General Tactics: Checkmate", 1)
             } else if (move.charAt(move.length - 1) == '+') {
-               // bp.store.put("General Tactics: Check", 1)
+                bp.log.info("~~ LOG ~~ Check")
+                // bp.store.put("General Tactics: Check", 1)
             }
             move = move.substr(0, move.length - 1)
         }
@@ -688,9 +699,9 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
         // }
 
 
-        bp.log.info("Next PGN Move (Again) = {0}", move)
+        // bp.log.info("Next PGN Move (Again) = {0}", move)
         if (move.indexOf(TAKES) > -1 && (move.indexOf(QUEENING) > -1)) {
-            // bp.log.info("Takes & Queen event!! OH MAMA")
+            // bp.log.info("~~ LOG ~~ Takes & Queen event!!")
             let piece = findPieceThatCanReachToEndSquare(startsWithCapital(move) ? move[0] : "P",
                 move.substr(move.indexOf(TAKES) + 1, 2),
                 player, true, enPassant, allMovesList[i].charAt(0).concat(player === 'White' ? "5" : "4"));
@@ -775,7 +786,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
 })
 
 /*
-  1. PGN basics :
+    1. PGN basics :
        1.a. Moves :
                Pawn -> e4
                Knight -> Nf6
@@ -795,14 +806,22 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
                Long castle -> O-O-O
                Check ( moving or taking ) -> Qxd3+ , e4+
                Mate ( moving or taking ) -> Qxd3# , e4#
-               Two pieces from the same king can move to the same cell ( or take on this cell ) -> R1d1 , fxe5
+               Two pieces of the same color can move to the same cell ( or take on this cell ) -> R1d1 , fxe5
 
-   2. Center squares - c4, d4, e4, f4, c5, d5, e5, f5
+    2. Center squares - c4, d4, e4, f4, c5, d5, e5, f5
+
+    3. Reasons for moves to be blocked:
+        a. The move exposes the king ( causes a check )
+        b. The desired move of the king is blocked due an opponent's piece "eyeing" the dst. cell
+        c. Opponent's piece is "in the way" ( note: Knight can't be blocked and can "jump" over pieces )
+
+    4. Strategies in the opening:
+        - Developing pieces
+        - Strengthening the center squares
+        - Fianchetto
+    What is the probability of each of the strategies to be executed given a certain move \ situation ?
 
 */
-
-// Define moves
-
 
 // Game behavioral thread
 bthread("Game thread", function (entity) {
@@ -818,7 +837,7 @@ bthread("Game thread", function (entity) {
     bp.store.put("General Tactics: Worthless Trade", 0)
 
 
-    // "Rainy Day" Feature
+    // Optional "Rainy Day" Feature, Not Used
     bp.store.put("Developing the queen too early", 0)
 
     bp.store.put("Strategy Counter: Center strengthen moves", 0)
@@ -854,8 +873,8 @@ bthread("Game thread", function (entity) {
     while (true) {
 
         sync({request: bp.Event("Game Phase", "Opening")})
-        bp.log.info("Context Changes - Opening Starts!!")
-        sync({waitFor: AnyCastling}) // Stops Here
+        bp.log.info("~~ LOG ~~ Context Changed - Opening Starts!!")
+        sync({waitFor: AnyCastling})
         // sync({request: bp.Event("Game Phase", "Mid Game")})
         // sync({request: bp.Event("Game Phase", "End Game")})
 
@@ -878,7 +897,6 @@ function clearDuplicates(moves) {
     new Set(moves).forEach(e => arr.push(e))
     return arr
 
-    // BENNY: BAD CODE
     /*let pawnMovesToRequest = []
     let dup = false
     for (let i = 0; i < pawnMoves.length; i++) {
@@ -1448,14 +1466,18 @@ function isBishopPinning(dstCell) {
 }
 
 function isAttackingOpponentPieceOrDefending(piece, dstCell, attacking) {
-    bp.log.info("isAttackingOpponentPiece: " + piece + "," + dstCell)
+    bp.log.info("~~ LOG ~~ isAttackingOpponentPiece: " + piece + "," + dstCell)
+
+    let playerPieces = ctx.runQuery("Piece.White.All")
     let opponentPieces = ctx.runQuery("Piece.Black.All")
     let allCells = ctx.runQuery("Cell.all")
+
     let piecesArray = []
     let attackingCells = []
     let availableMoves = []
     let specificPiece = null
-    if (piece === "Pawn") {
+
+    if (piece === "Pawn") { // Pawn can only defend the upward diagonal cell ( if the pawn is at the edge of the board \ cells )
         if (dstCell[0] !== 'a')
             attackingCells.push(
                 GiveMeCell((getPrevChar(dstCell[0]) + getNextChar(dstCell[1])), allCells)
@@ -1469,7 +1491,7 @@ function isAttackingOpponentPieceOrDefending(piece, dstCell, attacking) {
 
         for (let i = 0; i < piecesArray.length; i++) {
             if (piecesArray[i].cellId === dstCell) {
-                specificPiece = piecesArray[i]
+                specificPiece = piecesArray[i] // Found the piece
                 break
             }
         }
@@ -1480,9 +1502,11 @@ function isAttackingOpponentPieceOrDefending(piece, dstCell, attacking) {
         } else if (piece === "Knight") {
             bp.log.info("Knight on " + dstCell + ", " + specificPiece)
             attackingCells = availableKnightMoves(specificPiece)[1]
+
         } else if (piece === "Rook") {
             bp.log.info("Rook on " + dstCell)
             attackingCells = availableStraightCellsFromPiece(specificPiece, 7, allCells)[1]
+
         } else if (piece === "Queen") {
             bp.log.info("Queen on " + dstCell)
             attackingCells = availableDiagonalCellsFromPiece(specificPiece, 7, allCells)[1]
@@ -1494,7 +1518,7 @@ function isAttackingOpponentPieceOrDefending(piece, dstCell, attacking) {
     }
 
     let attackingCellsIDs = []
-    bp.log.info("isAttackingOpponentPieceOrDefending : ( " + piece + " )Cells to watch (length = " + attackingCells.length + ")")
+    bp.log.info("~~ LOG ~~ isAttackingOpponentPieceOrDefending : ( " + piece + " )Cells to watch (length = " + attackingCells.length + ")")
     for (let i = 0; i < attackingCells.length; i++) {
         bp.log.info(attackingCells[i].id)
         attackingCellsIDs.push(attackingCells[i].id)
@@ -1555,24 +1579,21 @@ ctx.bthread("DefendingTrack", "Phase.Opening", function (entity) {
 ctx.bthread("GeneralTacticsTrack", "Phase.Opening", function (entity) {
     while (true) {
         let e = sync({waitFor: anyMoves})
-        if (e.data.color === "White")
-        {
+        if (e.data.color === "White") {
             if (e.data.takes === true) {
-                bp.log.info("UPDATING GENERAL TACTICS, " + e.data )
+                bp.log.info("UPDATING GENERAL TACTICS, " + e.data)
                 let returnValuesList = TradingGameTacticCheck(e, e.data.color)
                 bp.store.put("General Tactics: Take Free Piece", returnValuesList[0])
                 bp.store.put("General Tactics: Equal Trade", returnValuesList[1])
                 bp.store.put("General Tactics: Worthwhile Trade", returnValuesList[2])
                 bp.store.put("General Tactics: Worthless Trade", returnValuesList[3])
-            }
-            else {
+            } else {
                 bp.store.put("General Tactics: Take Free Piece", 0)
                 bp.store.put("General Tactics: Equal Trade", 0)
                 bp.store.put("General Tactics: Worthwhile Trade", 0)
                 bp.store.put("General Tactics: Worthless Trade", 0)
             }
-        }
-        else {
+        } else {
             bp.store.put("General Tactics: Take Free Piece", 0)
             bp.store.put("General Tactics: Equal Trade", 0)
             bp.store.put("General Tactics: Worthwhile Trade", 0)
@@ -1581,13 +1602,7 @@ ctx.bthread("GeneralTacticsTrack", "Phase.Opening", function (entity) {
     }
 })
 
-/*
- Reasons for moves to be blocked:
- 1. The move exposes the king ( causes a check )
- 2. The desired move of the king is blocked due an opponent's piece "eyeing" the dst. cell
- 3. Opponent's piece is "in the way"
- - Knight can't be blocked
- */
+
 
 /* Those functions are responsible for finding unoccupied cells in a given distance.
 * Those cells are potential destination cells of moves
@@ -1810,39 +1825,7 @@ function GiveMeCell(requestedID, allCells) {
     return null;
 }
 
-function numericCellToCell(i, j, allCells) {
-    // bp.log.info ( "NumericCellToCell : " + j + ", " + i + ", allCells: " + allCells)
-    let j_char = '0';
-    switch (j) {
-        case 0:
-            j_char = 'a';
-            break;
-        case 1:
-            j_char = 'b';
-            break;
-        case 2:
-            j_char = 'c';
-            break;
-        case 3:
-            j_char = 'd';
-            break;
-        case 4:
-            j_char = 'e';
-            break;
-        case 5:
-            j_char = 'f';
-            break;
-        case 6:
-            j_char = 'g';
-            break;
-        case 7:
-            j_char = 'h';
-            break;
-    }
-    // bp.log.info ( "NumericCellToCell : " + (j_char + i) )
-    return GiveMeCell(j_char + i, allCells);
 
-}
 
 function availableDiagonalCellsFromPiece(piece, distance, allCells) {
     bp.log.info("availableDiagonalCellsFromPiece -> " + piece + ", " + distance + ", " + allCells)
@@ -1910,13 +1893,12 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
 
 }
 
-// Features Tracking context behavioral threads
+// Visualization ( Help debug process )
+ctx.bthread("Visualize", "Phase.Opening", function (entity) {
 
+    // White pieces are represented by capital characters, whereas non-capital characters are used to symbolize black pieces
 
-// Visualization
-
-ctx.bthread("BoardTrack", "Phase.Opening", function (entity) {
-    const board = [
+    const currentBoard = [
         ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
 
         ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
@@ -1935,37 +1917,69 @@ ctx.bthread("BoardTrack", "Phase.Opening", function (entity) {
     ]
 
     while (true) {
-        let move = mySync({waitFor: anyMoves});
-        //let move = mySync([], [anyMoves], []);
-        // bp.log.info(move)
+        let move = mySync({waitFor: anyMoves}); // To update the current position, wait for any moves to be made
 
         let srcRow = move.data.src[1] - '0';
         let srcCol = move.data.src[0].charCodeAt(0) - 'a'.charCodeAt(0);
         let dstRow = move.data.dst[1] - '0';
         let dstCol = move.data.dst[0].charCodeAt(0) - 'a'.charCodeAt(0);
 
-        // bp.log.info("srcRow => " + srcRow);
-        // bp.log.info("srcCol => " + srcCol);
-        // bp.log.info("dstRow => " + dstRow);
-        // bp.log.info("dstCol => " + dstCol);
+        let movedPiece = currentBoard[8 - srcRow][srcCol];
 
-        let tmpPiece = board[8 - srcRow][srcCol];
+        currentBoard[8 - srcRow][srcCol] = '*'; // The previously occupied cell
 
-        board[8 - srcRow][srcCol] = '*';
-        board[8 - dstRow][dstCol] = tmpPiece;
+        currentBoard[8 - dstRow][dstCol] = movedPiece;
 
         if ((dstRow === 8 || dstRow === 1) && move.data.piece === "Pawn") // Queening
         {
-            bp.log.info(move);
-            // Todo: Add More Queening Options
-            bp.log.info("Queening [Board]");
-            board[Math.abs(dstRow - 8)][dstCol] = dstRow === 8 ? 'Q' : 'q';
+            currentBoard[Math.abs(dstRow - 8)][dstCol] = dstRow === 8 ? 'Q' : 'q';
         }
-        // print board
 
-        for (var i = 0; i < 8; i++) {
-            bp.log.info(ANSI_CYAN + board[i][0] + "  " + board[i][1] + "  " + board[i][2] + "  " + board[i][3] + "  " + board[i][4] +
-                "  " + board[i][5] + "  " + board[i][6] + "  " + board[i][7] + ANSI_RESET);
+        // Visualize
+        for (let i = 0; i < 8; i++) {
+            bp.log.info(ANSI_PURPLE + currentBoard[i][0] + "  " + currentBoard[i][1] + "  " + currentBoard[i][2] + "  " +
+                currentBoard[i][3] + "  " + currentBoard[i][4] + "  " + currentBoard[i][5] + "  " +
+                currentBoard[i][6] + "  " + currentBoard[i][7] + ANSI_RESET);
         }
     }
 });
+
+// Helper function : Convert numeric row & column values to chess board cell
+function numericCellToCell(i, j, allCells) {
+    // bp.log.info ( "NumericCellToCell : " + j + ", " + i + ", allCells: " + allCells)
+
+    // i & j can contain any value in range [0,7]
+
+    // Todo: simplify switch case code to arithmetic of char (j_char = 'a' + j)
+    let j_char = '0';
+    switch (j) {
+        case 0:
+            j_char = 'a';
+            break;
+        case 1:
+            j_char = 'b';
+            break;
+        case 2:
+            j_char = 'c';
+            break;
+        case 3:
+            j_char = 'd';
+            break;
+        case 4:
+            j_char = 'e';
+            break;
+        case 5:
+            j_char = 'f';
+            break;
+        case 6:
+            j_char = 'g';
+            break;
+        case 7:
+            j_char = 'h';
+            break;
+    }
+
+    // bp.log.info ( "NumericCellToCell : " + (j_char + i) )
+    return GiveMeCell(j_char + i, allCells);
+
+}
