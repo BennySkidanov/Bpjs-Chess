@@ -19,7 +19,9 @@ function Piece(subtype, number, color, cellId) {
     })
 }
 
-/*  We have 64 cells on the chess board, we can identify them uniquely the combination of letters as columns and digits as rows, just like in the real gamke.
+/*
+
+    We have 64 cells on the chess board, we can identify them uniquely the combination of letters as columns and digits as rows, just like in the real gamke.
     For example, let's suppose we are playing White, the board will look like :
 
     a8 b8 c8 d8 e8 f8 g8 h8
@@ -83,10 +85,12 @@ ctx.registerQuery("Piece.Black.All",
     function (entity) {
         return entity.type == 'piece' && entity.color == 'Black';
     })
+
 ctx.registerQuery("Piece.All",
     function (entity) {
         return entity.type == 'piece';
     })
+
 
 /*ctx.registerQuery("Piece.White.Pawn" ,
   entity => entity.type == 'piece' && entity.subtype == 'Pawn' && entity.color == 'White')
@@ -113,6 +117,32 @@ function getSpecificType(type, color) {
         return entity.type.equals(String('piece')) &&
             entity.subtype.equals(String(type)) &&
             entity.color.equals(String(color));
+    }
+}
+
+function getSpecificPiece(id) {
+    return function (entity) {
+        return entity.type.equals(String('piece')) &&
+            entity.id.equals(id);
+    }
+}
+
+function getOpponentKingCell(playerColor) {
+    let OpponentColor = playerColor === "White" ? "Black" : "White";
+    return function (entity) {
+        return entity.type.equals(String('piece')) &&
+            entity.subtype.equals(String('King')) &&
+            entity.color.equals(String(OpponentColor));
+    }
+
+}
+
+function getSpecificPieceOnCell(cell_identifier) {
+    bp.log.info("~~ LOG (141) ~~ " + cell_identifier)
+    return function (entity) {
+        return entity.type.equals(String('piece')) &&
+            entity.cellId[0].equals(String(cell_identifier.charAt(0))) &&
+            entity.cellId[1].equals(String(cell_identifier.charAt(1)));
     }
 }
 
