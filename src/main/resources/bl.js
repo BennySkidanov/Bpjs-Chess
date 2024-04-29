@@ -743,7 +743,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
                 sync({block: anyMoves}, 100);
             }
         } else if (move == "O-O" || move == "O-O-O") {
-            // bp.log.info("Castling event!!")
+            bp.log.info("Castling event!!")
             if (move == "O-O") handleShortCastle(player, pieces);
             else if (move == "O-O-O") handleLongCastle(player, pieces);
         } else if ((move.indexOf('=') > -1)) {
@@ -785,6 +785,8 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
             }
         }
     }
+    bp.log.info("~~ LOG (788) ~~ Finished Parsing Game!!")
+    sync({block: anyMoves}, 100);
 })
 
 /*
