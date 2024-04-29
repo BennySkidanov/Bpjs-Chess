@@ -10,12 +10,17 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 
 public class Main {
     private static String pgn = "";
 
     public static void main(final String[] args) throws InterruptedException {
+
+
+
 //        System.out.println(MessageFormat.format("'{'\"hhh\":{0}'}'",3));
         /** Choose the desired COBP program... */
 
@@ -47,36 +52,36 @@ public class Main {
             e.printStackTrace();
         }
 
+        ExecutorService executor = Executors.newCachedThreadPool();
 
+        for (String[] g : games) {
+            executor.submit(() -> runGame(g));
+        }
 
+        executor.shutdown();
+    }
 
-        games.forEach(g->{
-            var bprog = new ContextBProgram("dal.js", "bl.js"); // New program to run the game
-
-            var ess = new ChessEventSelectionStrategy(g[0]); // Redundant
+     private static void runGame(String[] game) {
+            var bprog = new ContextBProgram("dal.js", "bl.js");
+            var ess = new ChessEventSelectionStrategy(game[0]);
 
             bprog.setEventSelectionStrategy(ess);
-            bprog.putInGlobalScope("generationMode",false);
-
-            bprog.putInGlobalScope("game_id",g[0]);
-
-            bprog.putInGlobalScope("pgn",g[1]);
-
+            bprog.putInGlobalScope("generationMode", false);
+            bprog.putInGlobalScope("game_id", game[0]);
+            bprog.putInGlobalScope("pgn", game[1]);
             bprog.setWaitForExternalEvents(false);
 
             final BProgramRunner rnr = new BProgramRunner(bprog);
 
-
             rnr.addListener(new PrintBProgramRunnerListener());
             rnr.run();
-            try (FileWriter JSONWriter = new FileWriter("GameSequences/Game" + g[0] + ".json")) {
-                JSONWriter.write(ess.getGameData().stream().collect(Collectors.joining(",","[","]")));
+
+            try (FileWriter JSONWriter = new FileWriter("GameSequences/Game" + game[0] + ".json")) {
+                JSONWriter.write(ess.getGameData().stream().collect(Collectors.joining(",", "[", "]")));
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        });
-
-    }
+        }
 
 
 //    private static BEvent move(String src, String dst) {

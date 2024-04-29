@@ -13,7 +13,7 @@ GENOME_SIZE = 25
 WEIGHT_RANGE_MIN = -10
 WEIGHT_RANGE_MAX = 10
 
-NUMBER_OF_ANALYZED_GAMES = 1
+NUMBER_OF_ANALYZED_GAMES = 300
 NONE_VALUE = -1
 game = {}
 CHECK_SIGN = '+'
@@ -195,7 +195,7 @@ if __name__ == '__main__':
     games_data = {}
 
     for analyzed_game_index in range(1, NUMBER_OF_ANALYZED_GAMES + 1):
-        single_game_path = 'Data_one_game/Game' + str(analyzed_game_index) + '.json'
+        single_game_path = '../GameSequences/Game' + str(analyzed_game_index) + '.json'
         # single_game_path = '[Daniel:DataFileName]/Game' + str(analyzed_game_index) + '.json'
 
         single_game_json = open(single_game_path)  # Obtain the JSON object which the path points to
@@ -233,87 +233,87 @@ if __name__ == '__main__':
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Start: Games Description file => Python Dictionary ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    games_pgn_dictionary = {}
-    game_index = 1
-    with open("GamesDescription.txt") as file:
-        for line in file:
-            game_dictionary = ast.literal_eval(line)
-            games_pgn_dictionary["game_" + str(game_index)] = game_dictionary['pgn']
-            game_index += 1
-
-    games_modular_pgn_dictionary = {}
-
-    for game_dict_index, game_pgn in games_pgn_dictionary.items():
-        modular_pgn = game_pgn.replace("...", ".").split(" ")[1::2]
-        games_modular_pgn_dictionary[game_dict_index] = modular_pgn
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ End: Games Description file => Python Dictionary ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Pandas ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-    num_of_columns = selectable_moves_max_length * GENOME_SIZE
-    num_of_rows = len(games_data)
-
-    # columns = ["nothing", "takes", "check", "mate", "PGN_move"]
-    # columns.extend(list(games_data["game_1_move_1_White"]["move_major_attributes"].keys()))
-    # for index in range(1, selectable_moves_max_length):
-    #     columns.append("s_move_" + str(index) + "_description")
-    #     for att in range(1, GENOME_SIZE + 1):
-    #         columns.append("s_move_" + str(index) + "_att_" + str(att))
+    # games_pgn_dictionary = {}
+    # game_index = 1
+    # with open("GamesDescription.txt") as file:
+    #     for line in file:
+    #         game_dictionary = ast.literal_eval(line)
+    #         games_pgn_dictionary["game_" + str(game_index)] = game_dictionary['pgn']
+    #         game_index += 1
     #
-    # columns.append("Y")
-
-    """df = pd.DataFrame(columns=columns)
-    i = 0
-    for move_key, move_value in games_data.items():
-        tokens = move_key.split('_')
-        # print(tokens)
-        game_number = int(tokens[1])
-        move_number = int(tokens[3])
-        white_turn = True if tokens[4] == "White" else False
-        # print("game_" + str(game) + "_move_" + str(move) + "_" + ("White" if white_turn else "Black") + "\n")
-        move_in_pgn = ((games_modular_pgn_dictionary["game_" + str(game_number)])[(move_number * 2) - 2 if white_turn else (move_number * 2 - 1)])
-        check = 1 if move_in_pgn[-1] == '+' else 0
-        mate = 1 if move_in_pgn[-1] == '#' else 0
-        takes = 1 if 'x' in move_in_pgn else 0
-        nothing = 1 if check == 0 and mate == 0 and takes == 0 else 0
-        s_move = 1
-        row = {"nothing": nothing, "takes": takes, "check": check, "mate": mate, "PGN_move": move_in_pgn}
-        row.update(
-            (games_data["game_" + str(game_number) + "_move_" + str(move_number) + ("_White" if white_turn else "_Black")])["move_major_attributes"])
-        for index in range(0, selectable_moves_max_length):
-            if index < len(move_value['move_look_ahead']):
-                row["s_move_" + str(index) + "_description"] = str((move_value['move_look_ahead'][index])['event']['data']['piece']) + " " + \
-                                                               str((move_value['move_look_ahead'][index])['event']['data']['dst'])
-                look_ahead = list(
-                    move_value['move_look_ahead'][index]['Attributes'][0].values())  # Create look ahead for each s_move
-            else:
-                row["s_move_" + str(index) + "_description"] = NONE_VALUE
-                look_ahead = [NONE_VALUE] * GENOME_SIZE
-            att = 1
-            for attribute in look_ahead:
-                row["s_move_" + str(index) + "_att_" + str(att)] = attribute
-                att += 1
-            s_move += 1
-
-        # if type((((move_value["move_played_event"])['data'])['piece'])) is not dict:
-        #     row["Y"] = str(((move_value["move_played_event"])['data'])['piece']) + " " + str(
-        #         ((move_value["move_played_event"])['data'])['dst'])
-        # else:
-        #     row["Y"] = str(
-        #         (((move_value["move_played_event"])['data'])['piece'])['subtype']) + " " + str(
-        #         ((move_value["move_played_event"])['data'])['dst'])
-
-        move = (games_data["game_" + str(game_number) + "_move_" + str(move_number) + ("_White" if white_turn else "_Black")])
-        row['Y'] = classify_label((move['move_played_event'])['data'], move['move_major_attributes'])
-        # (games_data["game_" + str(game_number) + "_move_" + str(move_number) + ("_White" if white_turn else "_Black")][
-        # 'move_selectable_events']).index(
-        # games_data["game_" + str(game_number) + "_move_" + str(move_number) + ("_White" if white_turn else "_Black")]['move_played_event'])
-
-        df.loc[i] = row
-        i += 1
-
-    df.to_excel("data.xlsx")"""
+    # games_modular_pgn_dictionary = {}
+    #
+    # for game_dict_index, game_pgn in games_pgn_dictionary.items():
+    #     modular_pgn = game_pgn.replace("...", ".").split(" ")[1::2]
+    #     games_modular_pgn_dictionary[game_dict_index] = modular_pgn
+    #
+    # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ End: Games Description file => Python Dictionary ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #
+    # # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Pandas ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    #
+    # num_of_columns = selectable_moves_max_length * GENOME_SIZE
+    # num_of_rows = len(games_data)
+    #
+    # # columns = ["nothing", "takes", "check", "mate", "PGN_move"]
+    # # columns.extend(list(games_data["game_1_move_1_White"]["move_major_attributes"].keys()))
+    # # for index in range(1, selectable_moves_max_length):
+    # #     columns.append("s_move_" + str(index) + "_description")
+    # #     for att in range(1, GENOME_SIZE + 1):
+    # #         columns.append("s_move_" + str(index) + "_att_" + str(att))
+    # #
+    # # columns.append("Y")
+    #
+    # """df = pd.DataFrame(columns=columns)
+    # i = 0
+    # for move_key, move_value in games_data.items():
+    #     tokens = move_key.split('_')
+    #     # print(tokens)
+    #     game_number = int(tokens[1])
+    #     move_number = int(tokens[3])
+    #     white_turn = True if tokens[4] == "White" else False
+    #     # print("game_" + str(game) + "_move_" + str(move) + "_" + ("White" if white_turn else "Black") + "\n")
+    #     move_in_pgn = ((games_modular_pgn_dictionary["game_" + str(game_number)])[(move_number * 2) - 2 if white_turn else (move_number * 2 - 1)])
+    #     check = 1 if move_in_pgn[-1] == '+' else 0
+    #     mate = 1 if move_in_pgn[-1] == '#' else 0
+    #     takes = 1 if 'x' in move_in_pgn else 0
+    #     nothing = 1 if check == 0 and mate == 0 and takes == 0 else 0
+    #     s_move = 1
+    #     row = {"nothing": nothing, "takes": takes, "check": check, "mate": mate, "PGN_move": move_in_pgn}
+    #     row.update(
+    #         (games_data["game_" + str(game_number) + "_move_" + str(move_number) + ("_White" if white_turn else "_Black")])["move_major_attributes"])
+    #     for index in range(0, selectable_moves_max_length):
+    #         if index < len(move_value['move_look_ahead']):
+    #             row["s_move_" + str(index) + "_description"] = str((move_value['move_look_ahead'][index])['event']['data']['piece']) + " " + \
+    #                                                            str((move_value['move_look_ahead'][index])['event']['data']['dst'])
+    #             look_ahead = list(
+    #                 move_value['move_look_ahead'][index]['Attributes'][0].values())  # Create look ahead for each s_move
+    #         else:
+    #             row["s_move_" + str(index) + "_description"] = NONE_VALUE
+    #             look_ahead = [NONE_VALUE] * GENOME_SIZE
+    #         att = 1
+    #         for attribute in look_ahead:
+    #             row["s_move_" + str(index) + "_att_" + str(att)] = attribute
+    #             att += 1
+    #         s_move += 1
+    #
+    #     # if type((((move_value["move_played_event"])['data'])['piece'])) is not dict:
+    #     #     row["Y"] = str(((move_value["move_played_event"])['data'])['piece']) + " " + str(
+    #     #         ((move_value["move_played_event"])['data'])['dst'])
+    #     # else:
+    #     #     row["Y"] = str(
+    #     #         (((move_value["move_played_event"])['data'])['piece'])['subtype']) + " " + str(
+    #     #         ((move_value["move_played_event"])['data'])['dst'])
+    #
+    #     move = (games_data["game_" + str(game_number) + "_move_" + str(move_number) + ("_White" if white_turn else "_Black")])
+    #     row['Y'] = classify_label((move['move_played_event'])['data'], move['move_major_attributes'])
+    #     # (games_data["game_" + str(game_number) + "_move_" + str(move_number) + ("_White" if white_turn else "_Black")][
+    #     # 'move_selectable_events']).index(
+    #     # games_data["game_" + str(game_number) + "_move_" + str(move_number) + ("_White" if white_turn else "_Black")]['move_played_event'])
+    #
+    #     df.loc[i] = row
+    #     i += 1
+    #
+    # df.to_excel("data.xlsx")"""
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Pandas ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
@@ -321,7 +321,7 @@ if __name__ == '__main__':
                            "Piece Advisor: Pawn", "Piece Advisor: Bishop", "Piece Advisor: Knight", "Piece Advisor: Rook", "Piece Advisor: Queen",
                            "Piece Moves Counter: Pawn moves", "Piece Moves Counter: Bishop moves", "Piece Moves Counter: Knight moves",
                            "Piece Moves Counter: Rook moves", "Piece Moves Counter: Queen moves",
-                           "Strategy Advisor: Center", "Strategy Advisor: Develop", "Strategy Advisor: Fianchetto",
+                           u"Strategy Advisor: Center", "Strategy Advisor: Develop", "Strategy Advisor: Fianchetto",
                            "Strategy Counter: Center strengthen moves", "Strategy Counter: Developing moves", "Strategy Counter: Fianchetto moves",
                            "Game Plan Counter: Scholars Mate", "Game Plan Counter: Deceiving Scholars Mate", "Game Plan Counter: Fried Liver Attack",
                            "Game Plan Counter: Capturing Space", "Game Plan Counter: Strengthen Pawn Structure",

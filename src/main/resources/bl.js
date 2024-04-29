@@ -832,13 +832,13 @@ bthread("Game thread", function (entity) {
 
     // Total - 25 features
 
-    // General Tactics - Binary Features
-    bp.store.put("General Tactics: Check", 0)
-    bp.store.put("General Tactics: Checkmate", 0)
-    bp.store.put("General Tactics: Take Free Piece", 0)
-    bp.store.put("General Tactics: Equal Trade", 0)
-    bp.store.put("General Tactics: Worthwhile Trade", 0)
-    bp.store.put("General Tactics: Worthless Trade", 0)
+    // // General Tactics - Binary Features
+    // bp.store.put("General Tactics: Check", 0)
+    // bp.store.put("General Tactics: Checkmate", 0)
+    // bp.store.put("General Tactics: Take Free Piece", 0)
+    // bp.store.put("General Tactics: Equal Trade", 0)
+    // bp.store.put("General Tactics: Worthwhile Trade", 0)
+    // bp.store.put("General Tactics: Worthless Trade", 0)
 
 
     // Optional "Rainy Day" Feature, Not Used
@@ -1769,31 +1769,31 @@ ctx.bthread("DefendingTrack", "Phase.Opening", function (entity) {
     }
 })
 
-ctx.bthread("GeneralTacticsTrack", "Phase.Opening", function (entity) {
-    while (true) {
-        let e = sync({waitFor: anyMoves})
-        if (e.data.color === "White") {
-            if (e.data.takes === true) {
-                bp.log.info("UPDATING GENERAL TACTICS, " + e.data)
-                let returnValuesList = TradingGameTacticCheck(e, e.data.color)
-                bp.store.put("General Tactics: Take Free Piece", returnValuesList[0])
-                bp.store.put("General Tactics: Equal Trade", returnValuesList[1])
-                bp.store.put("General Tactics: Worthwhile Trade", returnValuesList[2])
-                bp.store.put("General Tactics: Worthless Trade", returnValuesList[3])
-            } else {
-                bp.store.put("General Tactics: Take Free Piece", 0)
-                bp.store.put("General Tactics: Equal Trade", 0)
-                bp.store.put("General Tactics: Worthwhile Trade", 0)
-                bp.store.put("General Tactics: Worthless Trade", 0)
-            }
-        } else {
-            bp.store.put("General Tactics: Take Free Piece", 0)
-            bp.store.put("General Tactics: Equal Trade", 0)
-            bp.store.put("General Tactics: Worthwhile Trade", 0)
-            bp.store.put("General Tactics: Worthless Trade", 0)
-        }
-    }
-})
+// ctx.bthread("GeneralTacticsTrack", "Phase.Opening", function (entity) {
+//     while (true) {
+//         let e = sync({waitFor: anyMoves})
+//         if (e.data.color === "White") {
+//             if (e.data.takes === true) {
+//                 bp.log.info("UPDATING GENERAL TACTICS, " + e.data)
+//                 let returnValuesList = TradingGameTacticCheck(e, e.data.color)
+//                 bp.store.put("General Tactics: Take Free Piece", returnValuesList[0])
+//                 bp.store.put("General Tactics: Equal Trade", returnValuesList[1])
+//                 bp.store.put("General Tactics: Worthwhile Trade", returnValuesList[2])
+//                 bp.store.put("General Tactics: Worthless Trade", returnValuesList[3])
+//             } else {
+//                 bp.store.put("General Tactics: Take Free Piece", 0)
+//                 bp.store.put("General Tactics: Equal Trade", 0)
+//                 bp.store.put("General Tactics: Worthwhile Trade", 0)
+//                 bp.store.put("General Tactics: Worthless Trade", 0)
+//             }
+//         } else {
+//             bp.store.put("General Tactics: Take Free Piece", 0)
+//             bp.store.put("General Tactics: Equal Trade", 0)
+//             bp.store.put("General Tactics: Worthwhile Trade", 0)
+//             bp.store.put("General Tactics: Worthless Trade", 0)
+//         }
+//     }
+// })
 
 
 /*

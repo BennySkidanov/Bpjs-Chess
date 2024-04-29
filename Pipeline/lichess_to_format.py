@@ -13,7 +13,7 @@ def main():
     with open(input_file, "r") as file:
         pgn_data = file.read()
 
-    games = pgn_data.strip().split('[Event')[1:]  # Exclude first empty item
+    games = pgn_data.strip().split('[Event')[1:301]  # Exclude first empty item
 
     with open(output_file, "w") as file:
         for game in games:

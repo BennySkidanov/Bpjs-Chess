@@ -188,6 +188,7 @@ def main(username):
     data_json["black"]["min_rating"] = 1000
     data_json["white"]["max_rating"] = 1600
     data_json["black"]["max_rating"] = 1600
+    Client.request_config['headers']['User-Agent'] = 'My Python Application. Contact me at email@example.com'
 
     id_and_pgn_list = get_player_games(username, NUMBER_OF_GAMES)
     from pprint import pprint
@@ -203,4 +204,4 @@ def main(username):
 
 
 if __name__ == "__main__":
-    main("galshmoish")  # player username on www.chess.com
+    main("berlinm")  # player username on www.chess.com
