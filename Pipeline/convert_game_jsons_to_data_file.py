@@ -317,7 +317,7 @@ if __name__ == '__main__':
 
     # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ Pandas ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-    columns_single_move = ["Move Description",
+    columns_single_move = ["Game number", "Move number", "Move Description",
                            "Piece Advisor: Pawn", "Piece Advisor: Bishop", "Piece Advisor: Knight", "Piece Advisor: Rook", "Piece Advisor: Queen",
                            "Piece Moves Counter: Pawn moves", "Piece Moves Counter: Bishop moves", "Piece Moves Counter: Knight moves",
                            "Piece Moves Counter: Rook moves", "Piece Moves Counter: Queen moves",
@@ -329,7 +329,7 @@ if __name__ == '__main__':
                            "Developing the queen too early"
                            ]
 
-    for att_index in range(1, GENOME_SIZE):
+    for att_index in range(3, GENOME_SIZE):
         columns_single_move.append("LOOK_AHEAD - " + columns_single_move[att_index])
 
     columns_single_move.append("Y")
@@ -363,7 +363,7 @@ if __name__ == '__main__':
 
                 look_ahead_dict = ((move['move_look_ahead'][index])['Attributes'])[0]
                 for look_ahead_attribute_index in range(len(look_ahead_dict)):
-                    key = columns_single_move[look_ahead_attribute_index + 1]
+                    key = columns_single_move[look_ahead_attribute_index + 3]
                     row["LOOK_AHEAD - " + key] = look_ahead_dict[key]
 
                 row['Y'] = 1 if move['move_played_event'] == move['move_selectable_events'][index] else 0
@@ -377,6 +377,8 @@ if __name__ == '__main__':
                                           move['move_selectable_events'][index]['data']['dst']
                 # print(selectable_move_str + "," + str(game_number) + "," + str(move_number))
                 row['Move Description'] = selectable_move_str
+                row["Move number"] = move_number
+                row["Game number"] = game_number
                 df_single_move.loc[index_single_move] = row
                 index_single_move += 1
 
@@ -384,7 +386,7 @@ df_single_move.drop_duplicates(inplace=True)
 test = df_single_move.reset_index(drop=True)
 df_single_move.reset_index(drop=True, inplace=True)
 
-df_single_move.to_excel("my_test.xlsx")
+df_single_move.to_excel("my_new_test.xlsx")
 # df_single_move.to_excel("[YourDataFileName].xlsx")
 
 

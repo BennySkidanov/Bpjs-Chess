@@ -1,6 +1,1 @@
-1. e4 d5 2. exd5 Nf6 3. Nc3 Na6 4. Bc4 b6 5. Qh5 e6 6. dxe6 Bb7 7. exf7+ Ke7 8. Qe5+ Kd7 9. Qe6#
-1. e4 d5 2. exd5 Nf6 3. Nc3 Na6 4. Bc4 b6 5. Qh5 e6 6. dxe6 Bb7 7. exf7+ Ke7 8. Qe5+ Kd7 9. Qe6#
-1. e4 d5 2. exd5 Nf6 3. Nc3 Na6 4. Bc4 b6 5. Qh5 e6 6. dxe6 Bb7 7. exf7+ Ke7 8. Qe5+ Kd7 9. Qe6#
-1. e4 d5 2. exd5 Nf6 3. Nc3 Na6 4. Bc4 b6 5. Qh5 e6 6. dxe6 Bb7 7. exf7+ Ke7 8. Qe5+ Kd7 9. Qe6#
-1. e4 d5 2. exd5 Nf6 3. Nc3 Na6 4. Bc4 b6 5. Qh5 e6 6. dxe6 Bb7 7. exf7+ Ke7 8. Qe5+ Kd7 9. Qe6#
-1. e4 d5 2. exd5 Nf6 3. Nc3 Na6 4. Bc4 b6 5. Qh5 e6 6. dxe6 Bb7 7. exf7+ Ke7 8. Qe5+ Kd7 9. Qe6#
+1. c4 g6 2. Nc3 Bg7 3. Qc2 b6 4. g3 Bb7 5. Nf3 e6 6. Bg2 Ne7
