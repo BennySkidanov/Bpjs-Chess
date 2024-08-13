@@ -34,7 +34,6 @@ const ANSI_CYAN = "\u001B[36m";
  * This is because the king cannot be captured (an attacked king is in check), and checkmating the king is the true goal of any chess game.
 */
 
-
 const KING_VALUE = -1;
 
 const piecesValues = {
@@ -104,6 +103,10 @@ const piecesValues = {
 
 const TAKES = 'x';
 const QUEENING = '=';
+const FREE_PIECE = 2;
+const WORTHWHILE_TRADE = 1;
+const EQUAL_TRADE = 0;
+const UNWORTHY_TRADE = -1;
 
 /* Strategies in the opening:
     1. Developing pieces
@@ -147,10 +150,6 @@ const AnyCastling = bp.EventSet("AnyCastling", function (e) {
 })
 
 const anyMoves = bp.EventSet("anyMove", function (e) {
-    return e.name.startsWith("Move")
-})
-
-const realMoves = bp.EventSet("anyMove", function (e) {
     return e.name.startsWith("Move")
 })
 
@@ -263,7 +262,6 @@ const ESControlSpaceMoves = bp.EventSet("ESControlSpace", function (e) {
 function startsWithCapital(word) {
     return word.charAt(0) === word.charAt(0).toUpperCase()
 }
-
 
 // Helper function : Find if there any pieces in between srcCell And dstCell to prevent "jumping" above pieces
 function noPiecesInBetweenStraight(srcCell, dstCell) {
@@ -828,7 +826,7 @@ bthread("Game thread", function (entity) {
     bp.store.put("Moves Counter: Pinning", 0)
     bp.store.put("Moves Counter: Preventing b4, g4 Attacks", 0)
 
-    bp.store.put("Piece Exchange Feature", 0)
+    bp.store.put("Piece Exchange", 0)
     /*
         bp.store.put("Piece Exchange Feature: Even Exchange", 0)
         bp.store.put("Trading Feature: Worthwhile Exchange", 0)
@@ -1094,6 +1092,28 @@ ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
     }
 });
 
+ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
+    while (true) {
+        let allCells = ctx.runQuery("Cell.all")
+        let bishopsMoves = []
+        let bishopsArray = ctx.runQuery(getSpecificType('Bishop', 'White'))
+        let nonOccupiedCellsSet = ctx.runQuery("Cell.all.nonOccupied")
+
+        for (let i = 0; i < bishopsArray.length; i++) {
+            let diagonalBishopMoves = availableDiagonalCellsFromPiece(bishopsArray[i], 7, allCells)[0];
+            bishopsMoves = bishopsMoves.concat(diagonalBishopMoves);
+        }
+
+        let bishopsMovesSet = clearDuplicates(bishopsMoves)
+        let bishopsMovesToRequest = filterOccupiedCellsMoves(bishopsMovesSet, nonOccupiedCellsSet)
+        nonOccupiedCellsSet = bishopsArray = bishopsMoves = bishopsMovesSet = null;
+
+        // bp.log.info("mySync : Requesting rooks developing moves " + rooksMovesToRequest)
+
+        mySync({request: bishopsMovesToRequest, waitFor: anyMoves})
+
+    }
+});
 
 ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
     while (true) {
@@ -1101,7 +1121,7 @@ ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
         let queenMoves = []
         let queen = ctx.runQuery(getWhiteQueen())[0]
         let nonOccupiedCellsSet = ctx.runQuery("Cell.all.nonOccupied")
-        // bp.log.info("~~ LOG (1122) Developing Queen ~~ :  " + JSON.stringify(queen))
+        bp.log.info("~~ LOG (1122) Developing Queen ~~ :  " + JSON.stringify(queen))
 
         let diagonalQueenMoves = availableDiagonalCellsFromPiece(queen, 7, allCells)[0];
         let straightQueenMoves = availableStraightCellsFromPiece(queen, 7, allCells)[0];
@@ -1117,7 +1137,7 @@ ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
             }
         }
 
-        // bp.log.info("~~ LOG (1120) Developing Queen ~~ Moves :  " + queenMoves)
+        bp.log.info("~~ LOG (1120) Developing Queen ~~ Moves :  " + queenMoves)
 
         let queenMovesSet = clearDuplicates(queenMoves)
         let queenMovesToRequest = filterOccupiedCellsMoves(queenMovesSet, nonOccupiedCellsSet)
@@ -1492,6 +1512,19 @@ ctx.bthread("DefendingTrack", "Phase.Opening", function (entity) {
 //         }
 //     }
 // })
+
+/*
+ctx.bthread("PieceExchangeTrack", "Phase.Opening", function (entity) {
+    while (true) {
+        let e = sync({waitFor: anyMoves})
+        if (e.data.takes === true && e.data.color === "White") {
+            let receivedCounter = bp.store.get("Piece Exchange")
+            bp.store.put("Piece Exchange", pieceExchange(e.data.piece, e.data.dst))
+        }
+    }
+})
+*/
+
 
 // Helper functions
 function isStrengtheningPawnStructure(dstCell) {
@@ -2072,21 +2105,27 @@ function pieceExchange(piece, exchangeCell) {
     bp.log.info("~~ LOG (2088) ~~ pieceExchange, playerPiecesTotalValue =  " + playerPiecesTotalValue)
     bp.log.info("~~ LOG (2088) ~~ pieceExchange, numberOfPlayerPiecesInvolved =  " + numberOfPlayerPiecesInvolved)
 
+    let tradeScore = null;
+
     if (opponentPiecesTotalValue === 0 ||
         (opponentPiecesTotalValue === KING_VALUE && numberOfOpponentPiecesInvolved === 1 && numberOfPlayerPiecesInvolved > 1)) {
         bp.log.info("Free Piece -> Excellent Trade");
-    } else if ( (opponentPiecesTotalValue === playerPiecesTotalValue && numberOfOpponentPiecesInvolved === numberOfPlayerPiecesInvolved) ||
-        (takingPieceValue == takenPieceValue) ) {
+        tradeScore = FREE_PIECE;
+    } else if ((opponentPiecesTotalValue === playerPiecesTotalValue && numberOfOpponentPiecesInvolved === numberOfPlayerPiecesInvolved) ||
+        (takingPieceValue == takenPieceValue)) {
         bp.log.info("Equal Value -> Fair Trade");
+        tradeScore = EQUAL_TRADE;
     } else if ((numberOfPlayerPiecesInvolved === numberOfOpponentPiecesInvolved && playerPiecesTotalValue < opponentPiecesTotalValue) ||
         (numberOfPlayerPiecesInvolved > numberOfOpponentPiecesInvolved) ||
         (takingPieceValue < takenPieceValue)) {
         bp.log.info("You can defend this Piece or You've Earned Material -> Good Trade");
+        tradeScore = WORTHWHILE_TRADE;
     } else {
         bp.log.info("You should've not capture -> Worthless Trade");
+        tradeScore = UNWORTHY_TRADE;
     }
 
-    return 0;
+    bp.store.put("Piece Exchange", tradeScore)
 }
 
 
@@ -2096,7 +2135,7 @@ Those cells are potential destination cells of moves.
 */
 
 function availableStraightCellsFromPiece(piece, distance, allCells) {
-    let col = piece.cellId[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1 ;
+    let col = piece.cellId[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
     let row = (piece.cellId[1] - '0');
 
     // bp.log.info("~~ LOG (2107) ~~ availableStraightCellsFromPiece " + piece.subtype + " on " + row + " " + col)
@@ -2116,7 +2155,7 @@ function availableStraightCellsFromPiece(piece, distance, allCells) {
             // // bp.log.info("~~ LOG (2040) ~~ Sending this to numericCellToCell : " + (row + i) + "," + col + " Returned => " + JSON.stringify(check))
             if (numericCellToCell(row + i, col, allCells).pieceId === undefined) {
                 availableCells.push({row: row + distance, col: col});
-                availableMoves.push(moveEvent(piece.subtype, jToCol(col) + row, jToCol(col) + (row + i), piece.color));
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row + i, col, allCells), piece.color));
             } else {
                 checkMeNorth = false
                 cellsWithPiece.push(numericCellToCell(row + i, col, allCells))
@@ -2125,7 +2164,7 @@ function availableStraightCellsFromPiece(piece, distance, allCells) {
         if (row - i <= 8 && row - i >= 1 && col >= 1 && col <= 8 && checkMeSouth) {
             if (numericCellToCell(row - i, col, allCells).pieceId === undefined) {
                 availableCells.push({row: row - distance, col: col});
-                availableMoves.push(moveEvent(piece.subtype, jToCol(col) + row, jToCol(col) + (row - i), piece.color));
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row - i, col, allCells), piece.color));
             } else {
                 checkMeSouth = false
                 cellsWithPiece.push(numericCellToCell(row - i, col, allCells))
@@ -2134,7 +2173,7 @@ function availableStraightCellsFromPiece(piece, distance, allCells) {
         if (col + i <= 8 && col + i >= 1 && row >= 1 && row <= 8 && checkMeEast) {
             if (numericCellToCell(row, col + i, allCells).pieceId === undefined) {
                 availableCells.push({row: row, col: col + distance});
-                availableMoves.push(moveEvent(piece.subtype, jToCol(col) + row, jToCol(col + i) + (row), piece.color));
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row, col + i, allCells), piece.color));
             } else {
                 checkMeEast = false
                 cellsWithPiece.push(numericCellToCell(row, col + i, allCells).pieceId)
@@ -2143,7 +2182,7 @@ function availableStraightCellsFromPiece(piece, distance, allCells) {
         if (col - i <= 8 && col - i >= 1 && row >= 1 && row <= 8 && checkMeWest) {
             if (numericCellToCell(row, col - i, allCells).pieceId === undefined) {
                 availableCells.push({row: row, col: col - distance});
-                availableMoves.push(moveEvent(piece.subtype, jToCol(col) + row, jToCol(col - i) + (row), piece.color));
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row, col - i, allCells), piece.color));
             } else {
                 checkMeWest = false
                 cellsWithPiece.push(numericCellToCell(row, col - i, allCells).pieceId)
@@ -2327,7 +2366,7 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
     let col = piece.cellId[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
     let row = (piece.cellId[1] - '0');
 
-    // bp.log.info("~~ LOG (2304) ~~ availableDiagonalCellsFromPiece " + piece.subtype + " on " + row + " " + col)
+    bp.log.info("~~ LOG (2304) ~~ availableDiagonalCellsFromPiece " + piece.subtype + " on " + JSON.stringify(numericCellToCell(row, col, allCells)))
 
     let availableCells = [];
 
@@ -2345,7 +2384,7 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
             // bp.log.info("~~ LOG (2304) ~~ availableDiagonalCellsFromPiece " + JSON.stringify(numericCellToCell(row + i, col + i, allCells)))
             if (numericCellToCell(row + i, col + i, allCells).pieceId === undefined) {
                 availableCells.push({row: row + i, col: col + i});
-                availableMoves.push(moveEvent(piece.subtype, jToCol(col) + row, jToCol(col + i) + (row + i), piece.color));
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row + i, col + i, allCells), piece.color));
             } else {
                 checkMeNorthEast = false;
                 cellsWithPieces.push(numericCellToCell(row + i, col + i, allCells))
@@ -2354,7 +2393,7 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
         if (row - i <= 8 && row - i >= 1 && col + i <= 8 && col + i >= 1 && checkMeSouthEast) {
             if (numericCellToCell(row - i, col + i, allCells).pieceId === undefined) {
                 availableCells.push({row: row - i, col: col + i});
-                availableMoves.push(moveEvent(piece.subtype, jToCol(col) + row, jToCol(col + i) + (row - i), piece.color));
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row - i, col + i, allCells), piece.color));
             } else {
                 checkMeSouthEast = false;
                 cellsWithPieces.push(numericCellToCell(row - i, col + i, allCells))
@@ -2363,7 +2402,7 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
         if (row + i <= 8 && row + i >= 1 && col - i <= 8 && col - i >= 1 && checkMeNorthWest) {
             if (numericCellToCell(row + i, col - i, allCells).pieceId === undefined) {
                 availableCells.push({row: row + i, col: col - i});
-                availableMoves.push(moveEvent(piece.subtype, jToCol(col) + row, jToCol(col - i) + (row + i), piece.color));
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row + i, col - i, allCells), piece.color));
             } else {
                 checkMeNorthWest = false;
                 cellsWithPieces.push(numericCellToCell(row + i, col - i, allCells))
@@ -2372,7 +2411,7 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
         if (row - i <= 8 && row - i >= 1 && col - i <= 8 && col - i >= 1 && checkMeSouthWest) {
             if (numericCellToCell(row - i, col - i, allCells).pieceId === undefined) {
                 availableCells.push({row: row - i, col: col - i});
-                availableMoves.push(moveEvent(piece.subtype, jToCol(col) + row, jToCol(col - i) + (row - i), piece.color));
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row - i, col - i, allCells), piece.color));
             } else {
                 checkMeSouthWest = false;
                 cellsWithPieces.push(numericCellToCell(row - i, col - i, allCells))
@@ -2380,14 +2419,13 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
         }
     }
 
-    // // bp.log.info("returning cellsWithPieces with length " + cellsWithPieces.length)
-    // // bp.log.info("returning availableMoves with length " + availableMoves.length)
+    bp.log.info("returning availableMoves  " + availableMoves)
     return [availableMoves, cellsWithPieces]
 
 }
 
 // Helper function : Convert numeric row & column values to chess board cell
-function numericCellToCell(i, j, allCells) {
+function numericCellToCell(i, j, allCells) { // TODO: For efficiency reasons, move allCells to here
     // // bp.log.info("NumericCellToCell : j = " + j + ", i = " + i + ", allCells: " + allCells)
 
     // both i and j can and must contain any values in the [1,8]
@@ -2476,7 +2514,7 @@ ctx.bthread("Visualize", "Phase.Opening", function (entity) {
         // Visualize
         for (let i = 0; i < 8; i++) {
 
-             bp.log.info(ANSI_PURPLE + currentBoard[i][0] + "  " + currentBoard[i][1] + "  " + currentBoard[i][2] + "  " +
+            bp.log.info(ANSI_PURPLE + currentBoard[i][0] + "  " + currentBoard[i][1] + "  " + currentBoard[i][2] + "  " +
                 currentBoard[i][3] + "  " + currentBoard[i][4] + "  " + currentBoard[i][5] + "  " +
                 currentBoard[i][6] + "  " + currentBoard[i][7] + ANSI_RESET);
 
