@@ -1,11 +1,20 @@
-const prefixDictBL = {
-    "B": "Bishop",
+const piecesPrefixes = {
+    "a": "Pawn",
+    "b": "Pawn",
+    "c": "Pawn",
+    "d": "Pawn",
+    "e": "Pawn",
+    "f": "Pawn",
+    "g": "Pawn",
+    "h": "Pawn",
     "P": "Pawn",
+    "B": "Bishop",
     "N": "Knight",
-    "K": "King",
+    "R": "Rook",
     "Q": "Queen",
-    "R": "Rook"
+    "K": "King"
 };
+
 bp.store.put("NON-FEATURE: QUEENING_COUNTER", 0);
 
 function Cell(i, j, pieceId) {
@@ -54,8 +63,8 @@ ctx.registerQuery("ready to mate on f7", function (entity) {
     let queen = null
     let found = false
     let returnValue = false
-    bp.log.info("Searching White Queen")
-    bp.log.info(pieces)
+    // bp.log.info("Searching White Queen")
+    // bp.log.info(pieces)
     for (let i = 0; i < pieces.length; i++) {
         if (pieces[i].subtype === 'Queen') {
             queen = pieces[i]
@@ -64,9 +73,9 @@ ctx.registerQuery("ready to mate on f7", function (entity) {
         }
     }
     if (found) {
-        bp.log.info("White queen => " + queen)
+        // bp.log.info("White queen => " + JSON.stringify(queen))
         returnValue = canReachSquare(queen, 'f7', false, false)
-        bp.log.info("Can queen reach f7? answer : " + returnValue)
+        // bp.log.info("Can queen reach f7? answer : " + returnValue)
     }
     // bp.store.put("ready to mate on f7", retval ? 1 : 0)
     return returnValue
@@ -134,11 +143,18 @@ function getOpponentKingCell(playerColor) {
             entity.subtype.equals(String('King')) &&
             entity.color.equals(String(OpponentColor));
     }
+}
 
+function getWhiteQueen() {
+    return function (entity) {
+        return entity.type.equals(String('piece')) &&
+            entity.subtype.equals(String('Queen')) &&
+            entity.color.equals(String('White'));
+    }
 }
 
 function getSpecificPieceOnCell(cell_identifier) {
-    bp.log.info("~~ LOG (141) ~~ " + cell_identifier)
+    // bp.log.info("~~ LOG (141) ~~ " + cell_identifier)
     return function (entity) {
         return entity.type.equals(String('piece')) &&
             entity.cellId[0].equals(String(cell_identifier.charAt(0))) &&
@@ -164,55 +180,118 @@ ctx.registerEffect("Develop", function(e) {
 
 
 ctx.registerEffect("Move", function (e) {
-    // bp.log.info("Chosen Move : " + e.subtype + " " + e.src + " => " + e.dst)
-    // bp.log.info(" Move Effect ")
-    let srcCell = ctx.getEntityById(e.src.toString())
-    let dstCell = ctx.getEntityById(e.dst.toString())
-    // bp.log.info(srcCell.id)
-    // bp.log.info(dstCell.id)
-    let srcPiece = null
-    let dstPiece = null
-    if (srcCell.pieceId != null) {
-        srcPiece = ctx.getEntityById(srcCell.pieceId.toString())
+    // Debugging
+    // bp.log.info("~~ DAL LOG ~~ Chosen Move : " + JSON.stringify(e))
+    // bp.log.info("~~ DAL LOG ~~ Move Effect ")
+
+    // This function handles the effect of the move, e.g., removing taken pieces off the game board.
+
+    let srcCell, dstCell, srcPiece, dstPiece
+
+    srcCell = ctx.getEntityById(e.src.toString())
+    dstCell = ctx.getEntityById(e.dst.toString())
+    srcPiece = ctx.getEntityById(srcCell.pieceId.toString())
+
+
+    if (e.takes) { // Takes
+
+        // bp.store.put("NON-FEATURE: TAKEN PIECE", dstPiece.subtype);
+        if (e.takes && dstCell.pieceId == null) { // En - Passant Taking
+            /*
+                En - Passant situation :
+                    srcPiece - Stays the same
+                    dstPiece - Stays the same
+                    srcCell - Stays the same
+                    dstCell - Different! The destination of the source piece is now empty and not occupied by a piece
+            */
+
+            bp.log.info("~~ DAL LOG ~~ need to handle En - passant")
+            let enPassantDstCell = ctx.getEntityById(e.dst.charAt(0) + String.fromCharCode(e.dst.charCodeAt(1) - 1));
+            dstPiece = ctx.getEntityById(enPassantDstCell.pieceId.toString());
+            bp.log.info("~~ DAL LOG ~ En - passant cell -> " + JSON.stringify(enPassantDstCell))
+            bp.log.info("~~ DAL LOG ~ En - passant piece -> " + JSON.stringify(dstPiece))
+
+            enPassantDstCell.pieceId = undefined
+            dstCell.pieceId = srcPiece.id
+            srcPiece.cellId = dstCell.id
+
+        } else { // Regular Taking Move
+            dstPiece = ctx.getEntityById(dstCell.pieceId.toString())
+            dstCell.pieceId = srcPiece.id
+            srcPiece.cellId = dstCell.id
+        }
+
+        ctx.removeEntity(dstPiece)
+    } else { // Regular Move
+        if ((e.dst.charAt(1) === '8' || e.dst.charAt(1) === '1') && e.piece === "Pawn") { // Queening
+            let QUEENING_COUNTER = bp.store.get("NON-FEATURE: QUEENING_COUNTER") + 100;
+            // bp.log.info("Queening, Changing Piece [dal.js], dstcell[1] = " + dstCell.id[1])
+            // let color = dstCell.id[1] === '8' ? "White" : "Black"
+            // bp.log.info("Color of new queen : " + color)
+            let newQueen = Piece("Queen", QUEENING_COUNTER, e.color, dstCell.id);
+            dstCell.pieceId = newQueen.id
+            bp.store.put("NON-FEATURE: QUEENING_COUNTER", QUEENING_COUNTER);
+            ctx.insertEntity(newQueen)
+            ctx.removeEntity(srcPiece)
+        } else {
+
+        }
+        dstCell.pieceId = srcPiece.id
+        srcPiece.cellId = dstCell.id
     }
-    if (dstCell.pieceId != null) {
-        dstPiece = ctx.getEntityById(dstCell.pieceId.toString())
-        bp.log.info("TAKEN PIECE " + dstPiece.subtype)
-        bp.store.put("NON-FEATURE: TAKEN PIECE", dstPiece.subtype);
-    }
+
+    srcCell.pieceId = undefined
+    /*  if (srcCell.pieceId != null) {
+
+
+
+    // }
+
+    // if (dstCell.pieceId != null) {
+        // dstPiece = ctx.getEntityById(dstCell.pieceId.toString())
+        // bp.log.info("TAKEN PIECE " + dstPiece.subtype)
+
+    // }
+    // else if (e.takes && dstCell.pieceId == null ) {
+    //
+    //
+    //     bp.log.info("~~ DAL LOG ~~ need to handle En - passant")
+    //
+    //
+    // }
 
 
     // bp.log.info(srcPiece.subtype)
 
 
-    if ((dstCell.id[1] === '8' || dstCell.id[1] === '1') && srcPiece.subtype === "Pawn") {
-        let QUEENING_COUNTER = bp.store.get("NON-FEATURE: QUEENING_COUNTER") + 100;
-        // Queening, Create new piece
-        bp.log.info("Queening, Changing Piece [dal.js], dstcell[1] = " + dstCell.id[1])
-        let color = dstCell.id[1] === '8' ? "White" : "Black"
-        bp.log.info("Color of new queen : " + color)
-        let newQueen = Piece("Queen", QUEENING_COUNTER, color, dstCell.id);
-        dstCell.pieceId = newQueen.id
-        bp.store.put("NON-FEATURE: QUEENING_COUNTER", QUEENING_COUNTER);
-        ctx.insertEntity(newQueen)
-        // ctx.updateEntity(dstCell) // no need in COBPjs 0.6.0
-        ctx.removeEntity(srcPiece)
-    } else {
-        dstCell.pieceId = srcPiece.id
-    }
+    // if ((dstCell.id[1] === '8' || dstCell.id[1] === '1') && srcPiece.subtype === "Pawn") {
+    //     let QUEENING_COUNTER = bp.store.get("NON-FEATURE: QUEENING_COUNTER") + 100;
+    //     // Queening, Create new piece
+    //     bp.log.info("Queening, Changing Piece [dal.js], dstcell[1] = " + dstCell.id[1])
+    //     let color = dstCell.id[1] === '8' ? "White" : "Black"
+    //     bp.log.info("Color of new queen : " + color)
+    //     let newQueen = Piece("Queen", QUEENING_COUNTER, color, dstCell.id);
+    //     dstCell.pieceId = newQueen.id
+    //     bp.store.put("NON-FEATURE: QUEENING_COUNTER", QUEENING_COUNTER);
+    //     ctx.insertEntity(newQueen)
+    //     // ctx.updateEntity(dstCell) // no need in COBPjs 0.6.0
+    //     ctx.removeEntity(srcPiece)
+    // } else {
+    //     dstCell.pieceId = srcPiece.id
+    // }
     // ctx.updateEntity(dstCell) // no need in COBPjs 0.6.0
 
-    srcCell.pieceId = undefined
-    // ctx.updateEntity(srcCell) // no need in COBPjs 0.6.0
+    // srcCell.pieceId = undefined
+    // // ctx.updateEntity(srcCell) // no need in COBPjs 0.6.0
+    //
+    // srcPiece.cellId = dstCell.id
+    // // ctx.updateEntity(srcPiece) // no need in COBPjs 0.6.0
 
-    srcPiece.cellId = dstCell.id
-    // ctx.updateEntity(srcPiece) // no need in COBPjs 0.6.0
+    // if (dstPiece)
+    //     ctx.removeEntity(dstPiece)
 
-    if (dstPiece)
-        ctx.removeEntity(dstPiece)
-
-    //bp.log.info("MOVE HAS FINISHED")
-
+    bp.log.info("MOVE HAS FINISHED")
+*/
 })
 
 // ctx.registerEffect("Short Castle White", function (e) {
@@ -260,15 +339,15 @@ const prefix = ["", "N", "B", "R", "Q", "K"];
 const pieces = ["Pawn", "Knight", "Bishop", "Rook", "Queen", "King"];
 
 function moveEvent(piece, oldCell, newCell, color, takes, checkmate, check) {
-    // bp.log.info("Move Event : " + color + " " + piece + " : " + oldCell + " => " + newCell);
+    // bp.log.info("~~ DAL LOG ~~ Move Event : " + color + " " + piece + " : " + oldCell + " => " + newCell);
     return bp.Event("Move", {
         piece: piece,
         src: oldCell,
         dst: newCell,
         color: color,
         takes: takes,
-        checkmate: checkmate,
-        check: check
+        checkmate: false,
+        check: false
     });
 }
 

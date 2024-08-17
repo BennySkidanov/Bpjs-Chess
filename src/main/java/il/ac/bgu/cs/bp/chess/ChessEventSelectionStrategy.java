@@ -204,7 +204,7 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
 
   @Override
   public Optional<EventSelectionResult> select(BProgramSyncSnapshot bpss, Set<BEvent> selectableEvents) {
-    System.out.println("--------------------------------- Select ---------------------------------");
+    // System.out.println("--------------------------------- Select ---------------------------------");
 
     // Initialize probabilities of all events to 1
     Map<BEvent, Double> initialProbabilities;
@@ -222,7 +222,7 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
       // No selectable events
       return super.select(bpss, selectableEvents);
     } else {
-      System.out.println("--------------------------------- Select ( |Selectable Moves| >= 1 ) ---------------------------------");
+      // System.out.println("--------------------------------- Select ( |Selectable Moves| >= 1 ) ---------------------------------");
       System.out.println(selectableEvents);
       System.out.println(selectableEvents.size());
       initialProbabilities = selectableEvents.stream().collect(Collectors.toMap(Function.identity(), e -> 1.0));
@@ -238,12 +238,12 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
               return null;
             }
           }));
-      System.out.println("--------------------------------- Select ( Finished Init ) ---------------------------------");
+      // System.out.println("--------------------------------- Select ( Finished Init ) ---------------------------------");
       var singleGameData = toJson(bpss, nextBpss, selectableEvents);
       gameData.add(singleGameData);
     }
 
-    System.out.println("--------------------------------- Select ( Finished Init ) ---------------------------------");
+    // System.out.println("--------------------------------- Select ( Finished Init ) ---------------------------------");
 
     // Event sets
     DevelopPawns esDevelop = new DevelopPawns();
