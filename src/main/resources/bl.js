@@ -1121,7 +1121,7 @@ ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
         let queenMoves = []
         let queen = ctx.runQuery(getWhiteQueen())[0]
         let nonOccupiedCellsSet = ctx.runQuery("Cell.all.nonOccupied")
-        bp.log.info("~~ LOG (1122) Developing Queen ~~ :  " + JSON.stringify(queen))
+        //bp.log.info("~~ LOG (1122) Developing Queen ~~ :  " + JSON.stringify(queen))
 
         let diagonalQueenMoves = availableDiagonalCellsFromPiece(queen, 7, allCells)[0];
         let straightQueenMoves = availableStraightCellsFromPiece(queen, 7, allCells)[0];
@@ -1137,7 +1137,7 @@ ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
             }
         }
 
-        bp.log.info("~~ LOG (1120) Developing Queen ~~ Moves :  " + queenMoves)
+        //bp.log.info("~~ LOG (1120) Developing Queen ~~ Moves :  " + queenMoves)
 
         let queenMovesSet = clearDuplicates(queenMoves)
         let queenMovesToRequest = filterOccupiedCellsMoves(queenMovesSet, nonOccupiedCellsSet)
@@ -2082,7 +2082,7 @@ function pieceExchange(piece, exchangeCell) {
     let takingPieceValue = piecesValues[piece.subtype];
 
     // Debugging
-    bp.log.info("~~ LOG (2063) ~~ pieceExchange, exchange on " + exchangeCell + ", Taken into consideration every piece except " + JSON.stringify(takenPiece))
+    //bp.log.info("~~ LOG (2063) ~~ pieceExchange, exchange on " + exchangeCell + ", Taken into consideration every piece except " + JSON.stringify(takenPiece))
 
     for (let i = 0; i < opponentPieces.length; i++) {
         if (opponentPieces[i] !== takenPiece && canReachSquareTrading(opponentPieces[i], exchangeCell, true, false)) {
@@ -2100,28 +2100,28 @@ function pieceExchange(piece, exchangeCell) {
         }
     }
 
-    bp.log.info("~~ LOG (2087) ~~ pieceExchange, opponentPiecesTotalValue =  " + opponentPiecesTotalValue)
-    bp.log.info("~~ LOG (2087) ~~ pieceExchange, numberOfOpponentPiecesInvolved =  " + numberOfOpponentPiecesInvolved)
-    bp.log.info("~~ LOG (2088) ~~ pieceExchange, playerPiecesTotalValue =  " + playerPiecesTotalValue)
-    bp.log.info("~~ LOG (2088) ~~ pieceExchange, numberOfPlayerPiecesInvolved =  " + numberOfPlayerPiecesInvolved)
+   // bp.log.info("~~ LOG (2087) ~~ pieceExchange, opponentPiecesTotalValue =  " + opponentPiecesTotalValue)
+    //bp.log.info("~~ LOG (2087) ~~ pieceExchange, numberOfOpponentPiecesInvolved =  " + numberOfOpponentPiecesInvolved)
+    //bp.log.info("~~ LOG (2088) ~~ pieceExchange, playerPiecesTotalValue =  " + playerPiecesTotalValue)
+    //bp.log.info("~~ LOG (2088) ~~ pieceExchange, numberOfPlayerPiecesInvolved =  " + numberOfPlayerPiecesInvolved)
 
     let tradeScore = null;
 
     if (opponentPiecesTotalValue === 0 ||
         (opponentPiecesTotalValue === KING_VALUE && numberOfOpponentPiecesInvolved === 1 && numberOfPlayerPiecesInvolved > 1)) {
-        bp.log.info("Free Piece -> Excellent Trade");
+        //bp.log.info("Free Piece -> Excellent Trade");
         tradeScore = FREE_PIECE;
     } else if ((opponentPiecesTotalValue === playerPiecesTotalValue && numberOfOpponentPiecesInvolved === numberOfPlayerPiecesInvolved) ||
         (takingPieceValue == takenPieceValue)) {
-        bp.log.info("Equal Value -> Fair Trade");
+        //bp.log.info("Equal Value -> Fair Trade");
         tradeScore = EQUAL_TRADE;
     } else if ((numberOfPlayerPiecesInvolved === numberOfOpponentPiecesInvolved && playerPiecesTotalValue < opponentPiecesTotalValue) ||
         (numberOfPlayerPiecesInvolved > numberOfOpponentPiecesInvolved) ||
         (takingPieceValue < takenPieceValue)) {
-        bp.log.info("You can defend this Piece or You've Earned Material -> Good Trade");
+        //bp.log.info("You can defend this Piece or You've Earned Material -> Good Trade");
         tradeScore = WORTHWHILE_TRADE;
     } else {
-        bp.log.info("You should've not capture -> Worthless Trade");
+        //bp.log.info("You should've not capture -> Worthless Trade");
         tradeScore = UNWORTHY_TRADE;
     }
 
@@ -2366,7 +2366,7 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
     let col = piece.cellId[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
     let row = (piece.cellId[1] - '0');
 
-    bp.log.info("~~ LOG (2304) ~~ availableDiagonalCellsFromPiece " + piece.subtype + " on " + JSON.stringify(numericCellToCell(row, col, allCells)))
+    //bp.log.info("~~ LOG (2304) ~~ availableDiagonalCellsFromPiece " + piece.subtype + " on " + JSON.stringify(numericCellToCell(row, col, allCells)))
 
     let availableCells = [];
 
@@ -2419,7 +2419,7 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
         }
     }
 
-    bp.log.info("returning availableMoves  " + availableMoves)
+    //bp.log.info("returning availableMoves  " + availableMoves)
     return [availableMoves, cellsWithPieces]
 
 }
@@ -2510,16 +2510,16 @@ ctx.bthread("Visualize", "Phase.Opening", function (entity) {
 
         }
 
-        bp.log.info(ANSI_CYAN + move + ANSI_RESET)
+        //bp.log.info(ANSI_CYAN + move + ANSI_RESET)
         // Visualize
         for (let i = 0; i < 8; i++) {
 
-            bp.log.info(ANSI_PURPLE + currentBoard[i][0] + "  " + currentBoard[i][1] + "  " + currentBoard[i][2] + "  " +
-                currentBoard[i][3] + "  " + currentBoard[i][4] + "  " + currentBoard[i][5] + "  " +
-                currentBoard[i][6] + "  " + currentBoard[i][7] + ANSI_RESET);
+            //bp.log.info(ANSI_PURPLE + currentBoard[i][0] + "  " + currentBoard[i][1] + "  " + currentBoard[i][2] + "  " +
+                //currentBoard[i][3] + "  " + currentBoard[i][4] + "  " + currentBoard[i][5] + "  " +
+               // currentBoard[i][6] + "  " + currentBoard[i][7] + ANSI_RESET);
 
         }
-        bp.log.info(ANSI_CYAN + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + ANSI_RESET)
+        //bp.log.info(ANSI_CYAN + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + ANSI_RESET)
 
     }
 });

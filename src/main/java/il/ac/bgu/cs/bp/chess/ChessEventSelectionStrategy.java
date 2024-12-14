@@ -223,8 +223,8 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
       return super.select(bpss, selectableEvents);
     } else {
       // System.out.println("--------------------------------- Select ( |Selectable Moves| >= 1 ) ---------------------------------");
-      System.out.println(selectableEvents);
-      System.out.println(selectableEvents.size());
+      //System.out.println(selectableEvents);
+      //System.out.println(selectableEvents.size());
       initialProbabilities = selectableEvents.stream().collect(Collectors.toMap(Function.identity(), e -> 1.0));
       var nextBpss = selectableEvents.stream()
           .collect(Collectors.toMap(Function.identity(), e -> {

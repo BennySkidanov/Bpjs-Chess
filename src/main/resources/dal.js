@@ -164,10 +164,10 @@ function getSpecificPieceOnCell(cell_identifier) {
 
 // Game phase changed event
 ctx.registerEffect("Game Phase", function (e) {
-    bp.log.info("PHASE CHANGE")
+    //bp.log.info("PHASE CHANGE")
     let phase = ctx.getEntityById("phase")
     phase.phase = e
-    bp.log.info(phase)
+    //bp.log.info(phase)
     // ctx.updateEntity(phase) // no need in COBPjs 0.6.0
 })
 /*

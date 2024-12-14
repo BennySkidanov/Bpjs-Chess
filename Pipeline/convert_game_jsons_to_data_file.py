@@ -1,4 +1,5 @@
 import json
+import os
 import sqlite3
 import statistics
 import random
@@ -10,11 +11,11 @@ ELITISM = 2
 GENERATIONS = 100  # maximal number of generations to run GA
 TOURNAMENT_SIZE = 5  # size of tournament for tournament selection
 PROB_MUTATION = 0.1  # bitwise probability of mutation
-GENOME_SIZE = 25
+GENOME_SIZE = 30
 WEIGHT_RANGE_MIN = -10
 WEIGHT_RANGE_MAX = 10
 
-NUMBER_OF_ANALYZED_GAMES = 23400
+NUMBER_OF_ANALYZED_GAMES = 3224
 NONE_VALUE = -1
 game = {}
 CHECK_SIGN = '+'
@@ -36,7 +37,7 @@ columns_single_move = ["Game number", "Move number", "Move Description",
                        "Piece Moves Counter: Pawn moves", "Piece Moves Counter: Bishop moves",
                        "Piece Moves Counter: Knight moves",
                        "Piece Moves Counter: Rook moves", "Piece Moves Counter: Queen moves",
-                       u"Strategy Advisor: Center", "Strategy Advisor: Develop", "Strategy Advisor: Fianchetto",
+                       "Strategy Advisor: Center", "Strategy Advisor: Develop", "Strategy Advisor: Fianchetto",
                        "Strategy Counter: Center strengthen moves", "Strategy Counter: Developing moves",
                        "Strategy Counter: Fianchetto moves",
                        "Game Plan Counter: Scholars Mate", "Game Plan Counter: Deceiving Scholars Mate",
@@ -44,11 +45,12 @@ columns_single_move = ["Game number", "Move number", "Move Description",
                        "Game Plan Counter: Capturing Space", "Game Plan Counter: Strengthen Pawn Structure",
                        "Moves Counter: Attacking", "Moves Counter: Defending",
                        "Moves Counter: Preventing b4, g4 Attacks",
-                       "Developing the queen too early"]
+                       "Developing the queen too early", "Piece Exchange", "Moves Counter: Pinning"]
 
 original_columns_single_move_length = len(columns_single_move)
 
-conn = sqlite3.connect('chess_moves.db')
+print(os.getcwd())
+conn = sqlite3.connect('../DB/chess_moves1200.db')
 cursor = conn.cursor()
 
 
@@ -82,13 +84,15 @@ def create_db():
                         Moves_Counter_Attacking INTEGER,
                         Moves_Counter_Defending INTEGER,
                         Moves_Counter_Preventing_b4_g4_Attacks INTEGER,
-                        Developing_the_queen_too_early INTEGER
+                        Developing_the_queen_too_early INTEGER,
+                        Piece_Exchange INTEGER,
+                        Moves_Counter_Pinning INTEGER
                     )''')
 
     # Add LOOK_AHEAD columns dynamically
     for att_index in range(3, GENOME_SIZE):
         cursor.execute('''ALTER TABLE chess_moves ADD COLUMN LOOK_AHEAD_{} INTEGER'''.format(
-            columns_single_move[att_index].replace(" ", "").replace(":", "_")))
+            columns_single_move[att_index].replace(" ", "_").replace(":", "").replace(",", "_")))
 
     cursor.execute('''ALTER TABLE chess_moves ADD COLUMN Y INTEGER''')
 
@@ -102,16 +106,16 @@ def add_row_to_db(row):
                                         Strategy_Counter_Developing_moves, Strategy_Counter_Fianchetto_moves, Game_Plan_Counter_Scholars_Mate, 
                                         Game_Plan_Counter_Deceiving_Scholars_Mate, Game_Plan_Counter_Fried_Liver_Attack, Game_Plan_Counter_Capturing_Space, 
                                         Game_Plan_Counter_Strengthen_Pawn_Structure, Moves_Counter_Attacking, Moves_Counter_Defending, 
-                                        Moves_Counter_Preventing_b4_g4_Attacks, Developing_the_queen_too_early'''
+                                        Moves_Counter_Preventing_b4_g4_Attacks, Developing_the_queen_too_early, Piece_Exchange, Moves_Counter_Pinning'''
 
     # Dynamically add placeholders for LOOK_AHEAD attributes
     for i in range(3, GENOME_SIZE):
-        insert_statement += f', LOOK_AHEAD_{columns_single_move[i].replace(" ", "").replace(":", "_")}'
+        insert_statement += f', LOOK_AHEAD_{columns_single_move[i].replace(" ", "_").replace(":", "").replace(",", "_")}'
 
     insert_statement += ', Y)'
 
     # Add VALUES clause with placeholders for all attributes including LOOK_AHEAD
-    insert_statement += 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?'
+    insert_statement += 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?'
 
     # Add placeholders for LOOK_AHEAD attributes
     for _ in range(3, GENOME_SIZE):
@@ -123,14 +127,13 @@ def add_row_to_db(row):
               row["Piece Advisor: Knight"], row["Piece Advisor: Rook"], row["Piece Advisor: Queen"],
               row["Piece Moves Counter: Pawn moves"], row["Piece Moves Counter: Bishop moves"],
               row["Piece Moves Counter: Knight moves"], row["Piece Moves Counter: Rook moves"],
-              row["Piece Moves Counter: Queen moves"], row["Strategy Advisor: Center"],
-              row["Strategy Advisor: Develop"], row["Strategy Advisor: Fianchetto"],
+              row["Piece Moves Counter: Queen moves"], row["Strategy Advisor: Center"],  row["Strategy Advisor: Develop"], row["Strategy Advisor: Fianchetto"],
               row["Strategy Counter: Center strengthen moves"], row["Strategy Counter: Developing moves"],
               row["Strategy Counter: Fianchetto moves"], row["Game Plan Counter: Scholars Mate"],
               row["Game Plan Counter: Deceiving Scholars Mate"], row["Game Plan Counter: Fried Liver Attack"],
               row["Game Plan Counter: Capturing Space"], row["Game Plan Counter: Strengthen Pawn Structure"],
               row["Moves Counter: Attacking"], row["Moves Counter: Defending"],
-              row["Moves Counter: Preventing b4, g4 Attacks"], row["Developing the queen too early"])
+              row["Moves Counter: Preventing b4, g4 Attacks"], row["Developing the queen too early"], row["Piece Exchange"], row["Moves Counter: Pinning"])
 
 
     # Add values of LOOK_AHEAD attributes to the values tuple
@@ -163,7 +166,7 @@ if __name__ == '__main__':
     games_data = {}
 
     for analyzed_game_index in range(1, NUMBER_OF_ANALYZED_GAMES + 1):
-        single_game_path = '../GameSequences/Game' + str(analyzed_game_index) + '.json'
+        single_game_path = '../GameSequences1200/Game' + str(analyzed_game_index) + '.json'
         # single_game_path = '[Daniel:DataFileName]/Game' + str(analyzed_game_index) + '.json'
 
         single_game_json = open(single_game_path)  # Obtain the JSON object which the path points to
