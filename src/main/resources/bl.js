@@ -23,6 +23,8 @@ function mySync(stmt, syncData) {
 const ANSI_RESET = "\u001B[0m";
 const ANSI_PURPLE = "\u001B[35m";
 const ANSI_CYAN = "\u001B[36m";
+const ANSI_GREEN = "\u001b[32m";
+const ANSI_YELLOW = "\u001b[32;1m";
 
 
 /*
@@ -178,11 +180,20 @@ const ESBishopDevelopingMoves = bp.EventSet("ESBishopDevelopingMoves", function 
             || e.data.dst[1] == '5')
 })
 
-const ESQueenDevelopingMoves = bp.EventSet("ESQueenDevelopingMoves", function (e) {
-    return e.name == 'Move' && e.data.color == "White" && e.data.piece === "Queen" &&
-        (e.data.dst[1] == '2' || e.data.dst[1] == '3' || e.data.dst[1] == '4'
-            || e.data.dst[1] == '5')
-})
+const ESQueenDevelopingMoves = bp.EventSet(
+    "ESQueenDevelopingMoves",
+    function (e) {
+        return (
+            e.name.startsWith("Move") &&
+            e.data.piece === "Queen" &&
+            e.data.color === "White" &&
+            (e.data.dst.id[1] === "2" ||
+                e.data.dst.id[1] === "3" ||
+                e.data.dst.id[1] === "4" ||
+                e.data.dst.id[1] === "5")
+        );
+    }
+);
 
 const ESRookDevelopingMoves = bp.EventSet("ESRookDevelopingMoves", function (e) {
     return e.name == 'Move' && e.data.color == "White" && e.data.piece === "Rook" &&
@@ -673,7 +684,14 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
         (i % 2 === 0) ? player = 'White' : player = 'Black';
         let move = allMovesList[i]
         let pieces = ctx.runQuery("Piece." + player + ".All");
-        // bp.log.info("~~ LOG ~~ Next PGN Move = {0}", move)
+        bp.log.info(
+            ANSI_YELLOW +
+            "~~ LOG ~~ Next PGN Move = " +
+            move +
+            " by " +
+            player +
+            ANSI_RESET
+        );
 
         // Game Tactics + Flags Update
 
@@ -702,7 +720,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
 
         // // bp.log.info("Next PGN Move (Again) = {0}", move)
         if (move.indexOf(TAKES) > -1 && (move.indexOf(QUEENING) > -1)) {
-            // // bp.log.info("~~ LOG ~~ Takes & Queen event!!")
+            // bp.log.info("~~ LOG ~~ Takes & Queen event!!")
             let piece = findPieceThatCanReachToEndSquare(startsWithCapital(move) ? move[0] : "P",
                 move.substr(move.indexOf(TAKES) + 1, 2),
                 player, true, enPassant, allMovesList[i].charAt(0).concat(player === 'White' ? "5" : "4"));
@@ -747,13 +765,13 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
             if (move == "O-O") handleShortCastle(player, pieces);
             else if (move == "O-O-O") handleLongCastle(player, pieces);
         } else if ((move.indexOf('=') > -1)) {
-            // // bp.log.info("Queening event");
+            bp.log.info("Queening event");
             let piece = findPieceThatCanReachToEndSquare(
                 startsWithCapital(move) ? move[0] : "P",
                 move.substr(0, 2),
                 player, false, enPassant, allMovesList[i].charAt(0).concat(player === 'White' ? "5" : "4"));
             let event = moveEvent(piece.subtype, piece.cellId, move.substr(0, 2), piece.color);
-            // // bp.log.info("Found Corresponding Event => \t " + event);
+            bp.log.info("Found Corresponding Event => \t " + event);
             if (!checkmate) {
                 // // bp.log.info("The Move -- " + event)
                 sync({request: event}, 100);
@@ -873,25 +891,26 @@ function clearDuplicates(moves) {
     return arr
 }
 
-function filterOccupiedCellsMoves(pawnMovesSet, cellsArr) {
-    let retArr = []
-    for (let i = 0; i < pawnMovesSet.length; i++) {
-        let srcCellFound = false
-        let dstCellFound = false
-        for (let cell of cellsArr.values()) {
-            if (pawnMovesSet[i].data.src == cell.id) {
-                srcCellFound = true
-            }
-            if (pawnMovesSet[i].data.dst == cell.id) {
-                dstCellFound = true
-            }
-        }
-        if (srcCellFound == false && dstCellFound == true) {
-            retArr.push(pawnMovesSet[i])
+function filterOccupiedCellsMoves(MovesSet, cellsArr) {
+    bp.log.info("filterOccupiedCellsMoves Got " + MovesSet)
+    let cellIds = cellsArr.map((cell) => cell.id);
+    bp.log.info("filterOccupiedCellsMoves Got " + cellIds)
+
+    let retArr = [];
+
+    for (let i = 0; i < MovesSet.length; i++) {
+        bp.log.info("MovesSet[i]" + MovesSet[i].data.src.id + " => " + MovesSet[i].data.dst.id)
+        if (
+            !cellIds.includes(MovesSet[i].data.src.id) &&
+            cellIds.includes(MovesSet[i].data.dst.id)
+        ) {
+            retArr.push(MovesSet[i]);
         }
     }
-    return retArr
+    bp.log.info("filterOccupiedCellsMoves Returning " + retArr)
+    return retArr;
 }
+
 
 /*ctx.bthread("Strengthen", "Phase.Opening", function (entity) {
 
@@ -1092,7 +1111,7 @@ ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
     }
 });
 
-ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
+/*ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
     while (true) {
         let allCells = ctx.runQuery("Cell.all")
         let bishopsMoves = []
@@ -1113,7 +1132,7 @@ ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
         mySync({request: bishopsMovesToRequest, waitFor: anyMoves})
 
     }
-});
+});*/
 
 ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
     while (true) {
@@ -1121,7 +1140,7 @@ ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
         let queenMoves = []
         let queen = ctx.runQuery(getWhiteQueen())[0]
         let nonOccupiedCellsSet = ctx.runQuery("Cell.all.nonOccupied")
-        bp.log.info("~~ LOG (1122) Developing Queen ~~ :  " + JSON.stringify(queen))
+        // bp.log.info("~~ LOG (1122) Developing Queen ~~ :  " + JSON.stringify(queen))
 
         let diagonalQueenMoves = availableDiagonalCellsFromPiece(queen, 7, allCells)[0];
         let straightQueenMoves = availableStraightCellsFromPiece(queen, 7, allCells)[0];
@@ -1143,104 +1162,12 @@ ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
         let queenMovesToRequest = filterOccupiedCellsMoves(queenMovesSet, nonOccupiedCellsSet)
         nonOccupiedCellsSet = queen = queenMoves = queenMovesSet = null;
 
-        // bp.log.info("~~ LOG (1122) Developing Queen ~~ Moves :  " + queenMovesToRequest)
+        bp.log.info("~~ LOG (1122) Developing Queen ~~ Moves :  " + queenMovesToRequest)
         mySync({request: queenMovesToRequest, waitFor: anyMoves})
 
     }
 });
 
-/*ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
-
-    while (true) {
-
-        let queenMoves = []
-
-        let pieces = ctx.runQuery('Piece.White.All')
-        let cellsSet = ctx.runQuery("Cell.all.nonOccupied")
-        let allCells = ctx.runQuery("Cell.all")
-
-        let queen = null
-        let foundQueen = false
-
-        for (let i = 0; i < pieces.length; i++) {
-            if (pieces[i].subtype === 'Queen') {
-                queen = pieces[i]
-                foundQueen = true
-                break;
-            }
-        }
-
-        if (!foundQueen) {
-            mySync({request: []})
-        } else {
-
-            let avalDiagonal = availableDiagonalCellsFromPiece(queen, 7, allCells)[0];
-            let avalStraight = availableStraightCellsFromPiece(queen, 7, allCells)[0];
-            // // bp.log.info(queen)
-            // //bp.log.info("avalDiagonal ( len =  " + avalDiagonal.length + " ) => " + avalDiagonal)
-            // //bp.log.info("avalStraight ( len =  " + avalStraight.length + " ) => " + avalStraight)
-            // // bp.log.info(ESQueenDevelopingMoves)
-            let aval2 = [];
-
-            for (let j = 0; j < avalDiagonal.length; j++) {
-                if (ESQueenDevelopingMoves.contains(avalDiagonal[j])) {
-                    aval2.push(avalDiagonal[j]);
-                }
-            }
-
-            for (let j = 0; j < avalStraight.length; j++) {
-                if (ESQueenDevelopingMoves.contains(avalStraight[j])) {
-                    aval2.push(avalStraight[j]);
-                }
-            }
-
-            // // bp.log.info("aval2 ( len =  " + aval2.length + " ) => " + aval2)
-
-            queenMoves = queenMoves.concat(aval2);
-
-
-            let queenMovesSet = clearDuplicates(queenMoves)
-            let queenMovesToRequest = filterOccupiedCellsMoves(queenMovesSet, cellsSet)
-
-            // // bp.log.info("Queen Moves To Request ( len =  " + queenMovesToRequest.length + " ) => " + queenMovesToRequest)
-
-            queenMovesSet = queenMoves = cellsSet = allCells = null
-
-            // //bp.log.info("mySync : Requesting bishop developing moves")
-            mySync({request: queenMovesToRequest, waitFor: anyMoves})
-        }
-
-    }
-});*/
-
-/*ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
-
-    while (true) {
-
-        let RooksMoves = []
-        let RooksSet = ctx.runQuery(getSpecificType('Rook', 'White'))
-        // let RooksSet = ctx.runQuery("Piece.White.Rook")
-        let cellsSet = ctx.runQuery("Cell.all.nonOccupied")
-        let allCells = ctx.runQuery("Cell.all")
-        let allCellsArr = Array.from(allCells);
-
-        for (let rook of RooksSet.values()) {
-            let availableRooksMoves = availableStraightCellsFromPiece(rook, 7, allCellsArr)
-            RooksMoves = RooksMoves.concat(availableRooksMoves
-                .filter(function (m) {
-                    return ESRookDevelopingMoves.contains(m);
-                })
-            )
-        }
-
-        let RooksMovesSet = clearDuplicates(RooksMoves)
-        let RooksMovesToRequest = filterOccupiedCellsMoves(RooksMovesSet, cellsSet)
-        cellsSet = RooksSet = RooksMoves =  RooksMovesSet = null;
-        // bp.log.info("mySync : Requesting rooks developing moves")
-        mySync({request: RooksMovesToRequest, waitFor: anyMoves})
-
-    }
-});*/
 
 ctx.bthread("CenterTrackAndAdvice", "Phase.Opening", function (entity) {
     while (true) {

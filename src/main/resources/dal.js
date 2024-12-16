@@ -63,8 +63,8 @@ ctx.registerQuery("ready to mate on f7", function (entity) {
     let queen = null
     let found = false
     let returnValue = false
-    // bp.log.info("Searching White Queen")
-    // bp.log.info(pieces)
+    //// bp.log.info("Searching White Queen")
+    //// bp.log.info(pieces)
     for (let i = 0; i < pieces.length; i++) {
         if (pieces[i].subtype === 'Queen') {
             queen = pieces[i]
@@ -73,9 +73,9 @@ ctx.registerQuery("ready to mate on f7", function (entity) {
         }
     }
     if (found) {
-        // bp.log.info("White queen => " + JSON.stringify(queen))
+        //// bp.log.info("White queen => " + JSON.stringify(queen))
         returnValue = canReachSquare(queen, 'f7', false, false)
-        // bp.log.info("Can queen reach f7? answer : " + returnValue)
+        //// bp.log.info("Can queen reach f7? answer : " + returnValue)
     }
     // bp.store.put("ready to mate on f7", retval ? 1 : 0)
     return returnValue
@@ -154,20 +154,33 @@ function getWhiteQueen() {
 }
 
 function getSpecificPieceOnCell(cell_identifier) {
-    // bp.log.info("~~ LOG (141) ~~ " + cell_identifier)
-    return function (entity) {
-        return entity.type.equals(String('piece')) &&
-            entity.cellId[0].equals(String(cell_identifier.charAt(0))) &&
-            entity.cellId[1].equals(String(cell_identifier.charAt(1)));
+    //// bp.log.info("~~ DAL LOG (157) ~~ " + cell_identifier + ", Type = " + typeof cell_identifier)
+    if (typeof cell_identifier === 'string') {
+        //// bp.log.info("~~ DAL LOG (160) ~~ " + cell_identifier + ", Type = " + typeof cell_identifier)
+        return function (entity) {
+            return entity.type.equals(String('piece')) &&
+                entity.cellId[0].equals(String(cell_identifier.charAt(0))) &&
+                entity.cellId[1].equals(String(cell_identifier).charAt(1));
+        }
+    } else {
+        //// bp.log.info("~~ DAL LOG (168) ~~ " + JSON.stringify(cell_identifier) + ", Type = " + typeof cell_identifier)
+        let new_cell_identifier = String(cell_identifier.id);
+        //// bp.log.info("~~ DAL LOG (170) ~~ " + new_cell_identifier + ", Type = " + typeof cell_identifier)
+        return function (entity) {
+            return entity.type.equals(String('piece')) &&
+                entity.cellId[0].equals(String(new_cell_identifier.charAt(0))) &&
+                entity.cellId[1].equals(String(new_cell_identifier.charAt(1)));
+        }
     }
 }
 
 // Game phase changed event
 ctx.registerEffect("Game Phase", function (e) {
-    bp.log.info("PHASE CHANGE")
+    //bp.log.info("PHASE CHANGE")
     let phase = ctx.getEntityById("phase")
-    phase.phase = e
-    bp.log.info(phase)
+    phase.phase = "Opening"
+    bp.log.info("PHASE: " + JSON.stringify(phase))
+    bp.log.info("E: " + JSON.stringify(e))
     // ctx.updateEntity(phase) // no need in COBPjs 0.6.0
 })
 /*
@@ -181,17 +194,22 @@ ctx.registerEffect("Develop", function(e) {
 
 ctx.registerEffect("Move", function (e) {
     // Debugging
-    // bp.log.info("~~ DAL LOG ~~ Chosen Move : " + JSON.stringify(e))
-    // bp.log.info("~~ DAL LOG ~~ Move Effect ")
+    //// bp.log.info("~~ DAL LOG ~~ Chosen Move : " + JSON.stringify(e))
+    //// bp.log.info("~~ DAL LOG ~~ Move Effect ")
 
     // This function handles the effect of the move, e.g., removing taken pieces off the game board.
 
     let srcCell, dstCell, srcPiece, dstPiece
 
     srcCell = ctx.getEntityById(e.src.toString())
+    bp.log.info("~~ ctx.getEntityById Looking for " + e.src.toString())
+    bp.log.info("~~ ctx.getEntityById Looking for " + JSON.stringify(srcCell))
     dstCell = ctx.getEntityById(e.dst.toString())
+    bp.log.info("~~ ctx.getEntityById Looking for " + e.dst.toString())
+    bp.log.info("~~ ctx.getEntityById Looking for " + JSON.stringify(dstCell))
     srcPiece = ctx.getEntityById(srcCell.pieceId.toString())
-
+    bp.log.info("~~ ctx.getEntityById Looking for " + srcCell.pieceId.toString())
+    bp.log.info("~~ ctx.getEntityById Looking for " + JSON.stringify(srcPiece))
 
     if (e.takes) { // Takes
 
@@ -205,11 +223,13 @@ ctx.registerEffect("Move", function (e) {
                     dstCell - Different! The destination of the source piece is now empty and not occupied by a piece
             */
 
-            bp.log.info("~~ DAL LOG ~~ need to handle En - passant")
+            //bp.log.info("~~ DAL LOG ~~ need to handle En - passant")
             let enPassantDstCell = ctx.getEntityById(e.dst.charAt(0) + String.fromCharCode(e.dst.charCodeAt(1) - 1));
+            bp.log.info("~~ ctx.getEntityById Looking for " + e.dst.charAt(0) + String.fromCharCode(e.dst.charCodeAt(1) - 1))
             dstPiece = ctx.getEntityById(enPassantDstCell.pieceId.toString());
-            bp.log.info("~~ DAL LOG ~ En - passant cell -> " + JSON.stringify(enPassantDstCell))
-            bp.log.info("~~ DAL LOG ~ En - passant piece -> " + JSON.stringify(dstPiece))
+            bp.log.info("~~ ctx.getEntityById Looking for " + enPassantDstCell.pieceId.toString())
+            //bp.log.info("~~ DAL LOG ~ En - passant cell -> " + JSON.stringify(enPassantDstCell))
+            //bp.log.info("~~ DAL LOG ~ En - passant piece -> " + JSON.stringify(dstPiece))
 
             enPassantDstCell.pieceId = undefined
             dstCell.pieceId = srcPiece.id
@@ -217,6 +237,7 @@ ctx.registerEffect("Move", function (e) {
 
         } else { // Regular Taking Move
             dstPiece = ctx.getEntityById(dstCell.pieceId.toString())
+            bp.log.info("~~ ctx.getEntityById Looking for " + dstCell.pieceId.toString())
             dstCell.pieceId = srcPiece.id
             srcPiece.cellId = dstCell.id
         }
@@ -225,9 +246,9 @@ ctx.registerEffect("Move", function (e) {
     } else { // Regular Move
         if ((e.dst.charAt(1) === '8' || e.dst.charAt(1) === '1') && e.piece === "Pawn") { // Queening
             let QUEENING_COUNTER = bp.store.get("NON-FEATURE: QUEENING_COUNTER") + 100;
-            // bp.log.info("Queening, Changing Piece [dal.js], dstcell[1] = " + dstCell.id[1])
+            //// bp.log.info("Queening, Changing Piece [dal.js], dstcell[1] = " + dstCell.id[1])
             // let color = dstCell.id[1] === '8' ? "White" : "Black"
-            // bp.log.info("Color of new queen : " + color)
+            //// bp.log.info("Color of new queen : " + color)
             let newQueen = Piece("Queen", QUEENING_COUNTER, e.color, dstCell.id);
             dstCell.pieceId = newQueen.id
             bp.store.put("NON-FEATURE: QUEENING_COUNTER", QUEENING_COUNTER);
@@ -249,27 +270,27 @@ ctx.registerEffect("Move", function (e) {
 
     // if (dstCell.pieceId != null) {
         // dstPiece = ctx.getEntityById(dstCell.pieceId.toString())
-        // bp.log.info("TAKEN PIECE " + dstPiece.subtype)
+        //// bp.log.info("TAKEN PIECE " + dstPiece.subtype)
 
     // }
     // else if (e.takes && dstCell.pieceId == null ) {
     //
     //
-    //     bp.log.info("~~ DAL LOG ~~ need to handle En - passant")
+    ////     bp.log.info("~~ DAL LOG ~~ need to handle En - passant")
     //
     //
     // }
 
 
-    // bp.log.info(srcPiece.subtype)
+    //// bp.log.info(srcPiece.subtype)
 
 
     // if ((dstCell.id[1] === '8' || dstCell.id[1] === '1') && srcPiece.subtype === "Pawn") {
     //     let QUEENING_COUNTER = bp.store.get("NON-FEATURE: QUEENING_COUNTER") + 100;
     //     // Queening, Create new piece
-    //     bp.log.info("Queening, Changing Piece [dal.js], dstcell[1] = " + dstCell.id[1])
+    ////     bp.log.info("Queening, Changing Piece [dal.js], dstcell[1] = " + dstCell.id[1])
     //     let color = dstCell.id[1] === '8' ? "White" : "Black"
-    //     bp.log.info("Color of new queen : " + color)
+    ////     bp.log.info("Color of new queen : " + color)
     //     let newQueen = Piece("Queen", QUEENING_COUNTER, color, dstCell.id);
     //     dstCell.pieceId = newQueen.id
     //     bp.store.put("NON-FEATURE: QUEENING_COUNTER", QUEENING_COUNTER);
@@ -290,15 +311,15 @@ ctx.registerEffect("Move", function (e) {
     // if (dstPiece)
     //     ctx.removeEntity(dstPiece)
 
-    bp.log.info("MOVE HAS FINISHED")
+    //bp.log.info("MOVE HAS FINISHED")
 */
 })
 
 // ctx.registerEffect("Short Castle White", function (e) {
 //   let srcCell = ctx.getEntityById("e1")
 //   let dstCell = ctx.getEntityById(e.dst.toString())
-//   //bp.log.info(srcCell)
-//   //bp.log.info(dstCell)
+////   //bp.log.info(srcCell)
+////   //bp.log.info(dstCell)
 //
 //   let srcPiece = null
 //   let dstPiece = null
@@ -308,8 +329,8 @@ ctx.registerEffect("Move", function (e) {
 //   if (dstCell.pieceId != null) {
 //     dstPiece = ctx.getEntityById(dstCell.pieceId.toString())
 //   }
-//   //bp.log.info(srcPiece)
-//   //bp.log.info(dstPiece)
+////   //bp.log.info(srcPiece)
+////   //bp.log.info(dstPiece)
 //
 //
 //   dstCell.pieceId = srcPiece.id
@@ -324,7 +345,7 @@ ctx.registerEffect("Move", function (e) {
 //   if (dstPiece)
 //     ctx.removeEntity(dstPiece)
 //
-//   //bp.log.info("MOVE HAS FINISHED")
+////   //bp.log.info("MOVE HAS FINISHED")
 //
 // })
 
@@ -338,16 +359,25 @@ ctx.registerEffect("Move", function (e) {
 const prefix = ["", "N", "B", "R", "Q", "K"];
 const pieces = ["Pawn", "Knight", "Bishop", "Rook", "Queen", "King"];
 
-function moveEvent(piece, oldCell, newCell, color, takes, checkmate, check) {
-    // bp.log.info("~~ DAL LOG ~~ Move Event : " + color + " " + piece + " : " + oldCell + " => " + newCell);
+function moveEvent(piece, oldCell, newCell, color, takes, checkmate, enPassant) {
+    //// bp.log.info("~~ DAL LOG ~~ Move Event : " + color + " " + piece + " : " + oldCell + " => " + newCell);
+
+    let takenPieceTemp = ctx.runQuery(getSpecificPieceOnCell(newCell));
+    //// bp.log.info("~~ DAL LOG ~~ Move Event : " + color + " " + piece + " : " + JSON.stringify(oldCell) + " => " + JSON.stringify(newCell) + ", Taken piece = " + JSON.stringify(takenPieceTemp));
+    if (takenPieceTemp) {
+        takenPiece = takenPieceTemp;
+    } else {
+        takenPiece = undefined;
+    }
+
     return bp.Event("Move", {
         piece: piece,
         src: oldCell,
         dst: newCell,
         color: color,
         takes: takes,
-        checkmate: false,
-        check: false
+        checkmate: checkmate,
+        enPassant: enPassant
     });
 }
 

@@ -34,35 +34,35 @@ import static java.util.stream.Collectors.toSet;
 // data : some game data | [state 1 attributes], ..., [state n attributes] | index of best
 
 public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
-  private static final AtomicInteger INSTANCE_COUNTER = new AtomicInteger(0);
-  private static final DecimalFormat df2 = new DecimalFormat("#.##");
-  private final String gameId;
-  private final Rule[] rules = new Rule[]
-      {
-          // counter, advice
-          // Rule 1 - developed enough pawns
-          new Rule("Developed enough pawns",
-              "As a rule of thumb, it is not favorable to move / develop too " +
-                  "many pawns at the opening, 3 is certainly enough",
-              (store, events) -> {
-                var es = new DevelopPawns();
-                var advisorDevelop = (double) store.get("Advisor: Center");
-                return Optional.of(new Pair<>(0.5 * advisorDevelop, es));
-              }),
-          new Rule("Center is strengthened",
-              "The center has been strengthened by 4 moves, it may be time to try and " +
-                  "get other strategies into play", (store, events) -> {
-            var es = new StrengthenPawns();
-            var advisorCenter = (double) store.get("Advisor: Center");
-            return Optional.of(new Pair<>(0.3 * advisorCenter, es));
-          }),
-          new Rule("Fianchetto strategy advanced",
-              "The Fianchetto strategy advanced by the player, it may be time to try and " +
-                  "get other strategies into play", (store, events) -> {
-            var es = new FianchettoPawns();
-            var advisorFianchetto = (double) store.get("Advisor: Fianchetto");
-            return Optional.of(new Pair<>(0.1 * advisorFianchetto, es));
-          }),
+    private static final AtomicInteger INSTANCE_COUNTER = new AtomicInteger(0);
+    private static final DecimalFormat df2 = new DecimalFormat("#.##");
+    private final String gameId;
+    private final Rule[] rules = new Rule[]
+            {
+                    // counter, advice
+                    // Rule 1 - developed enough pawns
+                    new Rule("Developed enough pawns",
+                            "As a rule of thumb, it is not favorable to move / develop too " +
+                                    "many pawns at the opening, 3 is certainly enough",
+                            (store, events) -> {
+                                var es = new DevelopPawns();
+                                var advisorDevelop = (double) store.get("Advisor: Center");
+                                return Optional.of(new Pair<>(0.5 * advisorDevelop, es));
+                            }),
+                    new Rule("Center is strengthened",
+                            "The center has been strengthened by 4 moves, it may be time to try and " +
+                                    "get other strategies into play", (store, events) -> {
+                        var es = new StrengthenPawns();
+                        var advisorCenter = (double) store.get("Advisor: Center");
+                        return Optional.of(new Pair<>(0.3 * advisorCenter, es));
+                    }),
+                    new Rule("Fianchetto strategy advanced",
+                            "The Fianchetto strategy advanced by the player, it may be time to try and " +
+                                    "get other strategies into play", (store, events) -> {
+                        var es = new FianchettoPawns();
+                        var advisorFianchetto = (double) store.get("Advisor: Fianchetto");
+                        return Optional.of(new Pair<>(0.1 * advisorFianchetto, es));
+                    }),
 //                    new Rule("Don't bring your queen out too early",
 //                            "You should not move your queen too many times in the opening",
 //                            (store, events) -> {
@@ -71,188 +71,204 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
 //                                if (queenMoves >= 2)
 //                                    return Optional.of(new Pair(0.2 * advisorQueen, ));
 //                            }),
-      };
-  private ExecutorService execSvc;
-  private int defaultPriority = Integer.MIN_VALUE;
-  private Optional<BEvent> maxEvent;
-  private List<String> gameData;
+            };
+    private ExecutorService execSvc;
+    private int defaultPriority = Integer.MIN_VALUE;
+    private Optional<BEvent> maxEvent;
+    private List<String> gameData;
 
-  public ChessEventSelectionStrategy(String gameId) {
-    this.execSvc = new ExecutorServiceMaker().makeWithName("ChessEventSelectionStrategy-" + INSTANCE_COUNTER.getAndIncrement());
-    this.gameId = gameId;
-    gameData = new LinkedList<>();
-  }
-
-  private static String toJson(BEvent o) {
-    String code = toJson((Scriptable) o.maybeData);
-    return "{\"name\": \"" + o.name + "\"" + (code == null ? "}" : ", \"data\":" + code + "}");
-  }
-
-  private static String toJson(Scriptable o) {
-    if (o == null) return null;
-    String code = "JSON.stringify(o);";
-    try {
-      Context curCtx = BPjs.enterRhinoContext();
-      Scriptable tlScope = BPjs.makeBPjsSubScope();
-      tlScope.put("o", tlScope, o);
-      // Benny : The problem is here, the execution throws exception, so the functions returns null every time
-      return (String) curCtx.evaluateString(tlScope, code, "", 1, (Object) null);
-    } catch (Exception e) {
-      return null;
-    } finally {
-      Context.exit();
-    }
-  }
-
-  public List<String> getGameData() {
-    return gameData;
-  }
-
-  @Override
-  public Set<BEvent> selectableEvents(BProgramSyncSnapshot bpss) {
-
-    Set<SyncStatement> statements = bpss.getStatements();
-    List<BEvent> externalEvents = bpss.getExternalEvents();
-
-    EventSet blocked = EventSets.anyOf(statements.stream()
-        .filter(stmt -> stmt != null)
-        .map(SyncStatement::getBlock)
-        .filter(r -> r != EventSets.none)
-        .collect(toSet()));
-
-    OptionalInt maxValueOpt = statements.stream()
-        .filter(s -> !getRequestedAndNotBlocked(s, blocked).isEmpty())
-        .mapToInt(this::getValue)
-        .max();
-
-    try {
-      BPjs.enterRhinoContext();
-      if (maxValueOpt.isPresent()) {
-        int maxValue = maxValueOpt.getAsInt();
-        maxEvent = statements.stream().filter(s -> getValue(s) == maxValue)
-            .flatMap(s -> getRequestedAndNotBlocked(s, blocked).stream()).findFirst();
-      } else {
-        maxEvent = Optional.empty();
-      }
-    } finally {
-      Context.exit();
-    }
-    return super.selectableEvents(bpss);
-  }
-
-  private int getValue(SyncStatement stmt) {
-    return (stmt.hasData() && (stmt.getData() instanceof Number)) ?
-        ((Number) stmt.getData()).intValue() : defaultPriority;
-  }
-
-  public int getDefaultPriority() {
-    return defaultPriority;
-  }
-
-  public void setDefaultPriority(int defaultPriority) {
-    this.defaultPriority = defaultPriority;
-  }
-
-  private String toJson(BProgramSyncSnapshot bpss, Map<BEvent, BProgramSyncSnapshot> nextBpss, Set<BEvent> selectableEvents) {
-    StringJoiner joiner = new StringJoiner(",");
-    for (BEvent selectableEvent : selectableEvents) {
-      String s = toJson(selectableEvent);
-      joiner.add(s);
-    }
-    String selectableEventsString = joiner.toString();
-
-    String selectedEvent = toJson(maxEvent.get());
-
-    String currentAttributes = toJson(bpss.getDataStore(), true);
-
-    var nextAttributes = nextBpss.entrySet().stream()
-        .map(entry -> MessageFormat.format("'{' \"event\": {0}, \"Attributes\": [{1}]'}'", toJson(entry.getKey()), toJson(entry.getValue().getDataStore(), false)))
-        .collect(Collectors.joining(", "));
-
-    return (MessageFormat.format("'{' \"SelectableEvents\": [{0}]," +
-            "\"CurrentAttributes\": {1}," +
-            "\"SelectableEventsLookAhead\": [{2}]," +
-            "\"SelectedEvent\":  {3} '}'",
-        selectableEventsString, currentAttributes, nextAttributes, selectedEvent
-    ));
-  }
-
-  private String toJson(Object obj) {
-    if (obj instanceof NativeObject) {
-      return toJson((NativeObject) obj);
-    } else if (obj instanceof Double) {
-      return obj.toString();
-    }else if(obj instanceof Collection) {
-      return new JSONArray(((Collection)obj).stream().map(this::toJson).toArray()).toString();
-    } else {
-      throw new IllegalArgumentException("unsupported type " + obj);
+    public ChessEventSelectionStrategy(String gameId) {
+        this.execSvc = new ExecutorServiceMaker().makeWithName("ChessEventSelectionStrategy-" + INSTANCE_COUNTER.getAndIncrement());
+        this.gameId = gameId;
+        gameData = new LinkedList<>();
     }
 
-  }
-
-  private String toJson(Map<String, Object> dataStore, boolean includeMinorAttributes) {
-    var modifiedEntrySet = dataStore.entrySet();
-    var pred = new MyEntryPredicate();
-    if (!includeMinorAttributes) {
-      Map<String, Object> newDataStore = dataStore.entrySet().stream().filter(pred).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
-      modifiedEntrySet = newDataStore.entrySet();
+    private static String toJson(BEvent o) {
+        String code = toJson((Scriptable) o.maybeData);
+        return "{\"name\": \"" + o.name + "\"" + (code == null ? "}" : ", \"data\":" + code + "}");
     }
-    return modifiedEntrySet.stream().filter(entry -> !(entry.getKey().startsWith("NON")))
-        .map(e -> "\"" + e.getKey() + "\":" + toJson(e.getValue()))
-        .collect(Collectors.joining(",", "{", "}"));
-  }
 
-  @Override
-  public Optional<EventSelectionResult> select(BProgramSyncSnapshot bpss, Set<BEvent> selectableEvents) {
-    // System.out.println("--------------------------------- Select ---------------------------------");
+    private static String toJson(Scriptable o) {
+        if (o == null) return null;
+        String code = "JSON.stringify(o);";
+        try {
+            Context curCtx = BPjs.enterRhinoContext();
+            Scriptable tlScope = BPjs.makeBPjsSubScope();
+            tlScope.put("o", tlScope, o);
+            // Benny : The problem is here, the execution throws exception, so the functions returns null every time
+            return (String) curCtx.evaluateString(tlScope, code, "", 1, (Object) null);
+        } catch (Exception e) {
+            return null;
+        } finally {
+            Context.exit();
+        }
+    }
 
-    // Initialize probabilities of all events to 1
-    Map<BEvent, Double> initialProbabilities;
+    public List<String> getGameData() {
+        return gameData;
+    }
 
-    /*
-     * Sometimes, select function is reached without any moves are requested, for example in case of a
-     * _____CTX_LOCK_____ event. In this case, we need to catch the event, and continue.
-     */
+    @Override
+    public Set<BEvent> selectableEvents(BProgramSyncSnapshot bpss) {
 
-    Iterator<BEvent> iterator = selectableEvents.iterator();
+        Set<SyncStatement> statements = bpss.getStatements();
+        List<BEvent> externalEvents = bpss.getExternalEvents();
 
-    if (selectableEvents.size() == 1 && !(iterator.next().name.toLowerCase().startsWith("move"))) {
-      return Optional.of(new EventSelectionResult(selectableEvents.iterator().next()));
-    } else if (selectableEvents.size() == 0) {
-      // No selectable events
-      return super.select(bpss, selectableEvents);
-    } else {
-      // System.out.println("--------------------------------- Select ( |Selectable Moves| >= 1 ) ---------------------------------");
-      System.out.println(selectableEvents);
-      System.out.println(selectableEvents.size());
-      initialProbabilities = selectableEvents.stream().collect(Collectors.toMap(Function.identity(), e -> 1.0));
-      var nextBpss = selectableEvents.stream()
-          .collect(Collectors.toMap(Function.identity(), e -> {
-            try {
-              var clonedBpss = BProgramSyncSnapshotCloner.clone(bpss);
-              return clonedBpss.triggerEvent(e, execSvc, new ArrayList<>(),
-                      clonedBpss.getBProgram().getStorageModificationStrategy());
-            } catch (InterruptedException ex) {
-              ex.printStackTrace();
-              System.exit(1);
-              return null;
+        EventSet blocked = EventSets.anyOf(statements.stream()
+                .filter(stmt -> stmt != null)
+                .map(SyncStatement::getBlock)
+                .filter(r -> r != EventSets.none)
+                .collect(toSet()));
+
+        OptionalInt maxValueOpt = statements.stream()
+                .filter(s -> !getRequestedAndNotBlocked(s, blocked).isEmpty())
+                .mapToInt(this::getValue)
+                .max();
+
+        try {
+            BPjs.enterRhinoContext();
+            if (maxValueOpt.isPresent()) {
+                int maxValue = maxValueOpt.getAsInt();
+                maxEvent = statements.stream().filter(s -> getValue(s) == maxValue)
+                        .flatMap(s -> getRequestedAndNotBlocked(s, blocked).stream()).findFirst();
+            } else {
+                maxEvent = Optional.empty();
             }
-          }));
-      // System.out.println("--------------------------------- Select ( Finished Init ) ---------------------------------");
-      var singleGameData = toJson(bpss, nextBpss, selectableEvents);
-      gameData.add(singleGameData);
+        } finally {
+            Context.exit();
+        }
+        return super.selectableEvents(bpss);
     }
 
-    // System.out.println("--------------------------------- Select ( Finished Init ) ---------------------------------");
+    private int getValue(SyncStatement stmt) {
+        return (stmt.hasData() && (stmt.getData() instanceof Number)) ?
+                ((Number) stmt.getData()).intValue() : defaultPriority;
+    }
 
-    // Event sets
-    DevelopPawns esDevelop = new DevelopPawns();
-    FianchettoPawns esFianchetto = new FianchettoPawns();
-    StrengthenPawns esCenter = new StrengthenPawns();
+    public int getDefaultPriority() {
+        return defaultPriority;
+    }
+
+    public void setDefaultPriority(int defaultPriority) {
+        this.defaultPriority = defaultPriority;
+    }
+
+    private String toJson(BProgramSyncSnapshot bpss, Map<BEvent, BProgramSyncSnapshot> nextBpss, Set<BEvent> selectableEvents) {
+        StringJoiner joiner = new StringJoiner(",");
+        for (BEvent selectableEvent : selectableEvents) {
+            String s = toJson(selectableEvent);
+            joiner.add(s);
+        }
+        String selectableEventsString = joiner.toString();
+
+        String selectedEvent = toJson(maxEvent.get());
+
+        String currentAttributes = toJson(bpss.getDataStore(), true);
+
+        var nextAttributes = nextBpss.entrySet().stream()
+                .map(entry -> MessageFormat.format("'{' \"event\": {0}, \"Attributes\": [{1}]'}'", toJson(entry.getKey()), toJson(entry.getValue().getDataStore(), false)))
+                .collect(Collectors.joining(", "));
+
+        return (MessageFormat.format("'{' \"SelectableEvents\": [{0}]," +
+                        "\"CurrentAttributes\": {1}," +
+                        "\"SelectableEventsLookAhead\": [{2}]," +
+                        "\"SelectedEvent\":  {3} '}'",
+                selectableEventsString, currentAttributes, nextAttributes, selectedEvent
+        ));
+    }
+
+    private String toJson(Object obj) {
+        if (obj instanceof NativeObject) {
+            return toJson((NativeObject) obj);
+        } else if (obj instanceof Double) {
+            return obj.toString();
+        } else if (obj instanceof Collection) {
+            return new JSONArray(((Collection) obj).stream().map(this::toJson).toArray()).toString();
+        } else {
+            throw new IllegalArgumentException("unsupported type " + obj);
+        }
+
+    }
+
+    private String toJson(Map<String, Object> dataStore, boolean includeMinorAttributes) {
+        var modifiedEntrySet = dataStore.entrySet();
+        var pred = new MyEntryPredicate();
+        if (!includeMinorAttributes) {
+            Map<String, Object> newDataStore = dataStore.entrySet().stream().filter(pred).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+            modifiedEntrySet = newDataStore.entrySet();
+        }
+        return modifiedEntrySet.stream().filter(entry -> !(entry.getKey().startsWith("NON")))
+                .map(e -> "\"" + e.getKey() + "\":" + toJson(e.getValue()))
+                .collect(Collectors.joining(",", "{", "}"));
+    }
+
+    @Override
+    public Optional<EventSelectionResult> select(BProgramSyncSnapshot bpss, Set<BEvent> selectableEvents) {
+        // System.out.println("--------------------------------- Select ---------------------------------");
+
+        // Initialize probabilities of all events to 1
+        Map<BEvent, Double> initialProbabilities;
+
+        /*
+         * Sometimes, select function is reached without any moves are requested, for example in case of a
+         * _____CTX_LOCK_____ event. In this case, we need to catch the event, and continue.
+         */
+
+        Iterator<BEvent> iterator = selectableEvents.iterator();
+
+        if (selectableEvents.size() == 1 && !(iterator.next().name.toLowerCase().startsWith("move"))) {
+            return Optional.of(new EventSelectionResult(selectableEvents.iterator().next()));
+        } else if (selectableEvents.size() == 0) {
+            // No selectable events
+            return super.select(bpss, selectableEvents);
+        } else {
+            System.out.println("--------------------------------- Select ( |Selectable Moves| >= 1 ) ---------------------------------");
+            /* BEvent lastElement = null;
+            Iterator<BEvent> it = selectableEvents.iterator();
+            System.out.println("--------------------------------- Select ( |Selectable Moves| >= 1 ) ---------------------------------");
+            while (it.hasNext()) {
+                lastElement = it.next();
+            }
+
+            // Remove the last element if it exists
+            if (lastElement != null) {
+                selectableEvents.remove(lastElement);
+            }*/
+            System.out.println("selectableEvents => " + selectableEvents);
+
+            System.out.println("selectableEvents size => " + selectableEvents.size());
+            initialProbabilities = selectableEvents.stream().collect(Collectors.toMap(Function.identity(), e -> 1.0));
+            System.out.println("selectableEvents probabilities => " + initialProbabilities);
+            var nextBpss = selectableEvents.stream()
+                    .collect(Collectors.toMap(Function.identity(), e -> {
+                        try {
+                            var clonedBpss = BProgramSyncSnapshotCloner.clone(bpss);
+                            System.out.println("clonedBpss => " + clonedBpss);
+                            return clonedBpss.triggerEvent(e, execSvc, new ArrayList<>(),
+                                    clonedBpss.getBProgram().getStorageModificationStrategy());
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                            System.out.println("selectableEvents EXCEPTION!!");
+                            System.out.println(ex.getCause());
+                            System.exit(1);
+                            return null;
+                        }
+                    }));
+            System.out.println("--------------------------------- Select ( Finished Init THIS ) ---------------------------------");
+            var singleGameData = toJson(bpss, nextBpss, selectableEvents);
+            gameData.add(singleGameData);
+        }
+
+        // System.out.println("--------------------------------- Select ( Finished Init ) ---------------------------------");
+
+        // Event sets
+        DevelopPawns esDevelop = new DevelopPawns();
+        FianchettoPawns esFianchetto = new FianchettoPawns();
+        StrengthenPawns esCenter = new StrengthenPawns();
 
 //       JSONArray selectableEventsJSON = new JSONArray();
 
-    // String selectableEventsString = selectableEvents.stream().map(ChessEventSelectionStrategy::toJson).collect(Collectors.joining(",", "[", "]"));
+        // String selectableEventsString = selectableEvents.stream().map(ChessEventSelectionStrategy::toJson).collect(Collectors.joining(",", "[", "]"));
 
 
         /*for (BEvent e : selectableEvents) {
@@ -304,7 +320,7 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
 //            }
 //        }
 
-    Map<BEvent, Double> probabilities = normalize(initialProbabilities);
+        Map<BEvent, Double> probabilities = normalize(initialProbabilities);
 
         /*System.out.println("~~~~~~~~~~~~~~~~~~~~~~ Probabilities ~~~~~~~~~~~~~~~~~~~~~~");
         for (BEvent e : probabilities.keySet()) {
@@ -395,46 +411,46 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
         |> Counter for each strategy moves
     */
 
-    //if (maxEvent.isPresent()) {
-    if (maxEvent != null) {
+        //if (maxEvent.isPresent()) {
+        if (maxEvent != null) {
 //            System.out.println("Max Event is present -- " + maxEvent.get());
 //            gameData += toJsonContinuation(maxEvent.get());
-      return Optional.of(new EventSelectionResult(maxEvent.get()));
+            return Optional.of(new EventSelectionResult(maxEvent.get()));
+        }
+
+        return super.select(bpss, selectableEvents);
     }
 
-    return super.select(bpss, selectableEvents);
-  }
-
-  private Map<BEvent, Double> normalize(Map<BEvent, Double> map) {
-    double sum = 0;
-    for (Map.Entry<BEvent, Double> entry : map.entrySet()) {
-      sum += Math.abs(entry.getValue());
-    }
-    for (Map.Entry<BEvent, Double> entry : map.entrySet()) {
-      entry.setValue(entry.getValue() / sum);
-    }
-    return map;
-  }
-
-  private static class Rule {
-    public final String title;
-    public final String description;
-    public final BiFunction<Map<String, Object>, Set<BEvent>, Optional<Pair<Double, EventSet>>> rule;
-
-    private Rule(String title, String description, BiFunction<Map<String, Object>, Set<BEvent>, Optional<Pair<Double, EventSet>>> rule) {
-      this.title = title;
-      this.description = description;
-      this.rule = rule;
-    }
-  }
-
-  private static class MyEntryPredicate implements Predicate<Map.Entry<String, Object>> {
-    private MyEntryPredicate() {
+    private Map<BEvent, Double> normalize(Map<BEvent, Double> map) {
+        double sum = 0;
+        for (Map.Entry<BEvent, Double> entry : map.entrySet()) {
+            sum += Math.abs(entry.getValue());
+        }
+        for (Map.Entry<BEvent, Double> entry : map.entrySet()) {
+            entry.setValue(entry.getValue() / sum);
+        }
+        return map;
     }
 
-    @Override
-    public boolean test(Map.Entry<String, Object> input) {
-      return !input.getKey().startsWith("CTX") && !input.getKey().startsWith("transaction");
+    private static class Rule {
+        public final String title;
+        public final String description;
+        public final BiFunction<Map<String, Object>, Set<BEvent>, Optional<Pair<Double, EventSet>>> rule;
+
+        private Rule(String title, String description, BiFunction<Map<String, Object>, Set<BEvent>, Optional<Pair<Double, EventSet>>> rule) {
+            this.title = title;
+            this.description = description;
+            this.rule = rule;
+        }
     }
-  }
+
+    private static class MyEntryPredicate implements Predicate<Map.Entry<String, Object>> {
+        private MyEntryPredicate() {
+        }
+
+        @Override
+        public boolean test(Map.Entry<String, Object> input) {
+            return !input.getKey().startsWith("CTX") && !input.getKey().startsWith("transaction");
+        }
+    }
 }
