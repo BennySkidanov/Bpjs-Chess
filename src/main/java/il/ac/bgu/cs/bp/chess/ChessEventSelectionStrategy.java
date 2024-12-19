@@ -182,6 +182,8 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
             return toJson((NativeObject) obj);
         } else if (obj instanceof Double) {
             return obj.toString();
+        } else if (obj instanceof Long) {
+            return obj.toString();
         } else if (obj instanceof Collection) {
             return new JSONArray(((Collection) obj).stream().map(this::toJson).toArray()).toString();
         } else {
@@ -197,9 +199,21 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
             Map<String, Object> newDataStore = dataStore.entrySet().stream().filter(pred).collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
             modifiedEntrySet = newDataStore.entrySet();
         }
-        return modifiedEntrySet.stream().filter(entry -> !(entry.getKey().startsWith("NON")))
-                .map(e -> "\"" + e.getKey() + "\":" + toJson(e.getValue()))
-                .collect(Collectors.joining(",", "{", "}"));
+        var iter = modifiedEntrySet.iterator();
+        var list = new ArrayList<String>();
+        while(iter.hasNext()){
+            var entry = iter.next();
+            if(entry.getKey().startsWith("NON")) {
+                continue;
+            }
+            try {
+                var str = "\"" + entry.getKey() + "\":" + toJson(entry.getValue());
+                list.add(str);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        return list.stream().collect(Collectors.joining(",","{","}"));
     }
 
     @Override

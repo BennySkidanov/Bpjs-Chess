@@ -194,22 +194,54 @@ ctx.registerEffect("Develop", function(e) {
 
 ctx.registerEffect("Move", function (e) {
     // Debugging
-    //// bp.log.info("~~ DAL LOG ~~ Chosen Move : " + JSON.stringify(e))
+    bp.log.info("~~ DAL LOG ~~ Chosen Move Effect : " + JSON.stringify(e))
     //// bp.log.info("~~ DAL LOG ~~ Move Effect ")
 
     // This function handles the effect of the move, e.g., removing taken pieces off the game board.
 
     let srcCell, dstCell, srcPiece, dstPiece
 
-    srcCell = ctx.getEntityById(e.src.toString())
-    bp.log.info("~~ ctx.getEntityById Looking for " + e.src.toString())
-    bp.log.info("~~ ctx.getEntityById Looking for " + JSON.stringify(srcCell))
-    dstCell = ctx.getEntityById(e.dst.toString())
-    bp.log.info("~~ ctx.getEntityById Looking for " + e.dst.toString())
-    bp.log.info("~~ ctx.getEntityById Looking for " + JSON.stringify(dstCell))
-    srcPiece = ctx.getEntityById(srcCell.pieceId.toString())
-    bp.log.info("~~ ctx.getEntityById Looking for " + srcCell.pieceId.toString())
-    bp.log.info("~~ ctx.getEntityById Looking for " + JSON.stringify(srcPiece))
+    //Todo: For now, handle both when e.src or e.src.id exist, but later make sure all move events are being "called" (in bl.js) in the same way
+
+    if (e.src.id === undefined) {
+        bp.log.info("~~ ctx.getEntityById Looking for srcCell => " + e.src)
+
+        srcCell = ctx.getEntityById(e.src)
+
+        bp.log.info("~~ ctx.getEntityById Found srcCell =>" + JSON.stringify(srcCell))
+
+        bp.log.info("~~ ctx.getEntityById Looking for dstCell =>" + e.dst)
+
+        dstCell = ctx.getEntityById(e.dst)
+
+        bp.log.info("~~ ctx.getEntityById Found dstCell => " + JSON.stringify(dstCell))
+
+
+        bp.log.info("~~ ctx.getEntityById Looking for srcPiece => " + srcCell.pieceId.toString())
+
+        srcPiece = ctx.getEntityById(srcCell.pieceId.toString())
+
+        bp.log.info("~~ ctx.getEntityById Found srcPiece =>" + JSON.stringify(srcPiece))
+    } else {
+        bp.log.info("~~ ctx.getEntityById Looking for srcCell => " + e.src.id)
+
+        srcCell = ctx.getEntityById(e.src.id)
+
+        bp.log.info("~~ ctx.getEntityById Found srcCell =>" + JSON.stringify(srcCell))
+
+        bp.log.info("~~ ctx.getEntityById Looking for dstCell =>" + e.dst.id)
+
+        dstCell = ctx.getEntityById(e.dst.id)
+
+        bp.log.info("~~ ctx.getEntityById Found dstCell => " + JSON.stringify(dstCell))
+
+
+        bp.log.info("~~ ctx.getEntityById Looking for srcPiece => " + srcCell.pieceId.toString())
+
+        srcPiece = ctx.getEntityById(srcCell.pieceId.toString())
+
+        bp.log.info("~~ ctx.getEntityById Found srcPiece =>" + JSON.stringify(srcPiece))
+    }
 
     if (e.takes) { // Takes
 
@@ -244,19 +276,31 @@ ctx.registerEffect("Move", function (e) {
 
         ctx.removeEntity(dstPiece)
     } else { // Regular Move
-        if ((e.dst.charAt(1) === '8' || e.dst.charAt(1) === '1') && e.piece === "Pawn") { // Queening
-            let QUEENING_COUNTER = bp.store.get("NON-FEATURE: QUEENING_COUNTER") + 100;
-            //// bp.log.info("Queening, Changing Piece [dal.js], dstcell[1] = " + dstCell.id[1])
-            // let color = dstCell.id[1] === '8' ? "White" : "Black"
-            //// bp.log.info("Color of new queen : " + color)
-            let newQueen = Piece("Queen", QUEENING_COUNTER, e.color, dstCell.id);
-            dstCell.pieceId = newQueen.id
-            bp.store.put("NON-FEATURE: QUEENING_COUNTER", QUEENING_COUNTER);
-            ctx.insertEntity(newQueen)
-            ctx.removeEntity(srcPiece)
-        } else {
-
+        bp.log.info("~~ DAL LOG (281) ~~ Regular Move : " + JSON.stringify(e))
+        if (e.src.id === undefined) {
+            if ((e.dst.charAt(1) === '8' || e.dst.charAt(1) === '1') && e.piece === "Pawn") { // Queening
+                let QUEENING_COUNTER = bp.store.get("NON-FEATURE: QUEENING_COUNTER") + 100;
+                //// bp.log.info("Queening, Changing Piece [dal.js], dstcell[1] = " + dstCell.id[1])
+                // let color = dstCell.id[1] === '8' ? "White" : "Black"
+                //// bp.log.info("Color of new queen : " + color)
+                let newQueen = Piece("Queen", QUEENING_COUNTER, e.color, dstCell.id);
+                dstCell.pieceId = newQueen.id
+                bp.store.put("NON-FEATURE: QUEENING_COUNTER", QUEENING_COUNTER);
+                ctx.insertEntity(newQueen)
+                ctx.removeEntity(srcPiece)
+            }
         }
+        /*        else {
+                    if ((e.dst.id.charAt(1) === '8' || e.dst.id.charAt(1) === '1') && e.piece.id. === "Pawn") { // Queening
+                        let QUEENING_COUNTER = bp.store.get("NON-FEATURE: QUEENING_COUNTER") + 100;
+
+                        let newQueen = Piece("Queen", QUEENING_COUNTER, e.color, dstCell.id);
+                        dstCell.pieceId = newQueen.id
+                        bp.store.put("NON-FEATURE: QUEENING_COUNTER", QUEENING_COUNTER);
+                        ctx.insertEntity(newQueen)
+                        ctx.removeEntity(srcPiece)
+                    }
+                }*/
         dstCell.pieceId = srcPiece.id
         srcPiece.cellId = dstCell.id
     }

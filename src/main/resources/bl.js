@@ -439,12 +439,12 @@ function canReachSquareTrading(piece, dstCell, takes, enPassant) {
 }
 
 function canReachSquare(piece, dstCell, takes, enPassant) {
-    // // bp.log.info("~~ LOG (367) ~~ In canReachSquare, piece = " + JSON.stringify(piece) + ", dstCell = " + dstCell + ", enPassant = " + enPassant + ", takes = " + takes)
+    bp.log.info("~~ LOG (442) ~~ In canReachSquare, piece = " + JSON.stringify(piece) + ", dstCell = " + dstCell + ", enPassant = " + enPassant + ", takes = " + takes)
     // // bp.log.info(piece.subtype)
     // // bp.log.info(piece.cellId)
     // // bp.log.info(dstCell)
-    let colToTakePawn = dstCell[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
-    let rowToTakePawn = (dstCell[1] - '0');
+    let colToTakePawn = dstCell.id[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
+    let rowToTakePawn = (dstCell.id[1] - '0');
     let allCells = ctx.runQuery("Cell.all")
     // // bp.log.info(allCells)
     if (piece.subtype == "Pawn") {
@@ -791,7 +791,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
             // // bp.log.info("~~ LOG (768) ~~ Piece -> " + JSON.stringify(piece))
             let event = moveEvent(piece.subtype, piece.cellId,
                 startsWithCapital(move) ? move.length === 3 ? move.substr(1) : move.substr(2) : move, piece.color);
-            // // bp.log.info("The Move -- " + event);
+            bp.log.info("~~ LOG (794) ~~ The Move -- " + JSON.stringify(event));
             if (!checkmate) {
                 // // bp.log.info("The Move -- " + event)
                 sync({request: event}, 100);
@@ -809,6 +809,126 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
     sync({block: anyMoves}, 100);
 })
 
+/*
+ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
+    let player = '';
+    let isCheckmate = false;
+    let isEnPassant = false;
+
+    // Process each move in the list
+    for (let i = 0; i < allMovesList.length; i++) {
+        isEnPassant = false; // Reset enPassant flag for each move
+
+        // Determine the current player (White or Black)
+        player = (i % 2 === 0) ? 'White' : 'Black';
+        let move = allMovesList[i];
+        let pieces = ctx.runQuery(`Piece.${player}.All`);
+
+        // Log the current move being processed
+        bp.log.info(ANSI_YELLOW + `~~ LOG ~~ Next Move: ${move} by ${player}` + ANSI_RESET);
+
+        // Check if the move is a check or checkmate
+        if (move.endsWith('+') || move.endsWith('#')) {
+            isCheckmate = move.endsWith('#'); // Set checkmate if '#' is present
+            move = move.slice(0, -1); // Remove the check or checkmate symbol
+        }
+
+        // Handle different types of moves
+        if (move.includes(TAKES) && move.includes(QUEENING)) {
+            processTakesAndQueening(move, player, isEnPassant);
+        }
+        else if (move.includes(TAKES)) {
+            processTakesMove(move, player, isEnPassant, i);
+        }
+        else if (move === "O-O" || move === "O-O-O") {
+            processCastling(move, player, pieces);
+        }
+        else if (move.includes('=')) {
+            processQueening(move, player, isEnPassant);
+        }
+        else {
+            processNormalMove(move, player);
+        }
+    }
+
+    // Finalize by blocking further moves
+    sync({ block: anyMoves }, 100);
+});
+
+// Handle moves that involve both 'Takes' and 'Queening'
+function processTakesAndQueening(move, player, isEnPassant) {
+    let piece = findPieceForMove(move, player, true, isEnPassant);
+    let event = createMoveEvent(piece, move);
+    executeMove(event);
+}
+
+// Handle regular 'Takes' moves
+function processTakesMove(move, player, isEnPassant, i) {
+    if (move.indexOf('x') > -1) {
+        // Check for en passant case
+        if (isEnPassantMove(i)) {
+            isEnPassant = true;
+        }
+    }
+    let piece = findPieceForMove(move, player, true, isEnPassant);
+    pieceExchange(piece, move.substr(move.indexOf('x') + 1));
+    let event = createMoveEvent(piece, move);
+    executeMove(event);
+}
+
+// Handle castling moves (O-O or O-O-O)
+function processCastling(move, player, pieces) {
+    if (move === "O-O") {
+        handleShortCastle(player, pieces);
+    } else if (move === "O-O-O") {
+        handleLongCastle(player, pieces);
+    }
+}
+
+// Handle queening (promotion) moves
+function processQueening(move, player, isEnPassant) {
+    let piece = findPieceForMove(move, player, false, isEnPassant);
+    let event = createMoveEvent(piece, move);
+    executeMove(event);
+}
+
+// Handle regular moves
+function processNormalMove(move, player) {
+    let piece = findPieceForMove(move, player, false, false);
+    let event = createMoveEvent(piece, move);
+    executeMove(event);
+}
+
+// Check if the move is an en passant move
+function isEnPassantMove(i) {
+    return allMovesList[i][(allMovesList[i].indexOf('x')) + 1] === allMovesList[i - 1][0] &&
+           allMovesList[i - 1].charAt(1) === '5' &&
+           !allMovesList.includes(allMovesList[i - 1][0] + '6');
+}
+
+// Find the piece for the given move
+function findPieceForMove(move, player, isCapture, isEnPassant) {
+    let pieceType = startsWithCapital(move) ? move[0] : "P"; // If the move starts with a capital letter, it's a specific piece (e.g. "Q" for Queen)
+    let targetSquare = move.includes('x') ? move.split('x')[1] : move.substr(0, 2);
+    return findPieceThatCanReachToEndSquare(pieceType, targetSquare, player, isCapture, isEnPassant, move.charAt(0).concat(player === 'White' ? "5" : "4"));
+}
+
+// Create an event for a move
+function createMoveEvent(piece, move) {
+    let moveTarget = move.includes('x') ? move.split('x')[1] : move.substr(1);
+    return moveEvent(piece.subtype, piece.cellId, moveTarget, piece.color);
+}
+
+// Execute the move (send event and possibly block further moves in case of checkmate)
+function executeMove(event) {
+    if (isCheckmate) {
+        sync({ request: event }, 100);
+        sync({ block: anyMoves }, 100);
+    } else {
+        sync({ request: event }, 100);
+    }
+}
+ */
 
 // Game behavioral thread
 bthread("Game thread", function (entity) {
@@ -899,7 +1019,7 @@ function filterOccupiedCellsMoves(MovesSet, cellsArr) {
     let retArr = [];
 
     for (let i = 0; i < MovesSet.length; i++) {
-        bp.log.info("MovesSet[i]" + MovesSet[i].data.src.id + " => " + MovesSet[i].data.dst.id)
+        // bp.log.info("MovesSet[i]" + MovesSet[i].data.src.id + " => " + MovesSet[i].data.dst.id)
         if (
             !cellIds.includes(MovesSet[i].data.src.id) &&
             cellIds.includes(MovesSet[i].data.dst.id)
@@ -907,7 +1027,7 @@ function filterOccupiedCellsMoves(MovesSet, cellsArr) {
             retArr.push(MovesSet[i]);
         }
     }
-    bp.log.info("filterOccupiedCellsMoves Returning " + retArr)
+    // bp.log.info("filterOccupiedCellsMoves Returning " + retArr)
     return retArr;
 }
 
@@ -1010,7 +1130,7 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
 
         pawnsSet = cellsSet = allCells = pawnMoves = pawnMovesSet = null;
 
-
+        bp.log.info("~~ LOG (1013) Developing Pawns ~~ Moves :  " + pawnMovesToRequest)
         //("mySync : Requesting pawn developing moves")
         mySync({request: pawnMovesToRequest, waitFor: anyMoves})
         // mySync(pawnMovesToRequest, pawnMovesToRequest, []);
@@ -1075,7 +1195,8 @@ ctx.bthread("DevelopingKnights", "Phase.Opening", function (entity) {
         let knightsMovesSet = clearDuplicates(knightMoves)
         let knightsMovesToRequest = filterOccupiedCellsMoves(knightsMovesSet, nonOccupiedCellsSet)
         nonOccupiedCellsSet = knightsArray = knightMoves = knightsMovesSet = null;
-        // bp.log.info("mySync : Requesting knights developing moves " + knightsMovesToRequest)
+
+        bp.log.info("~~ LOG (1079) Developing Knights ~~ Moves :  " + knightsMovesToRequest)
 
         mySync({request: knightsMovesToRequest, waitFor: anyMoves})
 
@@ -1104,14 +1225,14 @@ ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
         let rooksMovesToRequest = filterOccupiedCellsMoves(rooksMovesSet, nonOccupiedCellsSet)
         nonOccupiedCellsSet = rooksArray = rookMoves = rooksMovesSet = null;
 
-        // bp.log.info("mySync : Requesting rooks developing moves " + rooksMovesToRequest)
+        bp.log.info("~~ LOG (1107) Developing Rooks ~~ Moves :  " + rooksMovesToRequest)
 
         mySync({request: rooksMovesToRequest, waitFor: anyMoves})
 
     }
 });
 
-/*ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
+ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
     while (true) {
         let allCells = ctx.runQuery("Cell.all")
         let bishopsMoves = []
@@ -1127,12 +1248,12 @@ ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
         let bishopsMovesToRequest = filterOccupiedCellsMoves(bishopsMovesSet, nonOccupiedCellsSet)
         nonOccupiedCellsSet = bishopsArray = bishopsMoves = bishopsMovesSet = null;
 
-        // bp.log.info("mySync : Requesting rooks developing moves " + rooksMovesToRequest)
+        bp.log.info("~~ LOG (1130) Developing Bishops ~~ Moves :  " + bishopsMovesToRequest)
 
         mySync({request: bishopsMovesToRequest, waitFor: anyMoves})
 
     }
-});*/
+});
 
 ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
     while (true) {
@@ -1156,13 +1277,13 @@ ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
             }
         }
 
-        bp.log.info("~~ LOG (1120) Developing Queen ~~ Moves :  " + queenMoves)
+        // bp.log.info("~~ LOG (1120) Developing Queen ~~ Moves :  " + queenMoves)
 
         let queenMovesSet = clearDuplicates(queenMoves)
         let queenMovesToRequest = filterOccupiedCellsMoves(queenMovesSet, nonOccupiedCellsSet)
         nonOccupiedCellsSet = queen = queenMoves = queenMovesSet = null;
 
-        bp.log.info("~~ LOG (1122) Developing Queen ~~ Moves :  " + queenMovesToRequest)
+        bp.log.info("~~ LOG (1165) Developing Queen ~~ Moves :  " + queenMovesToRequest)
         mySync({request: queenMovesToRequest, waitFor: anyMoves})
 
     }
@@ -1577,8 +1698,8 @@ function isAttackingStraight(piece, dstCell, range) {
     let opponentPieces = ctx.runQuery("Piece.Black.All")
     let allCells = ctx.runQuery("Cell.all")
 
-    let col = dstCell[0].charCodeAt(0) - 'a'.charCodeAt(0);
-    let row = dstCell[1] - '0';
+    let col = dstCell.id[0].charCodeAt(0) - 'a'.charCodeAt(0);
+    let row = dstCell.id[1] - '0';
 
     let checkMeNorth = true;
     let checkMeSouth = true;
@@ -1688,21 +1809,24 @@ function isDefendedPiece(dstCell, color) {
 function pinning(piece, pieceCell, straightMovement, diagonalMovement) {
     // First, determine whether a pinning is even feasible - the moved piece need to "see" the opponent king
     let opponentKingCell = ctx.runQuery(getOpponentKingCell("White"))[0].cellId
-    if ((pieceCell.charAt(0) === opponentKingCell.charAt(0) || pieceCell.charAt(0) === opponentKingCell.charAt(0)) && straightMovement) {
+
+    bp.log.info("~~ LOG (1693) ~~ pinning variables => " + JSON.stringify(pieceCell) + " " + opponentKingCell)
+
+    if ((pieceCell.id.charAt(0) === opponentKingCell.charAt(0) || pieceCell.id.charAt(0) === opponentKingCell.charAt(0)) && straightMovement) {
         // // bp.log.info("~~ LOG (1556) ~~ return true, reason: straight")
-        if (whatStandsBetweenPieceAndOpponentKing(piece, pieceCell, "Straight")) {
+        if (whatStandsBetweenPieceAndOpponentKing(piece, pieceCell.id, "Straight")) {
             return true;
         }
     }
 
-    let col = pieceCell[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
-    let row = pieceCell[1] - '0';
+    let col = pieceCell.id[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
+    let row = pieceCell.id[1] - '0';
     let colKing = opponentKingCell[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
     let rowKing = opponentKingCell[1] - '0';
 
     if (Math.abs(col - colKing) === (Math.abs(row - rowKing)) && diagonalMovement) {
         // // bp.log.info("~~ LOG (1565) ~~ return true, reason: diagonal" + pieceCell + " " + opponentKingCell)
-        if (whatStandsBetweenPieceAndOpponentKing(piece, pieceCell, "Diagonal")) {
+        if (whatStandsBetweenPieceAndOpponentKing(piece, pieceCell.id, "Diagonal")) {
             return true;
         }
     }
@@ -1740,7 +1864,7 @@ function whatStandsBetweenPieceAndOpponentKing(piece, pieceCell, straightOrDiago
 }
 
 function allCellsBetweenSourceAndDestination(src, dst, straightOrDiagonal) {
-    // //  bp.log.info("~~ LOG (1585) ~~ Check allCellsBetweenSourceAndDestination")
+    bp.log.info("~~ LOG (1747) ~~ Check allCellsBetweenSourceAndDestination")
     let cells = []
     if (straightOrDiagonal === "Straight") {
         if (src.charAt(1) === dst.charAt(1)) {
