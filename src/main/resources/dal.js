@@ -154,7 +154,7 @@ function getWhiteQueen() {
 }
 
 function getSpecificPieceOnCell(cell_identifier) {
-    bp.log.info("~~ DAL LOG (157) ~~ " + JSON.stringify(cell_identifier))
+    // bp.log.info("~~ DAL LOG (157) ~~ " + JSON.stringify(cell_identifier))
     if (typeof cell_identifier === 'string') {
         //// bp.log.info("~~ DAL LOG (160) ~~ " + cell_identifier + ", Type = " + typeof cell_identifier)
         return function (entity) {
@@ -163,7 +163,7 @@ function getSpecificPieceOnCell(cell_identifier) {
                 entity.cellId[1].equals(String(cell_identifier).charAt(1));
         }
     } else {
-        bp.log.info("~~ DAL LOG (168) ~~ " + JSON.stringify(cell_identifier) + ", Type = " + typeof cell_identifier)
+        // bp.log.info("~~ DAL LOG (168) ~~ " + JSON.stringify(cell_identifier) + ", Type = " + typeof cell_identifier)
         let new_cell_identifier = String(cell_identifier.id);
         //// bp.log.info("~~ DAL LOG (170) ~~ " + new_cell_identifier + ", Type = " + typeof cell_identifier)
         return function (entity) {
@@ -176,11 +176,11 @@ function getSpecificPieceOnCell(cell_identifier) {
 
 // Game phase changed event
 ctx.registerEffect("Game Phase", function (e) {
-    bp.log.info("PHASE CHANGE")
+    // bp.log.info("PHASE CHANGE")
     let phase = ctx.getEntityById("phase")
     phase.phase = "Opening"
-    bp.log.info("PHASE: " + JSON.stringify(phase))
-    bp.log.info("E: " + JSON.stringify(e))
+    // bp.log.info("PHASE: " + JSON.stringify(phase))
+    // bp.log.info("E: " + JSON.stringify(e))
     // ctx.updateEntity(phase) // no need in COBPjs 0.6.0
 })
 /*
@@ -194,7 +194,7 @@ ctx.registerEffect("Develop", function(e) {
 
 ctx.registerEffect("Move", function (e) {
     // Debugging
-    bp.log.info("~~ DAL LOG ~~ Chosen Move Effect : " + JSON.stringify(e))
+    // bp.log.info("~~ DAL LOG ~~ Chosen Move Effect : " + JSON.stringify(e))
     //// bp.log.info("~~ DAL LOG ~~ Move Effect ")
 
     // This function handles the effect of the move, e.g., removing taken pieces off the game board.
@@ -204,43 +204,43 @@ ctx.registerEffect("Move", function (e) {
     //Todo: For now, handle both when e.src or e.src.id exist, but later make sure all move events are being "called" (in bl.js) in the same way
 
     if (e.src.id === undefined) {
-        bp.log.info("~~ ctx.getEntityById Looking for srcCell => " + e.src)
+        // bp.log.info("~~ ctx.getEntityById Looking for srcCell => " + e.src)
 
         srcCell = ctx.getEntityById(e.src)
 
-        bp.log.info("~~ ctx.getEntityById Found srcCell =>" + JSON.stringify(srcCell))
+        // bp.log.info("~~ ctx.getEntityById Found srcCell =>" + JSON.stringify(srcCell))
 
-        bp.log.info("~~ ctx.getEntityById Looking for dstCell =>" + e.dst)
+        // bp.log.info("~~ ctx.getEntityById Looking for dstCell =>" + e.dst)
 
         dstCell = ctx.getEntityById(e.dst)
 
-        bp.log.info("~~ ctx.getEntityById Found dstCell => " + JSON.stringify(dstCell))
+        // bp.log.info("~~ ctx.getEntityById Found dstCell => " + JSON.stringify(dstCell))
 
 
-        bp.log.info("~~ ctx.getEntityById Looking for srcPiece => " + srcCell.pieceId.toString())
+        // bp.log.info("~~ ctx.getEntityById Looking for srcPiece => " + srcCell.pieceId.toString())
 
         srcPiece = ctx.getEntityById(srcCell.pieceId.toString())
 
-        bp.log.info("~~ ctx.getEntityById Found srcPiece =>" + JSON.stringify(srcPiece))
+        // bp.log.info("~~ ctx.getEntityById Found srcPiece =>" + JSON.stringify(srcPiece))
     } else {
-        bp.log.info("~~ ctx.getEntityById Looking for srcCell => " + e.src.id)
+        // bp.log.info("~~ ctx.getEntityById Looking for srcCell => " + e.src.id)
 
         srcCell = ctx.getEntityById(e.src.id)
 
-        bp.log.info("~~ ctx.getEntityById Found srcCell =>" + JSON.stringify(srcCell))
+        // bp.log.info("~~ ctx.getEntityById Found srcCell =>" + JSON.stringify(srcCell))
 
-        bp.log.info("~~ ctx.getEntityById Looking for dstCell =>" + e.dst.id)
+        // bp.log.info("~~ ctx.getEntityById Looking for dstCell =>" + e.dst.id)
 
         dstCell = ctx.getEntityById(e.dst.id)
 
-        bp.log.info("~~ ctx.getEntityById Found dstCell => " + JSON.stringify(dstCell))
+        // bp.log.info("~~ ctx.getEntityById Found dstCell => " + JSON.stringify(dstCell))
 
 
-        bp.log.info("~~ ctx.getEntityById Looking for srcPiece => " + srcCell.pieceId.toString())
+        // bp.log.info("~~ ctx.getEntityById Looking for srcPiece => " + srcCell.pieceId.toString())
 
         srcPiece = ctx.getEntityById(srcCell.pieceId.toString())
 
-        bp.log.info("~~ ctx.getEntityById Found srcPiece =>" + JSON.stringify(srcPiece))
+        // bp.log.info("~~ ctx.getEntityById Found srcPiece =>" + JSON.stringify(srcPiece))
     }
 
     if (e.takes) { // Takes
@@ -255,11 +255,11 @@ ctx.registerEffect("Move", function (e) {
                     dstCell - Different! The destination of the source piece is now empty and not occupied by a piece
             */
 
-            bp.log.info("~~ DAL LOG ~~ need to handle En - passant" + JSON.stringify(e))
+            // bp.log.info("~~ DAL LOG ~~ need to handle En - passant" + JSON.stringify(e))
             let enPassantDstCell = ctx.getEntityById(e.dst.id.charAt(0) + String.fromCharCode(e.dst.id.charCodeAt(1) - 1));
-            bp.log.info("~~ ctx.getEntityById Looking for " + e.dst.id.charAt(0) + String.fromCharCode(e.dst.id.charCodeAt(1) - 1))
+            // bp.log.info("~~ ctx.getEntityById Looking for " + e.dst.id.charAt(0) + String.fromCharCode(e.dst.id.charCodeAt(1) - 1))
             dstPiece = ctx.getEntityById(enPassantDstCell.pieceId.toString());
-            bp.log.info("~~ ctx.getEntityById Looking for " + enPassantDstCell.pieceId.toString())
+            // bp.log.info("~~ ctx.getEntityById Looking for " + enPassantDstCell.pieceId.toString())
             //bp.log.info("~~ DAL LOG ~ En - passant cell -> " + JSON.stringify(enPassantDstCell))
             //bp.log.info("~~ DAL LOG ~ En - passant piece -> " + JSON.stringify(dstPiece))
 
@@ -269,14 +269,14 @@ ctx.registerEffect("Move", function (e) {
 
         } else { // Regular Taking Move
             dstPiece = ctx.getEntityById(dstCell.pieceId.toString())
-            bp.log.info("~~ ctx.getEntityById Looking for " + dstCell.pieceId.toString())
+            // bp.log.info("~~ ctx.getEntityById Looking for " + dstCell.pieceId.toString())
             dstCell.pieceId = srcPiece.id
             srcPiece.cellId = dstCell.id
         }
 
         ctx.removeEntity(dstPiece)
     } else { // Regular Move
-        bp.log.info("~~ DAL LOG (281) ~~ Regular Move : " + JSON.stringify(e))
+        // bp.log.info("~~ DAL LOG (281) ~~ Regular Move : " + JSON.stringify(e))
         if (e.src.id === undefined) {
             if ((e.dst.charAt(1) === '8' || e.dst.charAt(1) === '1') && e.piece === "Pawn") { // Queening
                 let QUEENING_COUNTER = bp.store.get("NON-FEATURE: QUEENING_COUNTER") + 100;
@@ -404,7 +404,7 @@ const prefix = ["", "N", "B", "R", "Q", "K"];
 const pieces = ["Pawn", "Knight", "Bishop", "Rook", "Queen", "King"];
 
 function moveEvent(piece, oldCell, newCell, color, takes, checkmate, enPassant) {
-    bp.log.info("~~ DAL LOG ~~ Move Event : " + color + " " + piece + " : " + JSON.stringify(oldCell) + " => " + JSON.stringify(newCell));
+    // bp.log.info("~~ DAL LOG ~~ Move Event : " + color + " " + piece + " : " + JSON.stringify(oldCell) + " => " + JSON.stringify(newCell));
 
     let takenPieceTemp = ctx.runQuery(getSpecificPieceOnCell(newCell));
     //// bp.log.info("~~ DAL LOG ~~ Move Event : " + color + " " + piece + " : " + JSON.stringify(oldCell) + " => " + JSON.stringify(newCell) + ", Taken piece = " + JSON.stringify(takenPieceTemp));

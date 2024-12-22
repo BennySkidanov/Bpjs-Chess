@@ -236,7 +236,7 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
             // No selectable events
             return super.select(bpss, selectableEvents);
         } else {
-            System.out.println("--------------------------------- Select ( |Selectable Moves| >= 1 ) ---------------------------------");
+            // System.out.println("--------------------------------- Select ( |Selectable Moves| >= 1 ) ---------------------------------");
             /* BEvent lastElement = null;
             Iterator<BEvent> it = selectableEvents.iterator();
             System.out.println("--------------------------------- Select ( |Selectable Moves| >= 1 ) ---------------------------------");
@@ -248,27 +248,27 @@ public class ChessEventSelectionStrategy extends SimpleEventSelectionStrategy {
             if (lastElement != null) {
                 selectableEvents.remove(lastElement);
             }*/
-            System.out.println("selectableEvents => " + selectableEvents);
+            // System.out.println("selectableEvents => " + selectableEvents);
 
-            System.out.println("selectableEvents size => " + selectableEvents.size());
+            // System.out.println("selectableEvents size => " + selectableEvents.size());
             initialProbabilities = selectableEvents.stream().collect(Collectors.toMap(Function.identity(), e -> 1.0));
-            System.out.println("selectableEvents probabilities => " + initialProbabilities);
+            // System.out.println("selectableEvents probabilities => " + initialProbabilities);
             var nextBpss = selectableEvents.stream()
                     .collect(Collectors.toMap(Function.identity(), e -> {
                         try {
                             var clonedBpss = BProgramSyncSnapshotCloner.clone(bpss);
-                            System.out.println("clonedBpss => " + clonedBpss);
+                            // System.out.println("clonedBpss => " + clonedBpss);
                             return clonedBpss.triggerEvent(e, execSvc, new ArrayList<>(),
                                     clonedBpss.getBProgram().getStorageModificationStrategy());
                         } catch (Exception ex) {
                             ex.printStackTrace();
-                            System.out.println("selectableEvents EXCEPTION!!");
+                            // System.out.println("selectableEvents EXCEPTION!!");
                             System.out.println(ex.getCause());
                             System.exit(1);
                             return null;
                         }
                     }));
-            System.out.println("--------------------------------- Select ( Finished Init THIS ) ---------------------------------");
+            // System.out.println("--------------------------------- Select ( Finished Init THIS ) ---------------------------------");
             var singleGameData = toJson(bpss, nextBpss, selectableEvents);
             gameData.add(singleGameData);
         }

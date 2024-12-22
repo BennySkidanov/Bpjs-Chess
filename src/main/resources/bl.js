@@ -139,7 +139,7 @@ const UNWORTHY_TRADE = -1;
 const allMovesList = (function () {
     let moves = pgn.split(" ");
 
-    bp.log.info("~~ LOG (58) ~~ Moves after splitting : " + moves)
+    // bp.log.info("~~ LOG (58) ~~ Moves after splitting : " + moves)
 
     let allMovesList = [];
 
@@ -336,7 +336,7 @@ function startsWithCapital(word) {
 
 // Helper function : Find if there any pieces in between srcCell And dstCell to prevent "jumping" above pieces
 function noPiecesInBetweenStraight(srcCell, dstCell) {
-    bp.log.info("noPiecesInBetween : " + srcCell + " => " + dstCell)
+    // bp.log.info("noPiecesInBetween : " + srcCell + " => " + dstCell)
     let nonOccupiedCellsSet = ctx.runQuery("Cell.all.nonOccupied")
     // // bp.log.info(nonOccupiedCellsSet)
     let nonOccupiedCellsIds = []
@@ -403,7 +403,7 @@ function noPiecesInBetweenStraight(srcCell, dstCell) {
 }
 
 function noPiecesInBetweenDiagonal(piece, dstCell) {
-    bp.log.info("noPiecesInBetweenDiagonal => " + piece.cellId + " To => " + dstCell)
+    // bp.log.info("noPiecesInBetweenDiagonal => " + piece.cellId + " To => " + dstCell)
     let allCells = ctx.runQuery("Cell.all");
     let reachableCells = availableDiagonalCellsFromPiece(piece, 8, allCells)[1];
 
@@ -420,7 +420,7 @@ function noPiecesInBetweenDiagonal(piece, dstCell) {
 }
 
 function canReachSquareTrading(piece, dstCell, takes, enPassant) {
-    bp.log.info("~~ LOG (354) canReachSquareTrading, piece = " + JSON.stringify(piece) + ", dstCell = " + JSON.stringify(dstCell))
+    // bp.log.info("~~ LOG (354) canReachSquareTrading, piece = " + JSON.stringify(piece) + ", dstCell = " + JSON.stringify(dstCell))
     // /* bp.log.info("In canReachSquare Trading, dstCell = " + dstCell)
     //  bp.log.info("enPassant = " + enPassant + ", takes = " + takes)
     //  bp.log.info(piece.subtype)
@@ -499,7 +499,7 @@ function canReachSquareTrading(piece, dstCell, takes, enPassant) {
 }
 
 function canReachSquare(piece, dstCell, takes, enPassant) {
-    bp.log.info("~~ LOG (442) ~~ In canReachSquare, piece = " + JSON.stringify(piece) + ", dstCell = " + JSON.stringify(dstCell) + ", enPassant = " + enPassant + ", takes = " + takes)
+    // bp.log.info("~~ LOG (442) ~~ In canReachSquare, piece = " + JSON.stringify(piece) + ", dstCell = " + JSON.stringify(dstCell) + ", enPassant = " + enPassant + ", takes = " + takes)
 
     let colToTakePawn, rowToTakePawn;
 
@@ -681,8 +681,8 @@ function handleLongCastle(color, pieces) {
 function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color, takes, enPassant, enPassantPieceCellId) {
 
 
-    bp.log.info("~~ LOG (633) ~~ findPieceThatCanReachToEndSquare with the following params : " + "piecePrefix = " + piecePrefix + " dst cell = " + JSON.stringify(dstCell))
-    bp.log.info("~~ LOG (634) ~~ findPieceThatCanReachToEndSquare Other params : Color = " + color + " Takes = " + takes + " enPassant = " + enPassant)
+    // bp.log.info("~~ LOG (633) ~~ findPieceThatCanReachToEndSquare with the following params : " + "piecePrefix = " + piecePrefix + " dst cell = " + JSON.stringify(dstCell))
+    // bp.log.info("~~ LOG (634) ~~ findPieceThatCanReachToEndSquare Other params : Color = " + color + " Takes = " + takes + " enPassant = " + enPassant)
 
 
     let optionalCol = "";
@@ -696,23 +696,23 @@ function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color, takes, en
     }
 
     let pieceType = piecesPrefixes[piecePrefix];
-    bp.log.info("~~ LOG (648) ~~ piece type = " + pieceType)
+    // bp.log.info("~~ LOG (648) ~~ piece type = " + pieceType)
     let allPiecesOfType = ctx.runQuery(getSpecificType(pieceType, color))
-    bp.log.info("~~ LOG (650) ~~ There are " + allPiecesOfType.length + " candidates ")
+    // bp.log.info("~~ LOG (650) ~~ There are " + allPiecesOfType.length + " candidates ")
     for (let i = 0; i < allPiecesOfType.length; i++) {
         if (optionalCol === "") {
-            bp.log.info("~~ LOG (554) ~~ No optional column! looking at " + JSON.stringify(allPiecesOfType[i]))
+            // bp.log.info("~~ LOG (554) ~~ No optional column! looking at " + JSON.stringify(allPiecesOfType[i]))
             // Todo : change here, not all calls with enPassant = True
             if (enPassant && allPiecesOfType[i].cellId === enPassantPieceCellId) {
                 if (canReachSquare(allPiecesOfType[i], dstCell, takes, enPassant)) {
-                    bp.log.info("~~ LOG (657) ~~ The piece than can reach " + dstCell.id + " is ==> " + allPiecesOfType[i]);
+                    // bp.log.info("~~ LOG (657) ~~ The piece than can reach " + dstCell.id + " is ==> " + allPiecesOfType[i]);
                     return allPiecesOfType[i];
                 }
             } else if (canReachSquare(allPiecesOfType[i], dstCell, takes, false)) {
                 return allPiecesOfType[i];
             }
         } else {
-            bp.log.info("Checking piece that fits optional col!!" + optionalCol + " " + allPiecesOfType[i].cellId.charAt(0));
+            // bp.log.info("Checking piece that fits optional col!!" + optionalCol + " " + allPiecesOfType[i].cellId.charAt(0));
             if (allPiecesOfType[i].cellId.charAt(0) == optionalCol) {
                 if (canReachSquare(allPiecesOfType[i], dstCell)) {
                     // // bp.log.info(allPiecesOfTypeValues[i]);
@@ -805,7 +805,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
             let piece = findPieceThatCanReachToEndSquare(startsWithCapital(move) ? move[0] : "P", dstCell,
                 player, true, enPassant, allMovesList[i].charAt(0).concat(player === 'White' ? "5" : "4"));
             let event = moveEvent(piece.subtype, GiveMeCell(piece.cellId, allCells), dstCell, piece.color, true);
-            bp.log.info("~~~~~~~~~~ Calling Move Event ~~~~~~~~~ ==> \t " + event);
+            // bp.log.info("~~~~~~~~~~ Calling Move Event ~~~~~~~~~ ==> \t " + event);
             if (!checkmate) {
                 // // bp.log.info("The Move -- " + event)
                 sync({request: event}, 100);
@@ -816,12 +816,12 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
                 sync({block: anyMoves}, 100);
             }
         } else if (move.indexOf(TAKES) > -1) {
-            bp.log.info("~~ LOG (790) ~~ This move is Takes event");
+            // bp.log.info("~~ LOG (790) ~~ This move is Takes event");
             // Todo: for now, handle En - passant only for white, add handling for black as well if needed
             if (allMovesList[i][(allMovesList[i].indexOf('x')) + 1] === allMovesList[i - 1][0] &&
                 allMovesList[i - 1].charAt(1) === '5' &&
                 !(allMovesList.includes(allMovesList[i - 1][0] + '6'))) {
-                bp.log.info("~~ LOG (795) ~~ This move is classified En passant!! " + move + "," + allMovesList[i])
+                // bp.log.info("~~ LOG (795) ~~ This move is classified En passant!! " + move + "," + allMovesList[i])
                 enPassant = true;
             }
             let dstCell = GiveMeCell(move.substr((move.indexOf('x') + 1)), allCells);
@@ -829,7 +829,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
                 player, true, enPassant, allMovesList[i].charAt(0).concat(player === 'White' ? "5" : "4")
                 )
             ;
-            bp.log.info("~~ LOG (800) ~~ piece is " + JSON.stringify(piece))
+            // bp.log.info("~~ LOG (800) ~~ piece is " + JSON.stringify(piece))
             pieceExchange(piece, move.substr((move.indexOf('x') + 1)));
             let event = moveEvent(piece.subtype, GiveMeCell(piece.cellId, allCells), dstCell
                 , piece.color,
@@ -837,7 +837,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
                 )
             ;
 
-            bp.log.info("~~~~~~~~~~ Calling Move Event ~~~~~~~~~ ==> \t " + event);
+            // bp.log.info("~~~~~~~~~~ Calling Move Event ~~~~~~~~~ ==> \t " + event);
             if (!checkmate) {
                 // // bp.log.info("The Move -- " + event)
                 sync({request: event}, 100);
@@ -852,7 +852,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
             if (move == "O-O") handleShortCastle(player, pieces);
             else if (move == "O-O-O") handleLongCastle(player, pieces);
         } else if ((move.indexOf('=') > -1)) {
-            bp.log.info("Queening event");
+            // bp.log.info("Queening event");
             let piece = findPieceThatCanReachToEndSquare(
                 startsWithCapital(move) ? move[0] : "P",
                 move.substr(0, 2),
@@ -861,7 +861,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
                 GiveMeCell(move.substr(0, 2), allCells), piece.color
                 )
             ;
-            bp.log.info("~~~~~~~~~~ Calling Move Event ~~~~~~~~~ ==> \t " + event);
+            // bp.log.info("~~~~~~~~~~ Calling Move Event ~~~~~~~~~ ==> \t " + event);
             if (!checkmate) {
                 // // bp.log.info("The Move -- " + event)
                 sync({request: event}, 100);
@@ -879,10 +879,10 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
                 player,
                 false, false);
             // // bp.log.info("REACHED SYNC")
-            bp.log.info("~~ LOG (768) ~~ Piece -> " + JSON.stringify(piece) + ", dstCell ==> " + JSON.stringify(dstCell))
+            // bp.log.info("~~ LOG (768) ~~ Piece -> " + JSON.stringify(piece) + ", dstCell ==> " + JSON.stringify(dstCell))
             let event = moveEvent(piece.subtype, GiveMeCell(piece.cellId, allCells), dstCell
                 , piece.color);
-            bp.log.info("~~~~~~~~~~ Calling Move Event 818 ~~~~~~~~~ ==> \t " + event);
+            // bp.log.info("~~~~~~~~~~ Calling Move Event 818 ~~~~~~~~~ ==> \t " + event);
 
             /*
             [BEvent name:Move data:{JS_Obj piece:"Queen",
@@ -1112,14 +1112,14 @@ function clearDuplicates(moves) {
 }
 
 function filterOccupiedCellsMoves(MovesSet, cellsArr) {
-    bp.log.info("filterOccupiedCellsMoves Got " + MovesSet)
+    // bp.log.info("filterOccupiedCellsMoves Got " + MovesSet)
     let cellIds = cellsArr.map((cell) => cell.id);
-    bp.log.info("filterOccupiedCellsMoves Got " + cellIds)
+    // bp.log.info("filterOccupiedCellsMoves Got " + cellIds)
 
     let retArr = [];
 
     for (let i = 0; i < MovesSet.length; i++) {
-        bp.log.info("MovesSet[ " + i + " ] : " + MovesSet[i].data.src.id + " => " + MovesSet[i].data.dst.id)
+        // bp.log.info("MovesSet[ " + i + " ] : " + MovesSet[i].data.src.id + " => " + MovesSet[i].data.dst.id)
         if (
             !cellIds.includes(MovesSet[i].data.src.id) &&
             cellIds.includes(MovesSet[i].data.dst.id)
@@ -1127,7 +1127,7 @@ function filterOccupiedCellsMoves(MovesSet, cellsArr) {
             retArr.push(MovesSet[i]);
         }
     }
-    bp.log.info("filterOccupiedCellsMoves Returning " + retArr)
+    // bp.log.info("filterOccupiedCellsMoves Returning " + retArr)
     return retArr;
 }
 
@@ -1219,13 +1219,13 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
             }
         }
 
-        bp.log.info("~~ LOG (1193) Developing Pawns ~~ Moves :  " + pawnMoves)
+        // bp.log.info("~~ LOG (1193) Developing Pawns ~~ Moves :  " + pawnMoves)
 
         let pawnsMovesSet = clearDuplicates(pawnMoves)
         let pawnsMovesToRequest = filterOccupiedCellsMoves(pawnsMovesSet, nonOccupiedCellsSet)
         nonOccupiedCellsSet = pawnsArray = pawnMoves = pawnsMovesSet = null;
 
-        bp.log.info("~~ LOG (1199) Developing Pawns ~~ Moves :  " + pawnsMovesToRequest)
+        // bp.log.info("~~ LOG (1199) Developing Pawns ~~ Moves :  " + pawnsMovesToRequest)
 
         mySync({request: pawnsMovesToRequest, waitFor: anyMoves})
 
@@ -1283,12 +1283,12 @@ ctx.bthread("DevelopingKnights", "Phase.Opening", function (entity) {
             knightMoves = knightMoves.concat(availableKnightMovesTotal);
         }
 
-        bp.log.info("knight moves length " + knightMoves.length)
+        // bp.log.info("knight moves length " + knightMoves.length)
         let knightsMovesSet = clearDuplicates(knightMoves)
         let knightsMovesToRequest = filterOccupiedCellsMoves(knightsMovesSet, nonOccupiedCellsSet)
         nonOccupiedCellsSet = knightsArray = knightMoves = knightsMovesSet = null;
 
-        bp.log.info("~~ LOG (1079) Developing Knights ~~ Moves :  " + knightsMovesToRequest)
+        // bp.log.info("~~ LOG (1079) Developing Knights ~~ Moves :  " + knightsMovesToRequest)
 
         mySync({request: knightsMovesToRequest, waitFor: anyMoves})
 
@@ -1304,7 +1304,7 @@ ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
 
         for (let i = 0; i < rooksArray.length; i++) {
             let availRookMoves = availableStraightCellsFromPiece(rooksArray[i], 7, allCells)[0];
-            bp.log.info("~~ LOG (1287) Developing Rooks ~~ :  " + availRookMoves)
+            // bp.log.info("~~ LOG (1287) Developing Rooks ~~ :  " + availRookMoves)
 
             let availableRookMovesTotal = [];
             for (let j = 0; j < availRookMoves.length; j++) {
@@ -1314,12 +1314,12 @@ ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
             }
             rookMoves = rookMoves.concat(availableRookMovesTotal);
         }
-        bp.log.info("~~ LOG (1295) Developing Rooks ~~ :  " + rookMoves)
+        // bp.log.info("~~ LOG (1295) Developing Rooks ~~ :  " + rookMoves)
         let rooksMovesSet = clearDuplicates(rookMoves)
         let rooksMovesToRequest = filterOccupiedCellsMoves(rooksMovesSet, nonOccupiedCellsSet)
         nonOccupiedCellsSet = rooksArray = rookMoves = rooksMovesSet = null;
 
-        bp.log.info("~~ LOG (1107) Developing Rooks ~~ Moves :  " + rooksMovesToRequest)
+        // bp.log.info("~~ LOG (1107) Developing Rooks ~~ Moves :  " + rooksMovesToRequest)
 
         mySync({request: rooksMovesToRequest, waitFor: anyMoves})
 
@@ -1342,7 +1342,7 @@ ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
         let bishopsMovesToRequest = filterOccupiedCellsMoves(bishopsMovesSet, nonOccupiedCellsSet)
         nonOccupiedCellsSet = bishopsArray = bishopsMoves = bishopsMovesSet = null;
 
-        bp.log.info("~~ LOG (1130) Developing Bishops ~~ Moves :  " + bishopsMovesToRequest)
+        // bp.log.info("~~ LOG (1130) Developing Bishops ~~ Moves :  " + bishopsMovesToRequest)
 
         mySync({request: bishopsMovesToRequest, waitFor: anyMoves})
 
@@ -1355,7 +1355,7 @@ ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
         let queenMoves = []
         let queen = ctx.runQuery(getWhiteQueen())[0]
         let nonOccupiedCellsSet = ctx.runQuery("Cell.all.nonOccupied")
-        bp.log.info("~~ LOG (1122) Developing Queen ~~ :  " + JSON.stringify(queen))
+        // bp.log.info("~~ LOG (1122) Developing Queen ~~ :  " + JSON.stringify(queen))
 
         let diagonalQueenMoves = availableDiagonalCellsFromPiece(queen, 7, allCells)[0];
         let straightQueenMoves = availableStraightCellsFromPiece(queen, 7, allCells)[0];
@@ -1371,13 +1371,13 @@ ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
             }
         }
 
-        bp.log.info("~~ LOG (1120) Developing Queen ~~ Moves :  " + queenMoves)
+        // bp.log.info("~~ LOG (1120) Developing Queen ~~ Moves :  " + queenMoves)
 
         let queenMovesSet = clearDuplicates(queenMoves)
         let queenMovesToRequest = filterOccupiedCellsMoves(queenMovesSet, nonOccupiedCellsSet)
         nonOccupiedCellsSet = queen = queenMoves = queenMovesSet = null;
 
-        bp.log.info("~~ LOG (1165) Developing Queen ~~ Moves :  " + queenMovesToRequest)
+        // bp.log.info("~~ LOG (1165) Developing Queen ~~ Moves :  " + queenMovesToRequest)
         mySync({request: queenMovesToRequest, waitFor: anyMoves})
 
     }
@@ -1673,7 +1673,7 @@ function isStrengtheningPawnStructure(dstCell) {
     //                                                   *       *
     //                                                    *     *
     // 2. Move pawns to support the development of pieces
-    bp.log.info("isStrengtheningPawnStructure, dstcell = " + dstCell)
+    // bp.log.info("isStrengtheningPawnStructure, dstcell = " + dstCell)
     let defaultReturnValue = false;
 
     let col = dstCell.id[0].charCodeAt(0) - 'a'.charCodeAt(0);
@@ -1712,7 +1712,7 @@ function isStrengtheningPawnStructure(dstCell) {
 }
 
 function isAttackingDiagonal(piece, dstCell, range, canAttackBackwards) {
-    bp.log.info("~~ LOG (1654) ~~ isAttackingDiagonal ==> " + JSON.stringify(piece) + ", " + JSON.stringify(dstCell))
+    // bp.log.info("~~ LOG (1654) ~~ isAttackingDiagonal ==> " + JSON.stringify(piece) + ", " + JSON.stringify(dstCell))
     let playerPieces = ctx.runQuery("Piece.White.All")
     let opponentPieces = ctx.runQuery("Piece.Black.All")
     let allCells = ctx.runQuery("Cell.all")
@@ -1867,7 +1867,7 @@ function isAttackingKnight(piece, dstCell) {
 
     // let knight = ctx.runQuery(getSpecificPiece(numericCellToCell(row, col, allCells).pieceId))
     let knight = piece
-    bp.log.info("~~ LOG (1707) ~~ Knight: " + JSON.stringify(knight) + ", Debug: " + debug)
+    // bp.log.info("~~ LOG (1707) ~~ Knight: " + JSON.stringify(knight) + ", Debug: " + debug)
 
     let cellsKnightCanReachWithPieceOccupying = availableKnightMoves(knight)[1]
     // bp.log.info("~~ LOG (1710) ~~ cellsKnightCanReachWithPieceOccupying: " + cellsKnightCanReachWithPieceOccupying)
@@ -1875,7 +1875,7 @@ function isAttackingKnight(piece, dstCell) {
     for (let i = 0; i < cellsKnightCanReachWithPieceOccupying.length; i++) {
 
         let pieceInCell = ctx.runQuery(getSpecificPiece(cellsKnightCanReachWithPieceOccupying[i].pieceId))
-        bp.log.info("Piece on " + JSON.stringify(cellsKnightCanReachWithPieceOccupying[i]) + " ==> " + JSON.stringify(pieceInCell))
+        // bp.log.info("Piece on " + JSON.stringify(cellsKnightCanReachWithPieceOccupying[i]) + " ==> " + JSON.stringify(pieceInCell))
         if (pieceInCell[0].color === 'Black') {
             return true;
         }
@@ -1906,7 +1906,7 @@ function pinning(piece, pieceCell, straightMovement, diagonalMovement) {
     let allCells = ctx.runQuery("Cell.all")
     let opponentKingCell = GiveMeCell((ctx.runQuery(getOpponentKingCell("White"))[0].cellId), allCells)
 
-    bp.log.info("~~ LOG (1693) ~~ pinning variables => " + JSON.stringify(pieceCell) + " " + opponentKingCell)
+    // bp.log.info("~~ LOG (1693) ~~ pinning variables => " + JSON.stringify(pieceCell) + " " + opponentKingCell)
 
     if ((pieceCell.id.charAt(0) === opponentKingCell.id.charAt(0) || pieceCell.id.charAt(0) === opponentKingCell.id.charAt(0)) && straightMovement) {
         // // bp.log.info("~~ LOG (1556) ~~ return true, reason: straight")
@@ -1936,9 +1936,9 @@ function whatStandsBetweenPieceAndOpponentKing(piece, pieceCell, straightOrDiago
 
     let allCells = ctx.runQuery("Cell.all")
     let opponentKingCell = GiveMeCell((ctx.runQuery(getOpponentKingCell("White"))[0].cellId), allCells)
-    bp.log.info("~~ LOG (1900) ~~ whatStandsBetweenPieceAndOpponentKing " + straightOrDiagonal + " " + JSON.stringify(pieceCell) + " ==> " + JSON.stringify(opponentKingCell))
+    // bp.log.info("~~ LOG (1900) ~~ whatStandsBetweenPieceAndOpponentKing " + straightOrDiagonal + " " + JSON.stringify(pieceCell) + " ==> " + JSON.stringify(opponentKingCell))
     let separatingCells = allCellsBetweenSourceAndDestination(pieceCell, opponentKingCell, straightOrDiagonal)
-    bp.log.info("~~ LOG (1904) ~~ separatingCells => " + separatingCells)
+    // bp.log.info("~~ LOG (1904) ~~ separatingCells => " + separatingCells)
     let counterPieces = 0
     let counterOpponentPieces = 0
 
@@ -1953,7 +1953,7 @@ function whatStandsBetweenPieceAndOpponentKing(piece, pieceCell, straightOrDiago
         }
     }
 
-    bp.log.info("~~ LOG (1589) ~~ Between " + pieceCell + " and " + opponentKingCell + " there are " + counterPieces + " pieces!, " + counterOpponentPieces + " of them are black")
+    // bp.log.info("~~ LOG (1589) ~~ Between " + pieceCell + " and " + opponentKingCell + " there are " + counterPieces + " pieces!, " + counterOpponentPieces + " of them are black")
 
     // Time to decide if a pin is still possible
 
@@ -1961,7 +1961,7 @@ function whatStandsBetweenPieceAndOpponentKing(piece, pieceCell, straightOrDiago
 }
 
 function allCellsBetweenSourceAndDestination(src, dst, straightOrDiagonal) {
-    bp.log.info("~~ LOG (1926) ~~ Check allCellsBetweenSourceAndDestination " + straightOrDiagonal + " Between " + JSON.stringify(src) + " ==> " + JSON.stringify(dst))
+    // bp.log.info("~~ LOG (1926) ~~ Check allCellsBetweenSourceAndDestination " + straightOrDiagonal + " Between " + JSON.stringify(src) + " ==> " + JSON.stringify(dst))
     let cells = []
     if (straightOrDiagonal === "Straight") {
         if (src.id.charAt(1) === dst.id.charAt(1)) {
@@ -2008,7 +2008,7 @@ function allCellsBetweenSourceAndDestination(src, dst, straightOrDiagonal) {
         }
     }
 
-    bp.log.info("~~ LOG (1629) ~~ Check allCellsBetweenSourceAndDestination between " + src + " -> " + dst + " = " + cells)
+    // bp.log.info("~~ LOG (1629) ~~ Check allCellsBetweenSourceAndDestination between " + src + " -> " + dst + " = " + cells)
     return cells;
 }
 
@@ -2028,7 +2028,7 @@ function findPiece(cell) {
 function isAttackingOpponentPieceOrDefending(piece, dstCell) {
 
     // Debugging
-    bp.log.info("~~ LOG (1966) ~~ isAttackingOpponentPieceOrDefending: " + JSON.stringify(piece) + ", on " + JSON.stringify(dstCell))
+    // bp.log.info("~~ LOG (1966) ~~ isAttackingOpponentPieceOrDefending: " + JSON.stringify(piece) + ", on " + JSON.stringify(dstCell))
 
     // Initialize all variables and data sets relevant to the bthread
 
@@ -2054,7 +2054,7 @@ function isAttackingOpponentPieceOrDefending(piece, dstCell) {
     let specificPiece = findPiece(dstCell.id);
 
     // Debugging
-    bp.log.info("~~ LOG (1888) ~~ isAttackingOpponentPieceOrDefending Found Specific " + JSON.stringify(piece) + ", on " + dstCell + " : " + JSON.stringify(specificPiece))
+    // bp.log.info("~~ LOG (1888) ~~ isAttackingOpponentPieceOrDefending Found Specific " + JSON.stringify(piece) + ", on " + dstCell + " : " + JSON.stringify(specificPiece))
 
     if (piecesAbleToPin.includes(piece)) {
 
@@ -2204,7 +2204,7 @@ function pieceExchange(piece, exchangeCell) {
     let freePiece = false, equalTrade = false, worthwhileTrade = false, worthlessTrade = false
 
     // Debugging
-    bp.log.info("~~ LOG (2050) ~~ piece exchange happens on " + exchangeCell + ", Piece is " + JSON.stringify(piece))
+    // bp.log.info("~~ LOG (2050) ~~ piece exchange happens on " + exchangeCell + ", Piece is " + JSON.stringify(piece))
 
     // Initialize all variables and data sets relevant to the bthread
 
@@ -2217,7 +2217,7 @@ function pieceExchange(piece, exchangeCell) {
     let takenPiece = findPiece(exchangeCell);
     if (takenPiece === undefined) // En - Passant
     {
-        bp.log.info("~~ LOG (2050) ~~ the taken piece found on " + exchangeCell[0] + (getPrevChar(exchangeCell[1])))
+        // bp.log.info("~~ LOG (2050) ~~ the taken piece found on " + exchangeCell[0] + (getPrevChar(exchangeCell[1])))
         takenPiece = findPiece(exchangeCell[0] + (getPrevChar(exchangeCell[1])))
     }
 
@@ -2229,7 +2229,7 @@ function pieceExchange(piece, exchangeCell) {
     let takingPieceValue = piecesValues[piece.subtype];
 
     // Debugging
-    bp.log.info("~~ LOG (2063) ~~ pieceExchange, exchange on " + exchangeCell + ", Taken into consideration every piece except " + JSON.stringify(takenPiece))
+    // bp.log.info("~~ LOG (2063) ~~ pieceExchange, exchange on " + exchangeCell + ", Taken into consideration every piece except " + JSON.stringify(takenPiece))
 
     for (let i = 0; i < opponentPieces.length; i++) {
         if (opponentPieces[i] !== takenPiece && canReachSquareTrading(opponentPieces[i], exchangeCell, true, false)) {
@@ -2247,28 +2247,28 @@ function pieceExchange(piece, exchangeCell) {
         }
     }
 
-    bp.log.info("~~ LOG (2087) ~~ pieceExchange, opponentPiecesTotalValue =  " + opponentPiecesTotalValue)
-    bp.log.info("~~ LOG (2087) ~~ pieceExchange, numberOfOpponentPiecesInvolved =  " + numberOfOpponentPiecesInvolved)
-    bp.log.info("~~ LOG (2088) ~~ pieceExchange, playerPiecesTotalValue =  " + playerPiecesTotalValue)
-    bp.log.info("~~ LOG (2088) ~~ pieceExchange, numberOfPlayerPiecesInvolved =  " + numberOfPlayerPiecesInvolved)
+    // bp.log.info("~~ LOG (2087) ~~ pieceExchange, opponentPiecesTotalValue =  " + opponentPiecesTotalValue)
+    // bp.log.info("~~ LOG (2087) ~~ pieceExchange, numberOfOpponentPiecesInvolved =  " + numberOfOpponentPiecesInvolved)
+    // bp.log.info("~~ LOG (2088) ~~ pieceExchange, playerPiecesTotalValue =  " + playerPiecesTotalValue)
+    // bp.log.info("~~ LOG (2088) ~~ pieceExchange, numberOfPlayerPiecesInvolved =  " + numberOfPlayerPiecesInvolved)
 
     let tradeScore = null;
 
     if (opponentPiecesTotalValue === 0 ||
         (opponentPiecesTotalValue === KING_VALUE && numberOfOpponentPiecesInvolved === 1 && numberOfPlayerPiecesInvolved > 1)) {
-        bp.log.info("Free Piece -> Excellent Trade");
+        // bp.log.info("Free Piece -> Excellent Trade");
         tradeScore = FREE_PIECE;
     } else if ((opponentPiecesTotalValue === playerPiecesTotalValue && numberOfOpponentPiecesInvolved === numberOfPlayerPiecesInvolved) ||
         (takingPieceValue == takenPieceValue)) {
-        bp.log.info("Equal Value -> Fair Trade");
+        // bp.log.info("Equal Value -> Fair Trade");
         tradeScore = EQUAL_TRADE;
     } else if ((numberOfPlayerPiecesInvolved === numberOfOpponentPiecesInvolved && playerPiecesTotalValue < opponentPiecesTotalValue) ||
         (numberOfPlayerPiecesInvolved > numberOfOpponentPiecesInvolved) ||
         (takingPieceValue < takenPieceValue)) {
-        bp.log.info("You can defend this Piece or You've Earned Material -> Good Trade");
+        // bp.log.info("You can defend this Piece or You've Earned Material -> Good Trade");
         tradeScore = WORTHWHILE_TRADE;
     } else {
-        bp.log.info("You should've not capture -> Worthless Trade");
+        // bp.log.info("You should've not capture -> Worthless Trade");
         tradeScore = UNWORTHY_TRADE;
     }
 
@@ -2358,7 +2358,7 @@ function availableStraightCellsFromPawn(pawn, distance, allCells) {
 
     if (row + 1 <= 8 && row + 1 >= 1 && col >= 1 && col <= 8) {
         let cellUp = numericCellToCell(row + 1, col, allCells);
-        bp.log.info("~~ LOG (2327) ~~ Current Cell : " + JSON.stringify(currentCell) + " Cell Up : " + JSON.stringify(cellUp))
+        // bp.log.info("~~ LOG (2327) ~~ Current Cell : " + JSON.stringify(currentCell) + " Cell Up : " + JSON.stringify(cellUp))
         if (cellUp.pieceId === undefined) {
             // availableCells.push({row: row + 1, col: col});
             availableMoves.push(moveEvent("Pawn", currentCell, cellUp, pawn.color));
@@ -2367,7 +2367,7 @@ function availableStraightCellsFromPawn(pawn, distance, allCells) {
 
     if (row + 2 <= 8 && row + 2 >= 1 && col >= 1 && col <= 8) {
         let cellUpDouble = numericCellToCell(row + 2, col, allCells);
-        bp.log.info("~~ LOG (2327) ~~ Current Cell : " + JSON.stringify(currentCell) + " Cell Up Double : " + JSON.stringify(cellUpDouble))
+        // bp.log.info("~~ LOG (2327) ~~ Current Cell : " + JSON.stringify(currentCell) + " Cell Up Double : " + JSON.stringify(cellUpDouble))
         if (cellUpDouble.pieceId === undefined) {
             // availableCells.push({row: row + 2, col: col});
             availableMoves.push(moveEvent("Pawn", currentCell, cellUpDouble, pawn.color));
@@ -2466,7 +2466,7 @@ function availableStraightCellsFromPawn(pawn, distance, allCells) {
 }*/
 
 function availableKnightMoves(knight) {
-    bp.log.info("~~ LOG (2116) ~~ Knight: " + JSON.stringify(knight));
+    // bp.log.info("~~ LOG (2116) ~~ Knight: " + JSON.stringify(knight));
 
     let allCells = ctx.runQuery("Cell.all");
     let col = knight.cellId[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
@@ -2490,11 +2490,11 @@ function availableKnightMoves(knight) {
         // Check if the new position is within the board bounds
         if (newRow >= 1 && newRow <= 8 && newCol >= 1 && newCol <= 8) {
             let targetCell = numericCellToCell(newRow, newCol, allCells);
-            bp.log.info("~~ LOG (2445) ~~ Available Knight Moves Checking ==> " + JSON.stringify(targetCell) + ", made of row = " + row + " and col = " + col)
+            // bp.log.info("~~ LOG (2445) ~~ Available Knight Moves Checking ==> " + JSON.stringify(targetCell) + ", made of row = " + row + " and col = " + col)
             // Wrap both source and destination cells with GiveMeCell function
             let sourceCell = GiveMeCell(knight.cellId, allCells);
             let destinationCell = targetCell
-            bp.log.info("~~ LOG (2454) ~~ destination cell ==> " + JSON.stringify(destinationCell))
+            // bp.log.info("~~ LOG (2454) ~~ destination cell ==> " + JSON.stringify(destinationCell))
             if (targetCell.pieceId === undefined) {
                 availableMoves.push(moveEvent("Knight", sourceCell, destinationCell, knight.color));
             } else {
@@ -2503,8 +2503,8 @@ function availableKnightMoves(knight) {
         }
     });
 
-    bp.log.info("Available Knight Moves Returned - " + availableMoves)
-    bp.log.info("returning cellsWithPieces with length " + cellsWithPiece.length)
+    // bp.log.info("Available Knight Moves Returned - " + availableMoves)
+    // bp.log.info("returning cellsWithPieces with length " + cellsWithPiece.length)
     return [availableMoves, cellsWithPiece]
 }
 
@@ -2561,7 +2561,7 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
     let col = piece.cellId[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
     let row = (piece.cellId[1] - '0');
 
-    bp.log.info("~~ LOG (2304) ~~ availableDiagonalCellsFromPiece " + piece.subtype + " on " + JSON.stringify(numericCellToCell(row, col, allCells)))
+    // bp.log.info("~~ LOG (2304) ~~ availableDiagonalCellsFromPiece " + piece.subtype + " on " + JSON.stringify(numericCellToCell(row, col, allCells)))
 
     let availableCells = [];
 
@@ -2614,7 +2614,7 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
         }
     }
 
-    bp.log.info("returning availableMoves  " + availableMoves)
+    // bp.log.info("returning availableMoves  " + availableMoves)
     return [availableMoves, cellsWithPieces]
 
 }
@@ -2728,7 +2728,7 @@ ctx.bthread("Visualize", "Phase.Opening", function (entity) {
 
         for(let i = 0; i < allPieces.length; i++) {
             let piece = allPieces[i];
-            bp.log.info("~~ LOG (2714) ~~ PIECE ==> " + JSON.stringify(piece))
+            // bp.log.info("~~ LOG (2714) ~~ PIECE ==> " + JSON.stringify(piece))
             let subtype = piece.subtype;
             let cell = piece.cellId;
             let color = piece.color;
