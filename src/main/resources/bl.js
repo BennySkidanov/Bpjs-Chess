@@ -170,9 +170,10 @@ const AnyCastling = bp.EventSet("AnyCastling", function (e) {
 })
 
 const anyMoves = bp.EventSet("anyMove", function (e) {
-    return e.name.startsWith("Move")
-})
+    return e.name === 'Move'
+});
 
+// Todo: Replace - moves that capture the center include also moves that doesn't occupy the center square directly rather "eyeing" them
 const ESCenterCaptureMoves = bp.EventSet("EScenterCaptureMoves", function (e) {
     return e.name == 'Move' &&
         e.data.color == "White" &&
@@ -194,11 +195,6 @@ const ESPawnDevelopingMoves = bp.EventSet(
     }
 );
 
-/*const ESKnightDevelopingMoves = bp.EventSet("ESKnightDevelopingMoves", function (e) {
-    return e.name == 'Move' && e.data.color == "White" && e.data.piece === "Knight" &&
-        (e.data.dst[1] == '2' || e.data.dst[1] == '3' || e.data.dst[1] == '4')
-})*/
-
 const ESKnightDevelopingMoves = bp.EventSet(
     "ESKnightDevelopingMoves",
     function (e) {
@@ -212,17 +208,26 @@ const ESKnightDevelopingMoves = bp.EventSet(
 );
 
 
-const ESBishopDevelopingMoves = bp.EventSet("ESBishopDevelopingMoves", function (e) {
-    return e.name == 'Move' && e.data.color == "White" && e.data.piece == "Bishop" &&
-        (e.data.dst[1] == '2' || e.data.dst[1] == '3' || e.data.dst[1] == '4'
-            || e.data.dst[1] == '5')
-})
+const ESBishopDevelopingMoves = bp.EventSet(
+    "ESBishopDevelopingMoves",
+    function (e) {
+        return (
+            e.name === "Move" &&
+            e.data.color === "White" &&
+            e.data.piece === "Bishop" &&
+            (e.data.dst.id[1] === "2" ||
+                e.data.dst.id[1] === "3" ||
+                e.data.dst.id[1] === "4" ||
+                e.data.dst.id[1] === "5")
+        );
+    }
+);
 
 const ESQueenDevelopingMoves = bp.EventSet(
     "ESQueenDevelopingMoves",
     function (e) {
         return (
-            e.name.startsWith("Move") &&
+            e.name === "Move" &&
             e.data.piece === "Queen" &&
             e.data.color === "White" &&
             (e.data.dst.id[1] === "2" ||
@@ -233,10 +238,17 @@ const ESQueenDevelopingMoves = bp.EventSet(
     }
 );
 
-const ESRookDevelopingMoves = bp.EventSet("ESRookDevelopingMoves", function (e) {
-    return e.name == 'Move' && e.data.color == "White" && e.data.piece === "Rook" &&
-        (e.data.dst[1] == '2' || e.data.dst[1] == '3' || e.data.dst[1] == '4')
-})
+const ESRookDevelopingMoves = bp.EventSet(
+    "ESRookDevelopingMoves",
+    function (e) {
+        return (
+            e.name === "Move" &&
+            e.data.color === "White" &&
+            e.data.piece === "Rook" &&
+            (e.data.dst.id[1] === "2" || e.data.dst.id[1] === "3" || e.data.dst.id[1] === "4")
+        );
+    }
+);
 
 const ESFianchettoMoves = bp.EventSet("ESfianchettoMoves", function (e) {
     return e.name == 'Move' && e.data.color == "White" && e.data.piece === "Pawn" &&
@@ -296,17 +308,27 @@ const ESFriedLiverAttackMoves = bp.EventSet("ESfriedLiverAttackMoves", function 
 })
 
 const ESChasingAndPreventingAttacksOnBG4 = bp.EventSet("ESBG4AttacksDefending", function (e) {
-    return e.name == 'Move' && e.data.color == "White" && e.data.piece === "Pawn" &&
-        (e.data.dst[0] == 'a' && e.data.dst[1] == '3') ||
-        (e.data.dst[0] == 'h' && e.data.dst[1] == '3') ||
-        (e.data.dst[0] == 'b' && e.data.dst[1] == '4') ||
-        (e.data.dst[0] == 'g' && e.data.dst[1] == '4')
-})
+    return (
+        (e.name === "Move" &&
+            e.data.color === "White" &&
+            e.data.piece === "Pawn" &&
+            e.data.dst.id[0] === "a" &&
+            e.data.dst.id[1] === "3") ||
+        (e.data.dst.id[0] === "h" && e.data.dst.id[1] === "3") ||
+        (e.data.dst.id[0] === "b" && e.data.dst.id[1] === "4") ||
+        (e.data.dst.id[0] === "g" && e.data.dst.id[1] === "4")
+    );
+});
 
 const ESControlSpaceMoves = bp.EventSet("ESControlSpace", function (e) {
-    return e.name == 'Move' && e.data.color == "White" && e.data.piece === "Pawn" &&
-        (e.data.dst[1] == '3' || e.data.dst[1] == '4')
-})
+    return (
+        e.name === "Move" &&
+        e.data.color === "White" &&
+        e.data.piece === "Pawn" &&
+        (e.data.dst.id[1] === "3" || e.data.dst.id[1] === "4" || e.data.dst.id[1] === "5")
+    );
+});
+
 
 function startsWithCapital(word) {
     return word.charAt(0) === word.charAt(0).toUpperCase()
@@ -1097,7 +1119,7 @@ function filterOccupiedCellsMoves(MovesSet, cellsArr) {
     let retArr = [];
 
     for (let i = 0; i < MovesSet.length; i++) {
-        bp.log.info("MovesSet[i]" + MovesSet[i].data.src.id + " => " + MovesSet[i].data.dst.id)
+        bp.log.info("MovesSet[ " + i + " ] : " + MovesSet[i].data.src.id + " => " + MovesSet[i].data.dst.id)
         if (
             !cellIds.includes(MovesSet[i].data.src.id) &&
             cellIds.includes(MovesSet[i].data.dst.id)
@@ -1282,6 +1304,8 @@ ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
 
         for (let i = 0; i < rooksArray.length; i++) {
             let availRookMoves = availableStraightCellsFromPiece(rooksArray[i], 7, allCells)[0];
+            bp.log.info("~~ LOG (1287) Developing Rooks ~~ :  " + availRookMoves)
+
             let availableRookMovesTotal = [];
             for (let j = 0; j < availRookMoves.length; j++) {
                 if (ESRookDevelopingMoves.contains(availRookMoves[j])) {
@@ -1290,7 +1314,7 @@ ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
             }
             rookMoves = rookMoves.concat(availableRookMovesTotal);
         }
-
+        bp.log.info("~~ LOG (1295) Developing Rooks ~~ :  " + rookMoves)
         let rooksMovesSet = clearDuplicates(rookMoves)
         let rooksMovesToRequest = filterOccupiedCellsMoves(rooksMovesSet, nonOccupiedCellsSet)
         nonOccupiedCellsSet = rooksArray = rookMoves = rooksMovesSet = null;
@@ -1843,14 +1867,15 @@ function isAttackingKnight(piece, dstCell) {
 
     // let knight = ctx.runQuery(getSpecificPiece(numericCellToCell(row, col, allCells).pieceId))
     let knight = piece
-    bp.log.info("~~ LOG (1707) ~~ Knight: " + JSON.stringify(knight) + debug)
+    bp.log.info("~~ LOG (1707) ~~ Knight: " + JSON.stringify(knight) + ", Debug: " + debug)
 
     let cellsKnightCanReachWithPieceOccupying = availableKnightMoves(knight)[1]
-    // // bp.log.info("~~ LOG (1710) ~~ cellsKnightCanReachWithPieceOccupying: " + cellsKnightCanReachWithPieceOccupying)
+    // bp.log.info("~~ LOG (1710) ~~ cellsKnightCanReachWithPieceOccupying: " + cellsKnightCanReachWithPieceOccupying)
 
     for (let i = 0; i < cellsKnightCanReachWithPieceOccupying.length; i++) {
 
         let pieceInCell = ctx.runQuery(getSpecificPiece(cellsKnightCanReachWithPieceOccupying[i].pieceId))
+        bp.log.info("Piece on " + JSON.stringify(cellsKnightCanReachWithPieceOccupying[i]) + " ==> " + JSON.stringify(pieceInCell))
         if (pieceInCell[0].color === 'Black') {
             return true;
         }
@@ -2641,7 +2666,7 @@ ctx.bthread("Visualize", "Phase.Opening", function (entity) {
 
     // White pieces are represented by capital characters, whereas non-capital characters are used to symbolize black pieces
     // Todo: make with correlation to the board, go through cells and print their content
-    const currentBoard = [
+    const _currentBoard = [
         ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
 
         ['p', 'p', 'p', 'p', 'p', 'p', 'p', 'p'],
@@ -2661,8 +2686,27 @@ ctx.bthread("Visualize", "Phase.Opening", function (entity) {
 
     while (true) {
         let move = mySync({waitFor: anyMoves}); // To update the current position, wait for any moves to be made
+        let allPieces = ctx.runQuery('Piece.All')
+        bp.log.info("~~ LOG (2690) ~~ Visualize ==> " + allPieces)
         bp.log.info("~~ LOG (2552) ~~ Move To Visualize ==> " + move)
-        let srcRow = move.data.src.id[1] - '0';
+
+        let currentBoard =       [  ['*', '*', '*', '*', '*', '*', '*', '*'],
+
+            ['*', '*', '*', '*', '*', '*', '*', '*'],
+
+            ['*', '*', '*', '*', '*', '*', '*', '*'],
+
+            ['*', '*', '*', '*', '*', '*', '*', '*'],
+
+            ['*', '*', '*', '*', '*', '*', '*', '*'],
+
+            ['*', '*', '*', '*', '*', '*', '*', '*'],
+
+            ['*', '*', '*', '*', '*', '*', '*', '*'],
+
+            ['*', '*', '*', '*', '*', '*', '*', '*'],
+            ]
+        /* let srcRow = move.data.src.id[1] - '0';
         let srcCol = move.data.src.id[0].charCodeAt(0) - 'a'.charCodeAt(0);
         let dstRow = move.data.dst.id[1] - '0';
         let dstCol = move.data.dst.id[0].charCodeAt(0) - 'a'.charCodeAt(0);
@@ -2678,9 +2722,36 @@ ctx.bthread("Visualize", "Phase.Opening", function (entity) {
             currentBoard[Math.abs(dstRow - 8)][dstCol] = dstRow === 8 ? 'Q' : 'q';
         } else if (move.data.takes === true) {
 
-        }
+        }*/
 
-        bp.log.info(ANSI_CYAN + move + ANSI_RESET)
+
+
+        for(let i = 0; i < allPieces.length; i++) {
+            let piece = allPieces[i];
+            bp.log.info("~~ LOG (2714) ~~ PIECE ==> " + JSON.stringify(piece))
+            let subtype = piece.subtype;
+            let cell = piece.cellId;
+            let color = piece.color;
+            let sign = undefined;
+            if (subtype === "Pawn" && color === "White") sign = 'P';
+            else if (subtype === "Pawn" && color === "Black") sign = 'p';
+            else if (subtype === "Bishop" && color === "White") sign = 'B';
+            else if (subtype === "Bishop" && color === "Black") sign = 'b';
+            else if (subtype === "Knight" && color === "White") sign = 'N';
+            else if (subtype === "Knight" && color === "Black") sign = 'n';
+            else if (subtype === "Rook" && color === "White") sign = 'R';
+            else if (subtype === "Rook" && color === "Black") sign = 'r';
+            else if (subtype === "Queen" && color === "White") sign = 'Q';
+            else if (subtype === "Queen" && color === "Black") sign = 'q';
+            else if (subtype === "King" && color === "White") sign = 'K';
+            else if (subtype === "King" && color === "Black") sign = 'k';
+
+            let col = cell[0].charCodeAt(0) - 'a'.charCodeAt(0);
+            let row = 8 - (cell[1] - '0');
+
+            currentBoard[row][col] = sign;
+        }
+        bp.log.info(ANSI_BRIGHT_CYAN + ANSI_UNDERLINE + ANSI_BOLD + move + ANSI_RESET)
         // Visualize
         for (let i = 0; i < 8; i++) {
 

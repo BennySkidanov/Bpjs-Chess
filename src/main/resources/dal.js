@@ -97,7 +97,7 @@ ctx.registerQuery("Piece.Black.All",
 
 ctx.registerQuery("Piece.All",
     function (entity) {
-        return entity.type == 'piece';
+        return entity.type === 'piece';
     })
 
 
