@@ -1,5 +1,7 @@
 import argparse
 import os
+from concurrent.futures import ThreadPoolExecutor
+
 import chess
 import chess.pgn
 
@@ -53,27 +55,43 @@ def filter_pgn(input_pgn, output_pgn):
             with open(output_pgn, 'a') as output_file:
                 output_file.write(str(filtered_game) + "\n\n")
 
-# def process_directory(input_dir, output_dir):
-#     if not os.path.exists(output_dir):
-#         os.makedirs(output_dir)
-#
-#     for file_name in os.listdir(input_dir):
-#         if file_name.endswith(".pgn"):
-#             input_file_path = os.path.join(input_dir, file_name)
-#             print("Processing " + input_file_path)
-#             output_file_path = os.path.join(output_dir, file_name)
-#             print("Writing to " + output_file_path)
-#             filter_pgn(input_file_path, output_file_path)
+def process_directory(input_dir, output_dir):
+    if not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
+    for file_name in os.listdir(input_dir):
+        if file_name.endswith(".pgn"):
+            input_file_path = os.path.join(input_dir, file_name)
+            print("Processing " + input_file_path)
+            output_file_path = os.path.join(output_dir, file_name)
+            print("Writing to " + output_file_path)
+            filter_pgn(input_file_path, output_file_path)
+
+
+def process_directory_in_threads():
+    # Define the range of directories
+    directories = [(f"{i}", f"{i}_cut_after") for i in range(1200, 1700, 100)]
+
+    # Use ThreadPoolExecutor to process directories concurrently
+    with ThreadPoolExecutor() as executor:
+        executor.map(lambda args: process_directory(*args), directories)
 
 if __name__ == "__main__":
-    # parser = argparse.ArgumentParser(description='Cuts pgn games')
-    # parser.add_argument('input_dir', help='Path to the input directory containing PGN files')
-    # parser.add_argument('output_dir', help='Path to the output directory for processed PGN files')
+    # # parser = argparse.ArgumentParser(description='Cuts pgn games')
+    # # parser.add_argument('input_dir', help='Path to the input directory containing PGN files')
+    # # parser.add_argument('output_dir', help='Path to the output directory for processed PGN files')
+    # #
+    # # args = parser.parse_args()
+    # #
+    # # input_directory = args.input_dir
+    # # output_directory = args.output_dir
     #
-    # args = parser.parse_args()
-    #
-    # input_directory = args.input_dir
-    # output_directory = args.output_dir
+    # #process_directory(input_directory, output_directory)
+    # filter_pgn("Check/38_2018.pgn", "Check/38_2018_cut_after.pgn")
 
-    #process_directory(input_directory, output_directory)
-    filter_pgn("Check/38_2018.pgn", "Check/38_2018_cut_after.pgn")
+    process_directory_in_threads()
+
+
+
+
+# Call the function
