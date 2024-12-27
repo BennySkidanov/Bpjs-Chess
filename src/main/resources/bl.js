@@ -678,29 +678,18 @@ function handleLongCastle(color, pieces) {
     }
 }
 
-function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color, takes, enPassant, enPassantPieceCellId) {
+function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color, takes, enPassant, enPassantPieceCellId, optional) {
 
 
     // bp.log.info("~~ LOG (633) ~~ findPieceThatCanReachToEndSquare with the following params : " + "piecePrefix = " + piecePrefix + " dst cell = " + JSON.stringify(dstCell))
     // bp.log.info("~~ LOG (634) ~~ findPieceThatCanReachToEndSquare Other params : Color = " + color + " Takes = " + takes + " enPassant = " + enPassant)
-
-
-    let optionalCol = "";
-    // TODO: handle optional column now that dstcell is an object
-    if (dstCell.length === 3) // Optional column appears
-    {
-        optionalCol = dstCell.charAt(0);
-        dstCell = dstCell.substr(1);
-        // // bp.log.info("optionalCol " + optionalCol)
-        // // bp.log.info("dst cell " + dstCell)
-    }
 
     let pieceType = piecesPrefixes[piecePrefix];
     // bp.log.info("~~ LOG (648) ~~ piece type = " + pieceType)
     let allPiecesOfType = ctx.runQuery(getSpecificType(pieceType, color))
     // bp.log.info("~~ LOG (650) ~~ There are " + allPiecesOfType.length + " candidates ")
     for (let i = 0; i < allPiecesOfType.length; i++) {
-        if (optionalCol === "") {
+        if (optional === null) {
             // bp.log.info("~~ LOG (554) ~~ No optional column! looking at " + JSON.stringify(allPiecesOfType[i]))
             // Todo : change here, not all calls with enPassant = True
             if (enPassant && allPiecesOfType[i].cellId === enPassantPieceCellId) {
@@ -713,7 +702,7 @@ function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color, takes, en
             }
         } else {
             // bp.log.info("Checking piece that fits optional col!!" + optionalCol + " " + allPiecesOfType[i].cellId.charAt(0));
-            if (allPiecesOfType[i].cellId.charAt(0) == optionalCol) {
+            if (allPiecesOfType[i].cellId.charAt(0) === optional) {
                 if (canReachSquare(allPiecesOfType[i], dstCell)) {
                     // // bp.log.info(allPiecesOfTypeValues[i]);
                     // // bp.log.info("IN Checking piece that fits optional col!!");
@@ -746,7 +735,8 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
     let player = '';
     let checkmate = false;
     let enPassant = false;
-    bp.log.info(ANSI_BRIGHT_BLACK + ANSI_BG_BRIGHT_MAGENTA + ANSI_BOLD + allMovesList + ANSI_RESET)
+    let optional = null;
+    // bp.log.info(ANSI_BRIGHT_BLACK + ANSI_BG_BRIGHT_MAGENTA + ANSI_BOLD + allMovesList + ANSI_RESET)
 
     let allCells = ctx.runQuery("Cell.all")
     for (let i = 0; i < allMovesList.length; i++) {
@@ -763,15 +753,16 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
         enPassant = false;
         (i % 2 === 0) ? player = 'White' : player = 'Black';
         let move = allMovesList[i]
+        let parse = parsePGNMove(move);
         let pieces = ctx.runQuery("Piece." + player + ".All");
-        bp.log.info(
+/*        bp.log.info(
             ANSI_YELLOW + ANSI_BOLD + ANSI_UNDERLINE +
             "~~ LOG ~~ PGN Move = " +
             move +
             " by " +
             player +
             ANSI_RESET
-        );
+        );*/
 
         // Game Tactics + Flags Update
 
@@ -788,24 +779,24 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
             move = move.substr(0, move.length - 1)
         }
 
-        // if (move.indexOf(TAKES) > -1 && i % 2 === 0) {
-        // //     bp.log.info("UPDATING GENERAL TACTICS")
-        //     let returnValuesList = TradingGameTacticCheck(move, player)
-        //     bp.store.put("General Tactics: Take Free Piece", returnValuesList[0])
-        //     bp.store.put("General Tactics: Equal Trade", returnValuesList[1])
-        //     bp.store.put("General Tactics: Worthwhile Trade", returnValuesList[2])
-        //     bp.store.put("General Tactics: Worthless Trade", returnValuesList[3])
-        // }
+        if (parse.optional !== null) {
+            let optional = parse.optional;
+            move = move[0] + move.slice(2);
+           //  bp.log.info("~~ LOG (787) ~~ optional detected, move now is ==> " + move + " And optional is ==> " + optional);
+        }
 
+        if (!startsWithCapital(move)) {
+            parse.optional = move[0];
+        }
 
         // // bp.log.info("Next PGN Move (Again) = {0}", move)
         if (move.indexOf(TAKES) > -1 && (move.indexOf(QUEENING) > -1)) {
             let dstCell = GiveMeCell(move.substr(move.indexOf(TAKES) + 1, 2), allCells);
             // bp.log.info("~~ LOG ~~ Takes & Queen event!!")
             let piece = findPieceThatCanReachToEndSquare(startsWithCapital(move) ? move[0] : "P", dstCell,
-                player, true, enPassant, allMovesList[i].charAt(0).concat(player === 'White' ? "5" : "4"));
+                player, true, enPassant, allMovesList[i].charAt(0).concat(player === 'White' ? "5" : "4"), optional);
             let event = moveEvent(piece.subtype, GiveMeCell(piece.cellId, allCells), dstCell, piece.color, true);
-            // bp.log.info("~~~~~~~~~~ Calling Move Event ~~~~~~~~~ ==> \t " + event);
+            // bp.log.info("~~~~~~~~~~ Calling Move Event (808) ~~~~~~~~~ ==> \t " + event);
             if (!checkmate) {
                 // // bp.log.info("The Move -- " + event)
                 sync({request: event}, 100);
@@ -826,7 +817,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
             }
             let dstCell = GiveMeCell(move.substr((move.indexOf('x') + 1)), allCells);
             let piece = findPieceThatCanReachToEndSquare(startsWithCapital(move) ? move[0] : "P", dstCell,
-                player, true, enPassant, allMovesList[i].charAt(0).concat(player === 'White' ? "5" : "4")
+                player, true, enPassant, allMovesList[i].charAt(0).concat(player === 'White' ? "5" : "4"), optional
                 )
             ;
             // bp.log.info("~~ LOG (800) ~~ piece is " + JSON.stringify(piece))
@@ -837,7 +828,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
                 )
             ;
 
-            // bp.log.info("~~~~~~~~~~ Calling Move Event ~~~~~~~~~ ==> \t " + event);
+            // bp.log.info("~~~~~~~~~~ Calling Move Event (849) ~~~~~~~~~ ==> \t " + event);
             if (!checkmate) {
                 // // bp.log.info("The Move -- " + event)
                 sync({request: event}, 100);
@@ -856,12 +847,13 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
             let piece = findPieceThatCanReachToEndSquare(
                 startsWithCapital(move) ? move[0] : "P",
                 move.substr(0, 2),
-                player, false, enPassant, allMovesList[i].charAt(0).concat(player === 'White' ? "5" : "4"));
+                player, false, enPassant, allMovesList[i].charAt(0).concat(player === 'White' ? "5" : "4"), optional
+            );
             let event = moveEvent(piece.subtype, GiveMeCell(piece.cellId, allCells),
                 GiveMeCell(move.substr(0, 2), allCells), piece.color
                 )
             ;
-            // bp.log.info("~~~~~~~~~~ Calling Move Event ~~~~~~~~~ ==> \t " + event);
+            // bp.log.info("~~~~~~~~~~ Calling Move Event (864) ~~~~~~~~~ ==> \t " + event);
             if (!checkmate) {
                 // // bp.log.info("The Move -- " + event)
                 sync({request: event}, 100);
@@ -877,20 +869,12 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
                 startsWithCapital(move) ? move[0] : "P",
                 GiveMeCell(startsWithCapital(move) ? move.substr(1) : move, allCells),
                 player,
-                false, false);
+                false, false, null, optional);
             // // bp.log.info("REACHED SYNC")
-            // bp.log.info("~~ LOG (768) ~~ Piece -> " + JSON.stringify(piece) + ", dstCell ==> " + JSON.stringify(dstCell))
+            // bp.log.info("~~ LOG (882) ~~ Piece -> " + JSON.stringify(piece) + ", dstCell ==> " + JSON.stringify(dstCell))
             let event = moveEvent(piece.subtype, GiveMeCell(piece.cellId, allCells), dstCell
                 , piece.color);
-            // bp.log.info("~~~~~~~~~~ Calling Move Event 818 ~~~~~~~~~ ==> \t " + event);
-
-            /*
-            [BEvent name:Move data:{JS_Obj piece:"Queen",
-            src:{JS_Obj id:"d1", type:"cell", i:"d", j:"1", pieceId:"piece_3"},
-            dst:{JS_Obj id:"e2", type:"cell", i:"e", j:"2", pieceId:<null>},
-             color:"White", takes:<null>, checkmate:<null>, enPassant:<null>}]
-             */
-
+            // bp.log.info("~~~~~~~~~~ Calling Move Event (885) ~~~~~~~~~ ==> \t " + event);
 
             if (!checkmate) {
                 // // bp.log.info("The Move -- " + event)
@@ -907,7 +891,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
 
     // bp.log.info("~~ LOG (788) ~~ Finished Parsing Game!!")
     sync({block: anyMoves}, 100);
-})
+});
 
 /*
 ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
@@ -1029,6 +1013,71 @@ function executeMove(event) {
     }
 }
  */
+
+// Helper Function That helps to break down the pgn move
+function parsePGNMove(move) {
+    const regex = /^(O-O(-O)?)$|^([KQRBN]?)([a-h]?[1-8]?)(x?)([a-h][1-8])(=?)([QRBN]?)?([+#]?)$/;
+    // const regex = /^(O-O(-O)?)$|^([KQRBN])([a-h1-8]?)([a-h]?[1-8]?)(x?)([a-h][1-8])(=?)([QRBN]?)?([+#]?)$/;
+
+
+    // Initialize result object
+    const result = {
+        piece: null,        // The piece (Pawn if no letter)
+        capture: false,     // Whether the move is a capture
+        destination: null,  // The destination square
+        optional: null,       // Optional (e.g., R8d8)
+        promotion: null,    // If it's a promotion (e.g., 'Q' for Queen)
+        check: false,       // Whether it's a check move
+        checkmate: false,   // Whether it's a checkmate move
+        castle: false,      // Whether it's a castling move
+    };
+
+    // Handle castling first (special case)
+    if (move === 'O-O' || move === 'O-O-O') {
+        result.castle = true;
+        // bp.log.info("~~ LOG (1065) ~~ move I Got ==> " + move + " , return Castling ")
+        return result;
+    }
+
+    // Try matching the regex pattern with the PGN move
+    const match = move.match(regex);
+
+    // bp.log.info("~~ LOG (1065) ~~ move I Got ==> " + move + " , did it match ==> " + match)
+
+    if (match) {
+        // Castling handled earlier, so just skip if matched
+        if (match[1]) {
+            result.castle = true;
+            return result;
+        }
+
+        // Determine the piece (Pawn by default if no piece is mentioned)
+        result.piece = piecesPrefixes[match[3]] || 'Pawn'; // If no piece, it's a pawn move
+
+        // Handle capture ('x')
+        result.capture = match[5] === 'x';
+
+        // Handle destination square
+        result.destination = match[6];
+
+        // Handle promotion (e.g., 'e8=Q')
+        result.promotion = match[8] ? match[8] : null;
+
+        // Handle check (+) or checkmate (#)
+        result.check = match[9] === '+';
+        result.checkmate = match[9] === '#';
+
+        // Handle optional
+        if (result.piece === 'Knight' || result.piece === 'Rook') {
+            result.optional = match[4] ? match[4] : null;
+        }
+    }
+
+    // bp.log.info("~~ LOG (1055) ~~ move I Got ==> " + move + " , Parsing: Piece ==> " + JSON.stringify(result))
+
+    return result;
+}
+
 
 // Game behavioral thread
 bthread("Game thread", function (entity) {
@@ -1569,7 +1618,7 @@ ctx.bthread("PawnStructureTrack", "Phase.Opening", function (entity) {
 
 ctx.bthread("PreventingAttacksOnBG4", "Phase.Opening", function (entity) {
     for (let i = 1; i <= 4; i++) {
-        sync({waitFor: ESChasingAndPreventingAttacksOnBG4})
+        // sync({waitFor: ESChasingAndPreventingAttacksOnBG4})
         // let receivedCounter = bp.store.get("Counter: Preventing b4, g4 Attacks")
         bp.store.put("Moves Counter: Preventing b4, g4 Attacks", i - 1)
     }
@@ -2544,8 +2593,11 @@ function jToCol(j) {
 }
 
 // Helper function to return the cell object that is represented by the given ID
+/**
+ * @return {null}
+ */
 function GiveMeCell(requestedID, allCells) {
-    // // bp.log.info("~~ LOG (2232) ~~ GiveMeCell Received : " + requestedID)
+    // bp.log.info("~~ LOG (2548) ~~ GiveMeCell Received : " + requestedID)
     for (let i = 0; i < allCells.length; i++) {
         let cell = allCells[i]
         if (cell.id === requestedID) {
@@ -2687,12 +2739,10 @@ ctx.bthread("Visualize", "Phase.Opening", function (entity) {
     while (true) {
         let move = mySync({waitFor: anyMoves}); // To update the current position, wait for any moves to be made
         let allPieces = ctx.runQuery('Piece.All')
-        bp.log.info("~~ LOG (2690) ~~ Visualize ==> " + allPieces)
-        bp.log.info("~~ LOG (2552) ~~ Move To Visualize ==> " + move)
+        // bp.log.info("~~ LOG (2690) ~~ Visualize ==> " + allPieces)
+        // bp.log.info("~~ LOG (2552) ~~ Move To Visualize ==> " + move)
 
-        let currentBoard =       [  ['*', '*', '*', '*', '*', '*', '*', '*'],
-
-            ['*', '*', '*', '*', '*', '*', '*', '*'],
+        let currentBoard = [['*', '*', '*', '*', '*', '*', '*', '*'],
 
             ['*', '*', '*', '*', '*', '*', '*', '*'],
 
@@ -2705,7 +2755,9 @@ ctx.bthread("Visualize", "Phase.Opening", function (entity) {
             ['*', '*', '*', '*', '*', '*', '*', '*'],
 
             ['*', '*', '*', '*', '*', '*', '*', '*'],
-            ]
+
+            ['*', '*', '*', '*', '*', '*', '*', '*'],
+        ]
         /* let srcRow = move.data.src.id[1] - '0';
         let srcCol = move.data.src.id[0].charCodeAt(0) - 'a'.charCodeAt(0);
         let dstRow = move.data.dst.id[1] - '0';
@@ -2725,8 +2777,7 @@ ctx.bthread("Visualize", "Phase.Opening", function (entity) {
         }*/
 
 
-
-        for(let i = 0; i < allPieces.length; i++) {
+        for (let i = 0; i < allPieces.length; i++) {
             let piece = allPieces[i];
             // bp.log.info("~~ LOG (2714) ~~ PIECE ==> " + JSON.stringify(piece))
             let subtype = piece.subtype;
@@ -2751,16 +2802,16 @@ ctx.bthread("Visualize", "Phase.Opening", function (entity) {
 
             currentBoard[row][col] = sign;
         }
-        bp.log.info(ANSI_BRIGHT_CYAN + ANSI_UNDERLINE + ANSI_BOLD + move + ANSI_RESET)
+        // bp.log.info(ANSI_BRIGHT_CYAN + ANSI_UNDERLINE + ANSI_BOLD + move + ANSI_RESET)
         // Visualize
-        for (let i = 0; i < 8; i++) {
+        /*for (let i = 0; i < 8; i++) {
 
             bp.log.info(ANSI_PURPLE + currentBoard[i][0] + "  " + currentBoard[i][1] + "  " + currentBoard[i][2] + "  " +
                 currentBoard[i][3] + "  " + currentBoard[i][4] + "  " + currentBoard[i][5] + "  " +
                 currentBoard[i][6] + "  " + currentBoard[i][7] + ANSI_RESET);
 
         }
-        bp.log.info(ANSI_CYAN + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + ANSI_RESET)
+        bp.log.info(ANSI_CYAN + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + ANSI_RESET)*/
 
     }
 });
