@@ -1383,6 +1383,7 @@ ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
         let nonOccupiedCellsSet = ctx.runQuery("Cell.all.nonOccupied")
 
         for (let i = 0; i < bishopsArray.length; i++) {
+            //bp.log.info("~~ LOG (1386) Developing Bishops ~~ Calling availableDiagonalCellsFromPiece :  " + JSON.stringify(bishopsArray[i]))
             let diagonalBishopMoves = availableDiagonalCellsFromPiece(bishopsArray[i], 7, allCells)[0];
             bishopsMoves = bishopsMoves.concat(diagonalBishopMoves);
         }
@@ -1399,10 +1400,17 @@ ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
 });
 
 ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
-    while (true) {
+    let queenExists = true;
+    while (queenExists) {
         let allCells = ctx.runQuery("Cell.all")
         let queenMoves = []
         let queen = ctx.runQuery(getWhiteQueen())[0]
+        if (queen === undefined) // Queen Doesn't Exist Anymore
+        {
+            // bp.log.info("~~ LOG (1122) Developing Queen ~~ : Queen Doesn't Exist Anymore ")
+            queenExists = false;
+            break;
+        }
         let nonOccupiedCellsSet = ctx.runQuery("Cell.all.nonOccupied")
         // bp.log.info("~~ LOG (1122) Developing Queen ~~ :  " + JSON.stringify(queen))
 
@@ -2609,7 +2617,7 @@ function GiveMeCell(requestedID, allCells) {
 }
 
 function availableDiagonalCellsFromPiece(piece, distance, allCells) {
-    // // bp.log.info("availableDiagonalCellsFromPiece -> " + JSON.stringify(piece) + ", " + distance + ", " + allCells)
+    // bp.log.info("availableDiagonalCellsFromPiece -> " + JSON.stringify(piece) + ", " + distance + ", " + allCells)
     let col = piece.cellId[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
     let row = (piece.cellId[1] - '0');
 
