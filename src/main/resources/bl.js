@@ -681,8 +681,8 @@ function handleLongCastle(color, pieces) {
 function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color, takes, enPassant, enPassantPieceCellId, optional) {
 
 
-    // bp.log.info("~~ LOG (633) ~~ findPieceThatCanReachToEndSquare with the following params : " + "piecePrefix = " + piecePrefix + " dst cell = " + JSON.stringify(dstCell))
-    // bp.log.info("~~ LOG (634) ~~ findPieceThatCanReachToEndSquare Other params : Color = " + color + " Takes = " + takes + " enPassant = " + enPassant)
+   /* bp.log.info("~~ LOG (633) ~~ findPieceThatCanReachToEndSquare with the following params : " + "piecePrefix = " + piecePrefix + " dst cell = " + JSON.stringify(dstCell))
+    bp.log.info("~~ LOG (634) ~~ findPieceThatCanReachToEndSquare Other params : Color = " + color + " Takes = " + takes + " enPassant = " + enPassant + ", Optional ==> " + optional)*/
 
     let pieceType = piecesPrefixes[piecePrefix];
     // bp.log.info("~~ LOG (648) ~~ piece type = " + pieceType)
@@ -702,7 +702,7 @@ function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color, takes, en
             }
         } else {
             // bp.log.info("Checking piece that fits optional col!!" + optionalCol + " " + allPiecesOfType[i].cellId.charAt(0));
-            if (allPiecesOfType[i].cellId.charAt(0) === optional) {
+            if (allPiecesOfType[i].cellId.charAt(0) === optional || allPiecesOfType[i].cellId.charAt(1) === optional) {
                 if (canReachSquare(allPiecesOfType[i], dstCell)) {
                     // // bp.log.info(allPiecesOfTypeValues[i]);
                     // // bp.log.info("IN Checking piece that fits optional col!!");
@@ -749,7 +749,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
         // bp.store.put("General Tactics: Worthwhile Trade", 0)
         // bp.store.put("General Tactics: Worthless Trade", 0)
 
-
+        optional = null;
         enPassant = false;
         (i % 2 === 0) ? player = 'White' : player = 'Black';
         let move = allMovesList[i]
@@ -780,7 +780,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
         }
 
         if (parse.optional !== null) {
-            let optional = parse.optional;
+            optional = parse.optional;
             move = move[0] + move.slice(2);
            //  bp.log.info("~~ LOG (787) ~~ optional detected, move now is ==> " + move + " And optional is ==> " + optional);
         }
@@ -2810,9 +2810,9 @@ ctx.bthread("Visualize", "Phase.Opening", function (entity) {
 
             currentBoard[row][col] = sign;
         }
-        // bp.log.info(ANSI_BRIGHT_CYAN + ANSI_UNDERLINE + ANSI_BOLD + move + ANSI_RESET)
+        /*bp.log.info(ANSI_BRIGHT_CYAN + ANSI_UNDERLINE + ANSI_BOLD + move + ANSI_RESET)
         // Visualize
-        /*for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 8; i++) {
 
             bp.log.info(ANSI_PURPLE + currentBoard[i][0] + "  " + currentBoard[i][1] + "  " + currentBoard[i][2] + "  " +
                 currentBoard[i][3] + "  " + currentBoard[i][4] + "  " + currentBoard[i][5] + "  " +
