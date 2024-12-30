@@ -15,7 +15,7 @@ GENOME_SIZE = 30
 WEIGHT_RANGE_MIN = -10
 WEIGHT_RANGE_MAX = 10
 
-NUMBER_OF_ANALYZED_GAMES = 3224
+NUMBER_OF_ANALYZED_GAMES = 1455
 NONE_VALUE = -1
 game = {}
 CHECK_SIGN = '+'
@@ -50,7 +50,7 @@ columns_single_move = ["Game number", "Move number", "Move Description",
 original_columns_single_move_length = len(columns_single_move)
 
 print(os.getcwd())
-conn = sqlite3.connect('../DB/chess_moves1200.db')
+conn = sqlite3.connect('../DB/1500/chess_moves1500.db')
 cursor = conn.cursor()
 
 
@@ -166,7 +166,7 @@ if __name__ == '__main__':
     games_data = {}
 
     for analyzed_game_index in range(1, NUMBER_OF_ANALYZED_GAMES + 1):
-        single_game_path = '../GameSequences1200/Game' + str(analyzed_game_index) + '.json'
+        single_game_path = '../GameSequences1500/Game' + str(analyzed_game_index) + '.json'
         # single_game_path = '[Daniel:DataFileName]/Game' + str(analyzed_game_index) + '.json'
 
         single_game_json = open(single_game_path)  # Obtain the JSON object which the path points to
@@ -245,7 +245,7 @@ if __name__ == '__main__':
                 selectable_move_str = ""
                 if isinstance(move['move_selectable_events'][index]['data']['piece'], str):
                     selectable_move_str = prefix_dictionary[move['move_selectable_events'][index]['data']['piece']] + \
-                                          move['move_selectable_events'][index]['data']['dst']
+                                          move['move_selectable_events'][index]['data']['dst']['id']
                 else:
                     # print("HI")
                     selectable_move_str = prefix_dictionary[
