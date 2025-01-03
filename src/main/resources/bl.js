@@ -150,14 +150,14 @@ const allMovesList = (function () {
         }
     }
 
-    // Debugging Purposes
+    // Debugging
 
-    let whiteMoves = [];
+    /*let whiteMoves = [];
     let blackMoves = [];
     for (let i = 0; i < allMovesList.length; i += 2) {
         whiteMoves.push(allMovesList[i]);
         blackMoves.push(allMovesList[i + 1]);
-    }
+    }*/
 
     // bp.log.info("~~ LOG (78) ~~ White Moves : " + whiteMoves)
     // bp.log.info("~~ LOG (79) ~~ Black Moves : " + blackMoves)
@@ -173,15 +173,33 @@ const anyMoves = bp.EventSet("anyMove", function (e) {
     return e.name === 'Move'
 });
 
-// Todo: Replace - moves that capture the center include also moves that doesn't occupy the center square directly rather "eyeing" them
-const ESCenterCaptureMoves = bp.EventSet("EScenterCaptureMoves", function (e) {
-    return e.name == 'Move' &&
-        e.data.color == "White" &&
-        (e.data.dst[1] == '3' || e.data.dst[1] == '4')
-        && (e.data.src[0] == 'c' || e.data.src[0] == 'd' || e.data.src[0] == 'e' || e.data.src[0] == 'f' || e.data.src[0] == 'b' || e.data.src[0] == 'g')
-        && (e.data.dst[0] == 'c' || e.data.dst[0] == 'd' || e.data.dst[0] == 'e' || e.data.dst[0] == 'f')
 
-})
+const ESCenterCaptureMoves = bp.EventSet("EScenterCaptureMoves",
+    function (e) {
+        return e.name === 'Move' &&
+            e.data.color === "White" &&
+            (e.data.piece === "Pawn" &&  // Pawn
+                (e.data.dst.id[1] === "3" || e.data.dst.id[1] === "4" || e.data.dst.id[1] === "5") &&
+                (['b', 'c', 'd', 'e', 'f', 'g'].includes(e.data.src[0]))
+            ) ||
+            (e.data.piece === "Knight" &&  // Knight
+                (e.data.dst.id[1] === "2" || e.data.dst.id[1] === "3") &&
+                (['b', 'c', 'd', 'e', 'f', 'g'].includes(e.data.src[0]))
+            ) ||
+            (e.data.piece === "Bishop" &&  // Bishop Fianchetto
+                (e.data.dst.id[1] === "2") &&
+                (['b', 'g'].includes(e.data.src[0]))
+            ) ||
+            (e.data.piece === "Bishop" &&  // Bishop Regular
+                (e.data.dst.id[1] === "2" || e.data.dst.id[1] === "3") &&
+                (['c', 'd', 'e', 'f'].includes(e.data.src[0]))
+            ) ||
+            (e.data.piece === "Queen" &&  // Queen
+                (e.data.dst.id[1] === "2" || e.data.dst.id[1] === "3" || e.data.dst.id[1] === "4") &&
+                (['c', 'd', 'e', 'f'].includes(e.data.src[0]))
+            )
+    }
+);
 
 const ESPawnDevelopingMoves = bp.EventSet(
     "ESpawnDevelopingMoves",
@@ -251,61 +269,107 @@ const ESRookDevelopingMoves = bp.EventSet(
 );
 
 const ESFianchettoMoves = bp.EventSet("ESfianchettoMoves", function (e) {
-    return e.name == 'Move' && e.data.color == "White" && e.data.piece === "Pawn" &&
-        (e.data.dst[1] == '3' || e.data.dst[1] == '4') &&
-        (e.data.dst[0] == 'b' || e.data.dst[0] == 'g')
-})
+    return (
+        e.name === "Move" &&
+        e.data.color === "White" &&
+        (
+            e.data.piece === "Pawn" && // Pawn Preparation
+            (e.data.dst[1] === "3" || e.data.dst[1] === "4") &&
+            (e.data.dst[0] === "b" || e.data.dst[0] === "g")
+        )
+        ||
+        (e.data.piece === "Bishop" &&  // Bishop Fianchetto
+            (e.data.dst.id[1] === "2") &&
+            (['b', 'g'].includes(e.data.src[0]))
+        )
+    );
+});
+
 
 const ESScholarsMateMoves1 = bp.EventSet("ESscholarsMateMoves1", function (e) {
-    return e.name == 'Move' && e.data.color == "White" && e.data.piece === "Pawn" &&
-        (e.data.dst[0] == 'e' && (e.data.dst[1] == '4' || e.data.dst[1] == '3'))
-})
+    return (
+        e.name === "Move" &&
+        e.data.color === "White" &&
+        e.data.piece === "Pawn" &&
+        e.data.dst[0] === "e" &&
+        (e.data.dst[1] === "4" || e.data.dst[1] === "3")
+    );
+});
 
 const ESScholarsMateMoves2 = bp.EventSet("ESscholarsMateMoves2", function (e) {
-    return e.name == 'Move' && e.data.color == "White" &&
+    return (
+        e.name === "Move" &&
+        e.data.color === "White" &&
         ((e.data.piece === "Queen" &&
-                (
-                    (e.data.dst[0] == 'h' && e.data.dst[1] == '5') ||
-                    (e.data.dst[0] == 'f' && e.data.dst[1] == '3') ||
-                    (e.data.dst[0] == 'f' && e.data.dst[1] == '4') ||
-                    (e.data.dst[0] == 'f' && e.data.dst[1] == '5') ||
-                    (e.data.dst[0] == 'f' && e.data.dst[1] == '6') ||
-                    (e.data.dst[0] == 'e' && e.data.dst[1] == '6') ||
-                    (e.data.dst[0] == 'd' && e.data.dst[1] == '5') ||
-                    (e.data.dst[0] == 'c' && e.data.dst[1] == '4') ||
-                    (e.data.dst[0] == 'b' && e.data.dst[1] == '3')
-                )
-            ) ||
+            ((e.data.dst[0] === "h" && e.data.dst[1] === "5") ||
+                (e.data.dst[0] === "f" && e.data.dst[1] === "3") ||
+                (e.data.dst[0] === "f" && e.data.dst[1] === "4") ||
+                (e.data.dst[0] === "f" && e.data.dst[1] === "5") ||
+                (e.data.dst[0] === "f" && e.data.dst[1] === "6") ||
+                (e.data.dst[0] === "e" && e.data.dst[1] === "6") ||
+                (e.data.dst[0] === "d" && e.data.dst[1] === "5") ||
+                (e.data.dst[0] === "c" && e.data.dst[1] === "4") ||
+                (e.data.dst[0] === "b" && e.data.dst[1] === "3"))) ||
             (e.data.piece === "Bishop" &&
-                (
-                    (e.data.dst[0] == 'a' && e.data.dst[1] == '2') ||
-                    (e.data.dst[0] == 'c' && e.data.dst[1] == '4') ||
-                    (e.data.dst[0] == 'b' && e.data.dst[1] == '3')
-                )
-            ))
-})
+                ((e.data.dst[0] === "a" && e.data.dst[1] === "2") ||
+                    (e.data.dst[0] === "c" && e.data.dst[1] === "4") ||
+                    (e.data.dst[0] === "b" && e.data.dst[1] === "3"))))
+    );
+});
 
-const ESDeceivingScholarsMateMoves2 = bp.EventSet("ESDeceivingScholarsMateMoves2", function (e) {
-    return e.name == 'Move' && e.data.color == "White" &&
-        ((e.data.piece === "Queen" && e.data.dst[0] == 'h' && e.data.dst[1] == '5'))
-})
+const ESDeceivingScholarsMateMoves2 = bp.EventSet(
+    "ESDeceivingScholarsMateMoves2",
+    function (e) {
+        return (
+            e.name === "Move" &&
+            e.data.color === "White" &&
+            e.data.piece === "Queen" &&
+            e.data.dst[0] === "h" &&
+            e.data.dst[1] === "5"
+        );
+    }
+);
 
 const ESScholarsMateMoves3 = bp.EventSet("ESscholarsMateMoves3", function (e) {
-    return e.name == 'Move' && e.data.color == "White" &&
-        ((e.data.piece === "Queen" && e.data.dst[0] == 'f' && e.data.dst[1] == '7'))
-})
+    return (
+        e.name === "Move" &&
+        e.data.color === "White" &&
+        e.data.piece === "Queen" &&
+        e.data.dst[0] === "f" &&
+        e.data.dst[1] === "7"
+    );
+});
 
-const ESFriedLiverAttackMoves = bp.EventSet("ESfriedLiverAttackMoves", function (e) {
-    return e.name == 'Move' && e.data.color == "White" &&
-        (e.data.piece === "Pawn" && (e.data.dst[0] == 'e' && (e.data.dst[1] == '4' || e.data.dst[1] == '3'))) ||
-        (e.data.piece == "Knight" &&
-            (((
-                    (e.data.dst[0] == 'f' && e.data.dst[1] == '3') ||
-                    (e.data.dst[0] == 'g' && e.data.dst[1] == '5') ||
-                    (e.data.dst[0] == 'f' && e.data.dst[1] == '7'))
-                ) ||
-                (e.data.piece === "Bishop" && (e.data.dst[1] == '4' || e.data.dst[1] == '5'))))
-})
+const ESFriedLiverAttackMoves = bp.EventSet(
+    "ESfriedLiverAttackMoves",
+    function (e) {
+        return (
+            e.name === "Move" &&
+            e.data.color === "White" &&
+            (
+                e.data.piece === "Pawn" &&
+                e.data.dst[0] === "e" &&
+                (e.data.dst[1] === "4" || e.data.dst[1] === "3")
+            ) ||
+            (
+                e.data.piece === "Knight" &&
+                (
+                    (e.data.dst[0] === "f" && e.data.dst[1] === "3") ||
+                    (e.data.dst[0] === "g" && e.data.dst[1] === "5") ||
+                    (e.data.dst[0] === "f" && e.data.dst[1] === "7")
+                )
+            ) ||
+            (
+                e.data.piece === "Bishop" &&
+                (
+                    (e.data.dst[0] === "a" && e.data.dst[1] === "2") ||
+                    (e.data.dst[0] === "c" && e.data.dst[1] === "4") ||
+                    (e.data.dst[0] === "b" && e.data.dst[1] === "3")
+                )
+            )
+        );
+    }
+);
 
 const ESChasingAndPreventingAttacksOnBG4 = bp.EventSet("ESBG4AttacksDefending", function (e) {
     return (
@@ -681,8 +745,8 @@ function handleLongCastle(color, pieces) {
 function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color, takes, enPassant, enPassantPieceCellId, optional) {
 
 
-   /* bp.log.info("~~ LOG (633) ~~ findPieceThatCanReachToEndSquare with the following params : " + "piecePrefix = " + piecePrefix + " dst cell = " + JSON.stringify(dstCell))
-    bp.log.info("~~ LOG (634) ~~ findPieceThatCanReachToEndSquare Other params : Color = " + color + " Takes = " + takes + " enPassant = " + enPassant + ", Optional ==> " + optional)*/
+    /* bp.log.info("~~ LOG (633) ~~ findPieceThatCanReachToEndSquare with the following params : " + "piecePrefix = " + piecePrefix + " dst cell = " + JSON.stringify(dstCell))
+     bp.log.info("~~ LOG (634) ~~ findPieceThatCanReachToEndSquare Other params : Color = " + color + " Takes = " + takes + " enPassant = " + enPassant + ", Optional ==> " + optional)*/
 
     let pieceType = piecesPrefixes[piecePrefix];
     // bp.log.info("~~ LOG (648) ~~ piece type = " + pieceType)
@@ -755,14 +819,14 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
         let move = allMovesList[i]
         let parse = parsePGNMove(move);
         let pieces = ctx.runQuery("Piece." + player + ".All");
-/*        bp.log.info(
-            ANSI_YELLOW + ANSI_BOLD + ANSI_UNDERLINE +
-            "~~ LOG ~~ PGN Move = " +
-            move +
-            " by " +
-            player +
-            ANSI_RESET
-        );*/
+        /*        bp.log.info(
+                    ANSI_YELLOW + ANSI_BOLD + ANSI_UNDERLINE +
+                    "~~ LOG ~~ PGN Move = " +
+                    move +
+                    " by " +
+                    player +
+                    ANSI_RESET
+                );*/
 
         // Game Tactics + Flags Update
 
@@ -782,7 +846,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
         if (parse.optional !== null) {
             optional = parse.optional;
             move = move[0] + move.slice(2);
-           //  bp.log.info("~~ LOG (787) ~~ optional detected, move now is ==> " + move + " And optional is ==> " + optional);
+            //  bp.log.info("~~ LOG (787) ~~ optional detected, move now is ==> " + move + " And optional is ==> " + optional);
         }
 
         if (!startsWithCapital(move)) {
