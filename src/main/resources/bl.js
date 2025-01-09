@@ -1161,6 +1161,8 @@ bthread("Game thread", function (entity) {
     // Optional "Rainy Day" Feature, Not Used
     bp.store.put("Developing the queen too early", 0)
 
+    // Todo: What about a "King Safety" feature that will be upgraded in castling or some king moves
+
     // Strategy Counter features
     bp.store.put("Strategy Counter: Center strengthen moves", 0)
     bp.store.put("Strategy Counter: Fianchetto moves", 0)
@@ -1713,17 +1715,17 @@ ctx.bthread("AttackingAndPinningTrack", "Phase.Opening", function (entity) {
     while (true) {
         let e = sync({waitFor: anyMoves})
         let attack = false, pin = false, defend = false
-        // // bp.log.info("~~ LOG (1951) ~~ AttackingAndPinningTrack " + JSON.stringify(e.data))
-        if (e.data.color == "White") {
-            // // bp.log.info("~~ LOG (1453) ~~ The move : " + JSON.stringify(e))
+        // bp.log.info("~~ LOG (1951) ~~ AttackingAndPinningTrack " + JSON.stringify(e.data))
+        if (e.data.color === "White") {
+            // bp.log.info("~~ LOG (1453) ~~ The move : " + JSON.stringify(e))
             [attack, pin, defend] = isAttackingOpponentPieceOrDefending(e.data.piece, e.data.dst);
-            // // bp.log.info("~~ LOG (1455) ~~ Returned : " + "{ Attack = " + attack + ", Pin = " + pin + ", Defend = " + defend + " }")
+            // bp.log.info("~~ LOG (1455) ~~ Returned : " + "{ Attack = " + attack + ", Pin = " + pin + ", Defend = " + defend + " }")
 
 
             if (attack) {
                 let receivedCounter = bp.store.get("Moves Counter: Attacking")
-                // // bp.log.info("~~ LOG (1461) ~~ Updating Moves Counter: Attacking Value From " + receivedCounter + " -> " + (receivedCounter + 1))
-                // bp.store.put("Moves Counter: Attacking", receivedCounter + 1)
+                // bp.log.info("~~ LOG (1461) ~~ Updating Moves Counter: Attacking Value From " + receivedCounter + " -> " + (receivedCounter + 1))
+                bp.store.put("Moves Counter: Attacking", receivedCounter + 1)
             }
             if (defend) {
                 let receivedCounter = bp.store.get("Moves Counter: Defending")
