@@ -235,8 +235,7 @@ ctx.registerEffect("Move", function (e) {
 
         // bp.log.info("~~ ctx.getEntityById Found dstCell => " + JSON.stringify(dstCell))
 
-
-        // bp.log.info("~~ ctx.getEntityById Looking for srcPiece => " + srcCell.pieceId.toString())
+       // bp.log.info("~~ ctx.getEntityById Looking for srcPiece => " + srcCell.pieceId.toString())
 
         srcPiece = ctx.getEntityById(srcCell.pieceId.toString())
 
