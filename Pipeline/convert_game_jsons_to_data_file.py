@@ -15,7 +15,7 @@ GENOME_SIZE = 30
 WEIGHT_RANGE_MIN = -10
 WEIGHT_RANGE_MAX = 10
 
-NUMBER_OF_ANALYZED_GAMES = 1455
+NUMBER_OF_ANALYZED_GAMES = 5000
 NONE_VALUE = -1
 game = {}
 CHECK_SIGN = '+'
@@ -50,7 +50,7 @@ columns_single_move = ["Game number", "Move number", "Move Description",
 original_columns_single_move_length = len(columns_single_move)
 
 print(os.getcwd())
-conn = sqlite3.connect('../DB/1500/chess_moves1500.db')
+conn = sqlite3.connect('../DB/1400/WithSelectables/chess_moves.db')
 cursor = conn.cursor()
 
 
@@ -60,38 +60,38 @@ def create_db():
                         Game_number INTEGER,
                         Move_number INTEGER,
                         Move_Description TEXT,
-                        Piece_Advisor_Pawn INTEGER,
-                        Piece_Advisor_Bishop INTEGER,
-                        Piece_Advisor_Knight INTEGER,
-                        Piece_Advisor_Rook INTEGER,
-                        Piece_Advisor_Queen INTEGER,
-                        Piece_Moves_Counter_Pawn_moves INTEGER,
-                        Piece_Moves_Counter_Bishop_moves INTEGER,
-                        Piece_Moves_Counter_Knight_moves INTEGER,
-                        Piece_Moves_Counter_Rook_moves INTEGER,
-                        Piece_Moves_Counter_Queen_moves INTEGER,
-                        Strategy_Advisor_Center INTEGER,
-                        Strategy_Advisor_Develop INTEGER,
-                        Strategy_Advisor_Fianchetto INTEGER,
-                        Strategy_Counter_Center_strengthen_moves INTEGER,
-                        Strategy_Counter_Developing_moves INTEGER,
-                        Strategy_Counter_Fianchetto_moves INTEGER,
-                        Game_Plan_Counter_Scholars_Mate INTEGER,
-                        Game_Plan_Counter_Deceiving_Scholars_Mate INTEGER,
-                        Game_Plan_Counter_Fried_Liver_Attack INTEGER,
-                        Game_Plan_Counter_Capturing_Space INTEGER,
-                        Game_Plan_Counter_Strengthen_Pawn_Structure INTEGER,
-                        Moves_Counter_Attacking INTEGER,
-                        Moves_Counter_Defending INTEGER,
-                        Moves_Counter_Preventing_b4_g4_Attacks INTEGER,
-                        Developing_the_queen_too_early INTEGER,
-                        Piece_Exchange INTEGER,
-                        Moves_Counter_Pinning INTEGER
+                        Piece_Advisor_Pawn REAL,
+                        Piece_Advisor_Bishop REAL,
+                        Piece_Advisor_Knight REAL,
+                        Piece_Advisor_Rook REAL,
+                        Piece_Advisor_Queen REAL,
+                        Piece_Moves_Counter_Pawn_moves REAL,
+                        Piece_Moves_Counter_Bishop_moves REAL,
+                        Piece_Moves_Counter_Knight_moves REAL,
+                        Piece_Moves_Counter_Rook_moves REAL,
+                        Piece_Moves_Counter_Queen_moves REAL,
+                        Strategy_Advisor_Center REAL,
+                        Strategy_Advisor_Develop REAL,
+                        Strategy_Advisor_Fianchetto REAL,
+                        Strategy_Counter_Center_strengthen_moves REAL,
+                        Strategy_Counter_Developing_moves REAL,
+                        Strategy_Counter_Fianchetto_moves REAL,
+                        Game_Plan_Counter_Scholars_Mate REAL,
+                        Game_Plan_Counter_Deceiving_Scholars_Mate REAL,
+                        Game_Plan_Counter_Fried_Liver_Attack REAL,
+                        Game_Plan_Counter_Capturing_Space REAL,
+                        Game_Plan_Counter_Strengthen_Pawn_Structure REAL,
+                        Moves_Counter_Attacking REAL,
+                        Moves_Counter_Defending REAL,
+                        Moves_Counter_Preventing_b4_g4_Attacks REAL,
+                        Developing_the_queen_too_early REAL,
+                        Piece_Exchange REAL,
+                        Moves_Counter_Pinning REAL
                     )''')
 
     # Add LOOK_AHEAD columns dynamically
     for att_index in range(3, GENOME_SIZE):
-        cursor.execute('''ALTER TABLE chess_moves ADD COLUMN LOOK_AHEAD_{} INTEGER'''.format(
+        cursor.execute('''ALTER TABLE chess_moves ADD COLUMN LOOK_AHEAD_{} REAL'''.format(
             columns_single_move[att_index].replace(" ", "_").replace(":", "").replace(",", "_")))
 
     cursor.execute('''ALTER TABLE chess_moves ADD COLUMN Y INTEGER''')
@@ -166,7 +166,8 @@ if __name__ == '__main__':
     games_data = {}
 
     for analyzed_game_index in range(1, NUMBER_OF_ANALYZED_GAMES + 1):
-        single_game_path = '../GameSequences1500/Game' + str(analyzed_game_index) + '.json'
+        print("Analyzing Game Number: " + str(analyzed_game_index))
+        single_game_path = '../GameSequences1400/WithSelectables/Game' + str(analyzed_game_index) + '.json'
         # single_game_path = '[Daniel:DataFileName]/Game' + str(analyzed_game_index) + '.json'
 
         single_game_json = open(single_game_path)  # Obtain the JSON object which the path points to
