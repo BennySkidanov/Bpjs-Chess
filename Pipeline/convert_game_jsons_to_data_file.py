@@ -1,5 +1,6 @@
 import json
 import os
+import re
 import sqlite3
 import statistics
 import random
@@ -15,7 +16,7 @@ GENOME_SIZE = 30
 WEIGHT_RANGE_MIN = -10
 WEIGHT_RANGE_MAX = 10
 
-NUMBER_OF_ANALYZED_GAMES = 1455
+NUMBER_OF_ANALYZED_GAMES = 10000
 NONE_VALUE = -1
 game = {}
 CHECK_SIGN = '+'
@@ -46,6 +47,16 @@ columns_single_move = ["Game number", "Move number", "Move Description",
                        "Moves Counter: Attacking", "Moves Counter: Defending",
                        "Moves Counter: Preventing b4, g4 Attacks",
                        "Developing the queen too early", "Piece Exchange", "Moves Counter: Pinning"]
+
+piece_dict = {
+    1: 'K', 2: 'k',
+    3: 'Q', 4: 'q',
+    5: 'B', 6: 'B', 7: 'b', 8: 'b',
+    9: 'N', 10: 'N', 11: 'n', 12: 'n',
+    13: 'R', 14: 'R', 15: 'r', 16: 'r',
+    21: 'P', 22: 'P', 23: 'P', 24: 'P', 25: 'P', 26: 'P', 27: 'P', 28: 'P',
+    31: 'p', 32: 'p', 33: 'p', 34: 'p', 35: 'p', 36: 'p', 37: 'p', 38: 'p'
+}
 
 original_columns_single_move_length = len(columns_single_move)
 
@@ -156,6 +167,16 @@ def filter_major_attributes(attributes):
         if not attribute.startswith('CTX'):
             major_attributes[attribute] = attributes[attribute]
     return major_attributes
+
+def get_board_state(attributes):
+    cells = []
+    pattern = r"^CTX\.Entity:\s[a-z]\d"
+    for attribute in attributes:
+        print(attribute)
+        if re.match(pattern, attribute):
+            cells.append(attribute)
+
+
 
 
 # columns_names = ['selectable_events', 'major_attributes', 'look_ahead_attributes', 'event_played']
