@@ -12,11 +12,11 @@ ELITISM = 2
 GENERATIONS = 100  # maximal number of generations to run GA
 TOURNAMENT_SIZE = 5  # size of tournament for tournament selection
 PROB_MUTATION = 0.1  # bitwise probability of mutation
-GENOME_SIZE = 30
+GENOME_SIZE = 31
 WEIGHT_RANGE_MIN = -10
 WEIGHT_RANGE_MAX = 10
 
-NUMBER_OF_ANALYZED_GAMES = 10000
+NUMBER_OF_ANALYZED_GAMES = 100
 NONE_VALUE = -1
 game = {}
 CHECK_SIGN = '+'
@@ -32,7 +32,7 @@ TAKES_MOVE_LABEL = 5
 OTHER = 6
 
 prefix_dictionary = {"Pawn": "", "Knight": "N", "Bishop": "B", "Rook": "R", "Queen": "Q", "King": "K"}
-columns_single_move = ["Game number", "Move number", "Move Description",
+columns_single_move = ["Game number", "Move number", "Move Description", "Board State",
                        "Piece Advisor: Pawn", "Piece Advisor: Bishop", "Piece Advisor: Knight",
                        "Piece Advisor: Rook", "Piece Advisor: Queen",
                        "Piece Moves Counter: Pawn moves", "Piece Moves Counter: Bishop moves",
@@ -61,7 +61,7 @@ piece_dict = {
 original_columns_single_move_length = len(columns_single_move)
 
 print(os.getcwd())
-conn = sqlite3.connect('../DB/1500/chess_moves1500.db')
+conn = sqlite3.connect('../DB/1500/Explanations/chess_moves.db')
 cursor = conn.cursor()
 
 
@@ -71,6 +71,7 @@ def create_db():
                         Game_number INTEGER,
                         Move_number INTEGER,
                         Move_Description TEXT,
+                        Board_State TEXT,
                         Piece_Advisor_Pawn INTEGER,
                         Piece_Advisor_Bishop INTEGER,
                         Piece_Advisor_Knight INTEGER,
@@ -101,7 +102,7 @@ def create_db():
                     )''')
 
     # Add LOOK_AHEAD columns dynamically
-    for att_index in range(3, GENOME_SIZE):
+    for att_index in range(4, GENOME_SIZE):
         cursor.execute('''ALTER TABLE chess_moves ADD COLUMN LOOK_AHEAD_{} INTEGER'''.format(
             columns_single_move[att_index].replace(" ", "_").replace(":", "").replace(",", "_")))
 
@@ -109,7 +110,7 @@ def create_db():
 
 
 def add_row_to_db(row):
-    insert_statement = f'''INSERT INTO chess_moves (Game_number, Move_number, Move_Description, 
+    insert_statement = f'''INSERT INTO chess_moves (Game_number, Move_number, Move_Description, Board_State,
                                         Piece_Advisor_Pawn, Piece_Advisor_Bishop, Piece_Advisor_Knight, Piece_Advisor_Rook, Piece_Advisor_Queen, 
                                         Piece_Moves_Counter_Pawn_moves, Piece_Moves_Counter_Bishop_moves, Piece_Moves_Counter_Knight_moves, 
                                         Piece_Moves_Counter_Rook_moves, Piece_Moves_Counter_Queen_moves, Strategy_Advisor_Center, 
@@ -120,21 +121,21 @@ def add_row_to_db(row):
                                         Moves_Counter_Preventing_b4_g4_Attacks, Developing_the_queen_too_early, Piece_Exchange, Moves_Counter_Pinning'''
 
     # Dynamically add placeholders for LOOK_AHEAD attributes
-    for i in range(3, GENOME_SIZE):
+    for i in range(4, GENOME_SIZE):
         insert_statement += f', LOOK_AHEAD_{columns_single_move[i].replace(" ", "_").replace(":", "").replace(",", "_")}'
 
     insert_statement += ', Y)'
 
     # Add VALUES clause with placeholders for all attributes including LOOK_AHEAD
-    insert_statement += 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?'
+    insert_statement += 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?'
 
     # Add placeholders for LOOK_AHEAD attributes
-    for _ in range(3, GENOME_SIZE):
+    for _ in range(4, GENOME_SIZE):
         insert_statement += ', ?'
     insert_statement += ')'
 
     # Prepare values for the SQL INSERT statement
-    values = (game_number, move_number, selectable_move_str, row["Piece Advisor: Pawn"], row["Piece Advisor: Bishop"],
+    values = (game_number, move_number, selectable_move_str, row['Board State'], row["Piece Advisor: Pawn"], row["Piece Advisor: Bishop"],
               row["Piece Advisor: Knight"], row["Piece Advisor: Rook"], row["Piece Advisor: Queen"],
               row["Piece Moves Counter: Pawn moves"], row["Piece Moves Counter: Bishop moves"],
               row["Piece Moves Counter: Knight moves"], row["Piece Moves Counter: Rook moves"],
@@ -150,7 +151,7 @@ def add_row_to_db(row):
     # Add values of LOOK_AHEAD attributes to the values tuple
 
     counter = 0
-    for _ in range(3, GENOME_SIZE):
+    for _ in range(4, GENOME_SIZE):
         values += (row[columns_single_move[counter + original_columns_single_move_length]],)
         counter += 1
 
@@ -172,9 +173,34 @@ def get_board_state(attributes):
     cells = []
     pattern = r"^CTX\.Entity:\s[a-z]\d"
     for attribute in attributes:
-        print(attribute)
         if re.match(pattern, attribute):
-            cells.append(attribute)
+            cells.append(attributes[attribute])
+    return cells
+
+def draw_board_from_cells(cells):
+    board = [["." for _ in range(8)] for _ in range(8)]
+    for cell in cells:
+        if 'pieceId' in cell:
+            piece_id = int(cell['pieceId'].split('_')[1])
+            piece = piece_dict[piece_id]
+            board[int(cell['j']) - 1][ord(cell['i']) - ord('a')] = piece
+
+    lines = []
+    lines.append("  +---+---+---+---+---+---+---+---+")
+    for rank in range(7, -1, -1):
+        row_str = f"{rank + 1} | " + " | ".join(board[rank]) + " |"
+        lines.append(row_str)
+        lines.append("  +---+---+---+---+---+---+---+---+")
+    lines.append("    a   b   c   d   e   f   g   h")
+
+    return "\n".join(lines)
+    # print("  +---+---+---+---+---+---+---+---+")
+    # for rank in range(7, -1, -1):
+    #     row_str = f"{rank + 1} | " + " | ".join(board[rank]) + " |"
+    #     print(row_str)
+    #     print("  +---+---+---+---+---+---+---+---+")
+    # print("    a   b   c   d   e   f   g   h")
+    # print("\n\n\n")
 
 
 
@@ -187,7 +213,7 @@ if __name__ == '__main__':
     games_data = {}
 
     for analyzed_game_index in range(1, NUMBER_OF_ANALYZED_GAMES + 1):
-        single_game_path = '../GameSequences1500/Game' + str(analyzed_game_index) + '.json'
+        single_game_path = '../GameSequences1500/WithSelectablesForExplanation/Game' + str(analyzed_game_index) + '.json'
         # single_game_path = '[Daniel:DataFileName]/Game' + str(analyzed_game_index) + '.json'
 
         single_game_json = open(single_game_path)  # Obtain the JSON object which the path points to
@@ -201,7 +227,8 @@ if __name__ == '__main__':
             move = {'move_selectable_events': move_description['SelectableEvents'],
                     'move_major_attributes': filter_major_attributes(move_description['CurrentAttributes']),
                     'move_look_ahead': move_description['SelectableEventsLookAhead'],
-                    'move_played_event': move_description['SelectedEvent']}
+                    'move_played_event': move_description['SelectedEvent'],
+                    'board_cells': get_board_state(move_description['CurrentAttributes'])}
 
             # print("move_selectable_event length => " + str(len(move['move_selectable_events'])))
 
@@ -224,7 +251,7 @@ if __name__ == '__main__':
         if len(move['move_selectable_events']) > selectable_moves_max_length:
             selectable_moves_max_length = len(move['move_selectable_events'])
 
-    for att_index in range(3, GENOME_SIZE):
+    for att_index in range(4, GENOME_SIZE):
         columns_single_move.append("LOOK_AHEAD - " + columns_single_move[att_index])
 
     columns_single_move.append("Y")
@@ -259,7 +286,7 @@ if __name__ == '__main__':
 
                 look_ahead_dict = ((move['move_look_ahead'][index])['Attributes'])[0]
                 for look_ahead_attribute_index in range(len(look_ahead_dict)):
-                    key = columns_single_move[look_ahead_attribute_index + 3]
+                    key = columns_single_move[look_ahead_attribute_index + 4]
                     row["LOOK_AHEAD - " + key] = look_ahead_dict[key]
 
                 row['Y'] = 1 if move['move_played_event'] == move['move_selectable_events'][index] else 0
@@ -276,6 +303,7 @@ if __name__ == '__main__':
                 row['Move Description'] = selectable_move_str
                 row["Move number"] = move_number
                 row["Game number"] = game_number
+                row['Board State'] = draw_board_from_cells(move['board_cells']) if row['Y'] == 1 else "Not Played"
                 add_row_to_db(row)
 
     conn.commit()
