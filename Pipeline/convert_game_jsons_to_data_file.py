@@ -50,7 +50,7 @@ columns_single_move = ["Game number", "Move number", "Move Description",
 original_columns_single_move_length = len(columns_single_move)
 
 print(os.getcwd())
-conn = sqlite3.connect('../DB/1400/WithSelectables/chess_moves.db')
+conn = sqlite3.connect('../DB/1600/NoSelectables/chess_moves.db')
 cursor = conn.cursor()
 
 
@@ -167,7 +167,7 @@ if __name__ == '__main__':
 
     for analyzed_game_index in range(1, NUMBER_OF_ANALYZED_GAMES + 1):
         print("Analyzing Game Number: " + str(analyzed_game_index))
-        single_game_path = '../GameSequences1400/WithSelectables/Game' + str(analyzed_game_index) + '.json'
+        single_game_path = '../GameSequences1600/NoSelectables/Game' + str(analyzed_game_index) + '.json'
         # single_game_path = '[Daniel:DataFileName]/Game' + str(analyzed_game_index) + '.json'
 
         single_game_json = open(single_game_path)  # Obtain the JSON object which the path points to
