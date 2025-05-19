@@ -54,7 +54,7 @@ const ANSI_REVERSE = "\u001B[7m";
  * This is because the king cannot be captured (an attacked king is in check), and checkmating the king is the true goal of any chess game.
 */
 
-const KING_VALUE = -1;
+const KING_VALUE = 100;
 
 const piecesValues = {
     "Pawn": 1,
@@ -139,12 +139,14 @@ const UNWORTHY_TRADE = -1;
 const allMovesList = (function () {
     let moves = pgn.split(" ");
 
-    // bp.log.info("~~ LOG (58) ~~ Moves after splitting : " + moves)
+    bp.log.info("~~ LOG (58) ~~ Moves after splitting : " + moves)
+
+    const ResultString = ["1/2-1/2", "1-0", "0-1"];
 
     let allMovesList = [];
 
     for (let i = 0; i < moves.length; i++) {
-        if (i % 3 !== 0) {
+        if (i % 3 !== 0 && !ResultString.includes(moves[i])) {
             // Every 3rd value in the string is the move number, therefore should be omitted
             allMovesList.push(moves[i]);
         }
@@ -180,23 +182,23 @@ const ESCenterCaptureMoves = bp.EventSet("EScenterCaptureMoves",
             e.data.color === "White" &&
             (e.data.piece === "Pawn" &&  // Pawn
                 (e.data.dst.id[1] === "3" || e.data.dst.id[1] === "4" || e.data.dst.id[1] === "5") &&
-                (['b', 'c', 'd', 'e', 'f', 'g'].includes(e.data.src[0]))
+                (['b', 'c', 'd', 'e', 'f', 'g'].includes(e.data.src.id[0]))
             ) ||
             (e.data.piece === "Knight" &&  // Knight
                 (e.data.dst.id[1] === "2" || e.data.dst.id[1] === "3") &&
-                (['b', 'c', 'd', 'e', 'f', 'g'].includes(e.data.src[0]))
+                (['b', 'c', 'd', 'e', 'f', 'g'].includes(e.data.src.id[0]))
             ) ||
             (e.data.piece === "Bishop" &&  // Bishop Fianchetto
                 (e.data.dst.id[1] === "2") &&
-                (['b', 'g'].includes(e.data.src[0]))
+                (['b', 'g'].includes(e.data.src.id[0]))
             ) ||
             (e.data.piece === "Bishop" &&  // Bishop Regular
                 (e.data.dst.id[1] === "2" || e.data.dst.id[1] === "3") &&
-                (['c', 'd', 'e', 'f'].includes(e.data.src[0]))
+                (['c', 'd', 'e', 'f'].includes(e.data.src.id[0]))
             ) ||
             (e.data.piece === "Queen" &&  // Queen
                 (e.data.dst.id[1] === "2" || e.data.dst.id[1] === "3" || e.data.dst.id[1] === "4") &&
-                (['c', 'd', 'e', 'f'].includes(e.data.src[0]))
+                (['c', 'd', 'e', 'f'].includes(e.data.src.id[0]))
             )
     }
 );
@@ -485,8 +487,8 @@ function noPiecesInBetweenDiagonal(piece, dstCell) {
 
 function canReachSquareTrading(piece, dstCell, takes, enPassant) {
     // bp.log.info("~~ LOG (354) canReachSquareTrading, piece = " + JSON.stringify(piece) + ", dstCell = " + JSON.stringify(dstCell))
-    // /* bp.log.info("In canReachSquare Trading, dstCell = " + dstCell)
-    //  bp.log.info("enPassant = " + enPassant + ", takes = " + takes)
+    // bp.log.info("In canReachSquare Trading, dstCell = " + dstCell)
+    // bp.log.info("enPassant = " + enPassant + ", takes = " + takes)
     //  bp.log.info(piece.subtype)
     //  bp.log.info(piece.cellId)
     //  bp.log.info(dstCell)*/
@@ -494,27 +496,59 @@ function canReachSquareTrading(piece, dstCell, takes, enPassant) {
     let rowToTakePawn = (dstCell[1] - '0');
     let allCells = ctx.runQuery("Cell.all")
     // // bp.log.info(allCells)
+
+    // Due to parallel run, the piece can also be on the trading cell itself
+    if (dstCell[0] === piece.cellId[0] && dstCell[1] === piece.cellId[1]) {
+        return true;
+    }
+
     if (piece.subtype === "Pawn") {
-        if (dstCell[0] === piece.cellId[0] &&
+        /*if (dstCell[0] === piece.cellId[0] &&
             (Math.abs(dstCell[1] - piece.cellId[1]) === 2 || Math.abs(dstCell[1] - piece.cellId[1]) === 1)
             && !takes) {
             // // bp.log.info("Found!! ( pawn Advances )")
+            return true;}
+        */
+        if (
+            piece.color === "White" &&
+            (Math.abs(dstCell[1] - piece.cellId[1]) === 1) && (dstCell[1] > piece.cellId[1]) &&
+            (Math.abs(dstCell[0].charCodeAt(0) - piece.cellId[0].charCodeAt(0)) === 1) &&
+            takes
+        ) {
+            // bp.log.info("Found!! ( pawn Takes ) ")
+            // numericCellToCell(rowToTakePawn, colToTakePawn, allCells).pieceId != undefined &&
             return true;
-        } else if ((Math.abs(dstCell[1] - piece.cellId[1]) == 1) &&
-            Math.abs(dstCell[0].charCodeAt(0) - piece.cellId[0].charCodeAt(0)) == 1 &&
-            numericCellToCell(rowToTakePawn, colToTakePawn, allCells).pieceId != undefined && takes) {
-            // // bp.log.info("Found!! ( pawn Takes ) ")
+        } else if (
+            piece.color === "White" &&
+            (Math.abs(dstCell[1] - piece.cellId[1]) === 1) && (dstCell[1] > piece.cellId[1]) &&
+            (Math.abs(dstCell[0].charCodeAt(0) - piece.cellId[0].charCodeAt(0)) === 1) &&
+            enPassant
+        ) {
+            // bp.log.info("Found!! ( pawn Takes En passant ) ")
+            // numericCellToCell(rowToTakePawn, colToTakePawn, allCells).pieceId == undefined &&
             return true;
-        } else if ((Math.abs(dstCell[1] - piece.cellId[1]) == 1) &&
-            Math.abs(dstCell[0].charCodeAt(0) - piece.cellId[0].charCodeAt(0)) == 1 &&
-            numericCellToCell(rowToTakePawn, colToTakePawn, allCells).pieceId == undefined && enPassant) {
-
-            // // bp.log.info("Found!! ( pawn Takes En passant ) ")
+        } else if (
+            piece.color === "Black" &&
+            (Math.abs(dstCell[1] - piece.cellId[1]) === 1) && (dstCell[1] < piece.cellId[1]) &&
+            (Math.abs(dstCell[0].charCodeAt(0) - piece.cellId[0].charCodeAt(0)) === 1) &&
+            takes
+        ) {
+            // bp.log.info("Found!! ( pawn Takes En passant ) ")
+            // numericCellToCell(rowToTakePawn, colToTakePawn, allCells).pieceId == undefined &&
+            return true;
+        } else if (
+            piece.color === "Black" &&
+            (Math.abs(dstCell[1] - piece.cellId[1]) === 1) && (dstCell[1] < piece.cellId[1]) &&
+            (Math.abs(dstCell[0].charCodeAt(0) - piece.cellId[0].charCodeAt(0)) === 1) &&
+            enPassant
+        ) {
+            // bp.log.info("Found!! ( pawn Takes En passant ) ")
+            // numericCellToCell(rowToTakePawn, colToTakePawn, allCells).pieceId == undefined &&
             return true;
         }
         // return true;*/
         return false;
-    } else if (piece.subtype == "Knight") {
+    } else if (piece.subtype === "Knight") {
         if (
             (Math.abs(dstCell[1] - piece.cellId[1]) === 2 && Math.abs(dstCell[0].charCodeAt(0) - piece.cellId[0].charCodeAt(0)) === 1) ||
             (Math.abs(dstCell[0].charCodeAt(0) - piece.cellId[0].charCodeAt(0)) === 2 && Math.abs(dstCell[1] - piece.cellId[1]) === 1)
@@ -523,7 +557,7 @@ function canReachSquareTrading(piece, dstCell, takes, enPassant) {
             return true;
         }
         return false;
-    } else if (piece.subtype == "Queen") {
+    } else if (piece.subtype === "Queen") {
         if (
             Math.abs(dstCell[1] - piece.cellId[1]) === Math.abs(dstCell[0].charCodeAt(0) - piece.cellId[0].charCodeAt(0)) ||
             ((dstCell[1] - piece.cellId[1]) === 0 || (dstCell[0].charCodeAt(0) - piece.cellId[0].charCodeAt(0)) === 0)
@@ -543,11 +577,11 @@ function canReachSquareTrading(piece, dstCell, takes, enPassant) {
             // // bp.log.info("Found!!")
             return true;
         }
-    } else if (piece.subtype == "King") {
+    } else if (piece.subtype === "King") {
         if (Math.abs(dstCell[1] - piece.cellId[1]) <= 1 &&
             Math.abs(dstCell[0].charCodeAt(0) - piece.cellId[0].charCodeAt(0)) <= 1)
             return true;
-    } else if (piece.subtype == "Rook") {
+    } else if (piece.subtype === "Rook") {
         if (
             ((dstCell[1] - piece.cellId[1]) === 0 || (dstCell[0].charCodeAt(0) - piece.cellId[0].charCodeAt(0)) === 0)
             &&
@@ -745,10 +779,8 @@ function handleLongCastle(color, pieces) {
 function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color, takes, enPassant, enPassantPieceCellId, optional) {
 
 
-/*
-    bp.log.info("~~ LOG (633) ~~ findPieceThatCanReachToEndSquare with the following params : " + "piecePrefix = " + piecePrefix + " dst cell = " + JSON.stringify(dstCell))
-    bp.log.info("~~ LOG (634) ~~ findPieceThatCanReachToEndSquare Other params : Color = " + color + " Takes = " + takes + " enPassant = " + enPassant + ", Optional ==> " + optional)
-*/
+    // bp.log.info("~~ LOG (633) ~~ findPieceThatCanReachToEndSquare with the following params : " + "piecePrefix = " + piecePrefix + " dst cell = " + JSON.stringify(dstCell))
+    // bp.log.info("~~ LOG (634) ~~ findPieceThatCanReachToEndSquare Other params : Color = " + color + " Takes = " + takes + " enPassant = " + enPassant + ", Optional ==> " + optional)
 
     let pieceType = piecesPrefixes[piecePrefix];
     // bp.log.info("~~ LOG (648) ~~ piece type = " + pieceType)
@@ -802,7 +834,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
     let checkmate = false;
     let enPassant = false;
     let optional = null;
-    // bp.log.info(ANSI_BRIGHT_BLACK + ANSI_BG_BRIGHT_MAGENTA + ANSI_BOLD + allMovesList + ANSI_RESET)
+    bp.log.info(ANSI_BG_BRIGHT_CYAN + ANSI_BRIGHT_BLACK + ANSI_BOLD + allMovesList + ANSI_RESET)
 
     let allCells = ctx.runQuery("Cell.all")
     for (let i = 0; i < allMovesList.length; i++) {
@@ -938,7 +970,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
                 player,
                 false, false, null, optional);
             // // bp.log.info("REACHED SYNC")
-            // bp.log.info("~~ LOG (882) ~~ Piece -> " + JSON.stringify(piece) + ", dstCell ==> " + JSON.stringify(dstCell))
+            // bp.log.info("~~ LOG (941) ~~ MOVE -> " + move + " ~~ Piece -> " + JSON.stringify(piece) + ", dstCell ==> " + JSON.stringify(dstCell))
             let event = moveEvent(piece.subtype, GiveMeCell(piece.cellId, allCells), dstCell
                 , piece.color);
             // bp.log.info("~~~~~~~~~~ Calling Move Event (885) ~~~~~~~~~ ==> \t " + event);
@@ -1164,7 +1196,7 @@ bthread("Game thread", function (entity) {
     // Optional "Rainy Day" Feature, Not Used
     bp.store.put("Developing the queen too early", 0)
 
-    // Todo: What about a "King Safety" feature that will be upgraded in castling or some king moves
+    // Todo: Consider a "King Safety" feature that will be upgraded in castling or some king moves
 
     // Strategy Counter features
     bp.store.put("Strategy Counter: Center strengthen moves", 0)
@@ -1182,12 +1214,10 @@ bthread("Game thread", function (entity) {
     bp.store.put("Moves Counter: Pinning", 0)
     bp.store.put("Moves Counter: Preventing b4, g4 Attacks", 0)
 
-    bp.store.put("Piece Exchange", 0)
-    /*
-        bp.store.put("Piece Exchange Feature: Even Exchange", 0)
-        bp.store.put("Trading Feature: Worthwhile Exchange", 0)
-        bp.store.put("Trading Feature: Unworthy Exchange", 0)
-    */
+    bp.store.put("Piece Exchange Feature: Free Piece", 0)
+    bp.store.put("Piece Exchange Feature: Even Exchange", 0)
+    bp.store.put("Piece Exchange Feature: Worthwhile Exchange", 0)
+    bp.store.put("Piece Exchange Feature: Unworthy Exchange", 0)
 
     bp.store.put("Piece Moves Counter: Pawn moves", 0)
     bp.store.put("Piece Moves Counter: Bishop moves", 0)
@@ -1195,16 +1225,16 @@ bthread("Game thread", function (entity) {
     bp.store.put("Piece Moves Counter: Queen moves", 0)
     bp.store.put("Piece Moves Counter: Rook moves", 0)
 
-    bp.store.put("Strategy Advisor: Center", 5)
+    /*bp.store.put("Strategy Advisor: Center", 5)
     bp.store.put("Strategy Advisor: Develop", 3)
     bp.store.put("Strategy Advisor: Fianchetto", 1)
 
-    bp.store.put("Piece Advisor: Pawn", 5)
+    bp.store.put("-+: Pawn", 5)
     bp.store.put("Piece Advisor: Bishop", 3)
     bp.store.put("Piece Advisor: Knight", 3)
     bp.store.put("Piece Advisor: Queen", 1)
     bp.store.put("Piece Advisor: Rook", 1)
-
+*/
 
     // Track The game
     while (true) {
@@ -1511,10 +1541,10 @@ ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
 
 ctx.bthread("CenterTrackAndAdvice", "Phase.Opening", function (entity) {
     while (true) {
-        sync({waitFor: ESCenterCaptureMoves})
-
-        let receivedAdvisor = bp.store.get("Strategy Advisor: Center")
-        bp.store.put("Strategy Advisor: Center", receivedAdvisor - 0.5)
+        let move = sync({waitFor: ESCenterCaptureMoves})
+        // bp.log.info("~~ LOG (1516) ~~ CenterTrackAndAdvice GOT MOVE!!" + JSON.stringify(move))
+        // let receivedAdvisor = bp.store.get("Strategy Advisor: Center")
+        // bp.store.put("Strategy Advisor: Center", receivedAdvisor - 0.5)
 
         let receivedCounter = bp.store.get("Strategy Counter: Center strengthen moves")
         bp.store.put("Strategy Counter: Center strengthen moves", receivedCounter + 1)
@@ -1523,10 +1553,11 @@ ctx.bthread("CenterTrackAndAdvice", "Phase.Opening", function (entity) {
 
 ctx.bthread("DevelopTrackAndAdvice", "Phase.Opening", function (entity) {
     while (true) {
-        sync({waitFor: [ESPawnDevelopingMoves, ESBishopDevelopingMoves, ESKnightDevelopingMoves]})
+        let move = sync({waitFor: [ESPawnDevelopingMoves, ESBishopDevelopingMoves, ESKnightDevelopingMoves]})
+        // bp.log.info("~~ LOG (1529) ~~ DevelopTrackAndAdvice GOT MOVE!!")
         //mySync([], [ESCenterCaptureMoves, ESBishopDevelopingMoves], []);
-        let receivedCounter = bp.store.get("Strategy Advisor: Develop")
-        bp.store.put("Strategy Advisor: Develop", receivedCounter - 0.75)
+        // let receivedCounter = bp.store.get("Strategy Advisor: Develop")
+        // bp.store.put("Strategy Advisor: Develop", receivedCounter - 0.75)
         receivedCounter = bp.store.get("Strategy Counter: Developing moves")
         bp.store.put("Strategy Counter: Developing moves", receivedCounter + 1)
     }
@@ -1536,8 +1567,8 @@ ctx.bthread("FianchettoTrackAndAdvice", "Phase.Opening", function (entity) {
     while (true) {
         sync({waitFor: ESFianchettoMoves})
         //mySync([], [ESFianchettoMoves], []);
-        let receivedCounter = bp.store.get("Strategy Advisor: Fianchetto")
-        bp.store.put("Strategy Advisor: Fianchetto", receivedCounter - 0.3)
+        // let receivedCounter = bp.store.get("Strategy Advisor: Fianchetto")
+        // bp.store.put("Strategy Advisor: Fianchetto", receivedCounter - 0.3)
         receivedCounter = bp.store.get("Strategy Counter: Fianchetto moves")
         bp.store.put("Strategy Counter: Fianchetto moves", receivedCounter + 1)
     }
@@ -1549,8 +1580,8 @@ ctx.bthread("PawnMovesTrackAndAdvice", "Phase.Opening", function (entity) {
         //let e = mySync([], [anyMoves], []);
         if (e.data.piece == "Pawn" && e.data.color == "White") {
             // // bp.log.info("COUNT : " + e + e.data.color)
-            let receivedAdvisor = bp.store.get("Piece Advisor: Pawn")
-            bp.store.put("Piece Advisor: Pawn", receivedAdvisor - 1)
+            // let receivedAdvisor = bp.store.get("Piece Advisor: Pawn")
+            // bp.store.put("Piece Advisor: Pawn", receivedAdvisor - 1)
             let recCounter = bp.store.get("Piece Moves Counter: Pawn moves")
             bp.store.put("Piece Moves Counter: Pawn moves", recCounter + 1)
         }
@@ -1562,8 +1593,8 @@ ctx.bthread("BishopMovesTrackAndAdvice", "Phase.Opening", function (entity) {
         let e = sync({waitFor: anyMoves})
         //let e = mySync([], [anyMoves], []);
         if (e.data.piece == "Bishop" && e.data.color == "White") {
-            let receivedAdvisor = bp.store.get("Piece Advisor: Bishop")
-            bp.store.put("Piece Advisor: Bishop", receivedAdvisor - 1)
+            // let receivedAdvisor = bp.store.get("Piece Advisor: Bishop")
+            // bp.store.put("Piece Advisor: Bishop", receivedAdvisor - 1)
             let recCounter = bp.store.get("Piece Moves Counter: Bishop moves")
             bp.store.put("Piece Moves Counter: Bishop moves", recCounter + 1)
         }
@@ -1575,8 +1606,8 @@ ctx.bthread("RookMovesTrackAndAdvice", "Phase.Opening", function (entity) {
         let e = sync({waitFor: anyMoves})
         //let e = mySync([], [anyMoves], []);
         if (e.data.piece == "Rook" && e.data.color == "White") {
-            let receivedAdvisor = bp.store.get("Piece Advisor: Rook")
-            bp.store.put("Piece Advisor: Rook", receivedAdvisor - 1)
+            // let receivedAdvisor = bp.store.get("Piece Advisor: Rook")
+            // bp.store.put("Piece Advisor: Rook", receivedAdvisor - 1)
             let recCounter = bp.store.get("Piece Moves Counter: Rook moves")
             bp.store.put("Piece Moves Counter: Rook moves", recCounter + 1)
         }
@@ -1588,8 +1619,8 @@ ctx.bthread("KnightMovesTrackAndAdvice", "Phase.Opening", function (entity) {
         let e = sync({waitFor: anyMoves})
         //let e = mySync([], [anyMoves], []);
         if (e.data.piece == "Knight" && e.data.color == "White") {
-            let receivedAdvisor = bp.store.get("Piece Advisor: Knight")
-            bp.store.put("Piece Advisor: Knight", receivedAdvisor - 1)
+            // let receivedAdvisor = bp.store.get("Piece Advisor: Knight")
+            // bp.store.put("Piece Advisor: Knight", receivedAdvisor - 1)
             let recCounter = bp.store.get("Piece Moves Counter: Knight moves")
             bp.store.put("Piece Moves Counter: Knight moves", recCounter + 1)
         }
@@ -1601,8 +1632,8 @@ ctx.bthread("QueenMovesTrackAndAdvice", "Phase.Opening", function (entity) {
         let e = sync({waitFor: anyMoves})
         //let e = mySync([], [anyMoves], []);
         if (e.data.piece == "Queen" && e.data.color == "White") {
-            let receivedAdvisor = bp.store.get("Piece Advisor: Queen")
-            bp.store.put("Piece Advisor: Queen", receivedAdvisor - 1)
+            // let receivedAdvisor = bp.store.get("Piece Advisor: Queen")
+            // bp.store.put("Piece Advisor: Queen", receivedAdvisor - 1)
             let recCounter = bp.store.get("Piece Moves Counter: Queen moves")
             bp.store.put("Piece Moves Counter: Queen moves", recCounter + 1)
             if (recCounter >= 2)
@@ -1702,7 +1733,7 @@ ctx.bthread("PreventingAttacksOnBG4", "Phase.Opening", function (entity) {
 })
 
 /*
-This behavioral thread follows one of the basic strategies in chess, particularly in the opening stage.
+This behavioral thread follows one of the strongest strategies in chess, particularly in the opening stage.
 
 Mastering the art of capturing in chess is not just about eliminating your opponent's pieces; it's a strategic move that can lead you to victory.
 One can do so by attacking and eventually capturing the opponent's pieces.
@@ -1720,9 +1751,9 @@ ctx.bthread("AttackingAndPinningTrack", "Phase.Opening", function (entity) {
         let attack = false, pin = false, defend = false
         // bp.log.info("~~ LOG (1951) ~~ AttackingAndPinningTrack " + JSON.stringify(e.data))
         if (e.data.color === "White") {
-            // bp.log.info("~~ LOG (1453) ~~ The move : " + JSON.stringify(e))
-            [attack, pin, defend] = isAttackingOpponentPieceOrDefending(e.data.piece, e.data.dst);
-            // bp.log.info("~~ LOG (1455) ~~ Returned : " + "{ Attack = " + attack + ", Pin = " + pin + ", Defend = " + defend + " }")
+            let [piecesIAttacked, piecesIDefended] = createAttackingAndDefendingList(e.data.piece, e.data.src, e.data.dst);
+            [attack, pin, defend] = isAttackingOpponentPieceOrDefending(e.data.piece, e.data.dst, piecesIAttacked, piecesIDefended);
+            // bp.log.info("~~ LOG (1725) ~~ Returned : " + "{ Attack = " + attack + ", Pin = " + pin + ", Defend = " + defend + " }")
 
 
             if (attack) {
@@ -1743,7 +1774,7 @@ ctx.bthread("AttackingAndPinningTrack", "Phase.Opening", function (entity) {
 })
 
 // Defending
-ctx.bthread("DefendingTrack", "Phase.Opening", function (entity) {
+/*ctx.bthread("DefendingTrack", "Phase.Opening", function (entity) {
     while (true) {
         let e = sync({waitFor: anyMoves})
         if (e.data.color == "White" && isAttackingOpponentPieceOrDefending(e.data.piece, e.data.dst, false)) {
@@ -1752,7 +1783,7 @@ ctx.bthread("DefendingTrack", "Phase.Opening", function (entity) {
             // bp.store.put("Moves Counter: Defending", receivedCounter + 0.5)
         }
     }
-})
+})*/
 
 // ctx.bthread("GeneralTacticsTrack", "Phase.Opening", function (entity) {
 //     while (true) {
@@ -2028,6 +2059,7 @@ function isDefendedPiece(dstCell, color) {
     return false
 }
 
+// Absolute Pinning Function
 function pinning(piece, pieceCell, straightMovement, diagonalMovement) {
     // First, determine whether a pinning is even feasible - the moved piece need to "see" the opponent king
     let allCells = ctx.runQuery("Cell.all")
@@ -2153,12 +2185,12 @@ function findPiece(cell) {
 }
 
 // This is the main thread that handles the attacking, pinning, and defending process */
-function isAttackingOpponentPieceOrDefending(piece, dstCell) {
+function isAttackingOpponentPieceOrDefending(piece, dstCell, piecesIAttacked, piecesIDefended) {
 
     // Debugging
     // bp.log.info("~~ LOG (1966) ~~ isAttackingOpponentPieceOrDefending: " + JSON.stringify(piece) + ", on " + JSON.stringify(dstCell))
 
-    // Initialize all variables and data sets relevant to the bthread
+    // Initialize all variables and data sets relevant to the b-thread
 
     let playerPieces = ctx.runQuery("Piece.White.All")
     let opponentPieces = ctx.runQuery("Piece.Black.All")
@@ -2181,8 +2213,9 @@ function isAttackingOpponentPieceOrDefending(piece, dstCell) {
 
     let specificPiece = findPiece(dstCell.id);
 
+
     // Debugging
-    // bp.log.info("~~ LOG (1888) ~~ isAttackingOpponentPieceOrDefending Found Specific " + JSON.stringify(piece) + ", on " + JSON.stringify(dstCell) + " : " + JSON.stringify(specificPiece))
+    // bp.log.info("~~ LOG (1888) ~~ isAttackingOpponentPieceOrDefending Found Specific " + JSON.stringify(piece) + " on " + JSON.stringify(dstCell) + " : " + JSON.stringify(specificPiece))
 
     if (piecesAbleToPin.includes(piece)) {
 
@@ -2190,37 +2223,38 @@ function isAttackingOpponentPieceOrDefending(piece, dstCell) {
             case "Bishop":
                 // Bishops can attack and defend diagonally
                 Pinning = pinning(specificPiece, dstCell, false, true)
-                Attacking = isAttackingDiagonal(specificPiece, dstCell, 8, false);
-                Defending = isDefendingPiece(specificPiece, dstCell);
+                // Attacking = isAttackingDiagonal(specificPiece, dstCell, 8, false);
+                // Defending = isDefendingPiece(specificPiece, dstCell);
                 break;
             case "Rook":
                 // Rooks can attack and defend in a straight line
                 Pinning = pinning(specificPiece, dstCell, true, false)
-                Attacking = isAttackingStraight(specificPiece, dstCell, 8);
-                Defending = isDefendingPiece(specificPiece, dstCell);
+                // Attacking = isAttackingStraight(specificPiece, dstCell, 8);
+                // Defending = isDefendingPiece(specificPiece, dstCell);
                 break;
             case "Queen":
                 // The queen is a unique piece that combines the movement of the bishop and the rook and can attack and defend diagonally and also in a straight line
                 Pinning = pinning(specificPiece, dstCell, true, true)
-                Attacking = isAttackingStraight(specificPiece, dstCell, 8) || isAttackingDiagonal(piece, dstCell, 8, true);
-                Defending = isDefendingPiece(specificPiece, dstCell);
+                // Attacking = isAttackingStraight(specificPiece, dstCell, 8) || isAttackingDiagonal(piece, dstCell, 8, true);
+                // Defending = isDefendingPiece(specificPiece, dstCell);
                 break;
         }
     } else {
         switch (piece) {
             case "Pawn":
                 // Pawns can not pin an opponent piece, but they can attack an opponent piece and defend the player pieces
-                Attacking = isAttackingDiagonal(specificPiece, dstCell, 1, false);
-                Defending = isDefendingPiece(specificPiece, dstCell);
+                // Attacking = isAttackingDiagonal(specificPiece, dstCell, 1, false);
+                // Defending = isDefendingPiece(specificPiece, dstCell);
                 break;
             case "Knight":
                 // Knights can not pin an opponent piece due to their "jumping" movement,  but they can attack an opponent piece and defend the player pieces
-                Attacking = isAttackingKnight(specificPiece, dstCell);
-                Defending = isDefendingPiece(specificPiece, dstCell);
+                // Attacking = isAttackingKnight(specificPiece, dstCell);
+                // Defending = isDefendingPiece(specificPiece, dstCell);
                 break;
             case "King":
-                // The king can not pin an opponent piece, but they can attack an opponent piece and defend the player pieces, but beware, it is the most crucial piece in the game
-                Attacking = isAttackingDiagonal(specificPiece, dstCell, 1, false) || isAttackingStraight(piece, dstCell, 1);
+                // The king can not pin an opponent piece, but they can attack an opponent piece and
+                // defend the player pieces, but beware, it is the most crucial piece in the game
+                Attacking = isAttackingDiagonal(specificPiece, dstCell, 1, true) || isAttackingStraight(piece, dstCell, 1);
                 Defending = isDefendingPiece(specificPiece, dstCell);
                 break;
         }
@@ -2305,6 +2339,47 @@ function isAttackingOpponentPieceOrDefending(piece, dstCell) {
     }
 */
 
+    let [piecesIAttack, piecesIDefend] = createAttackingAndDefendingList(specificPiece, null, dstCell);
+
+    /*
+        bp.log.info("~~ LOG (2313) ~~ Comparing Lists, lengths " + piecesIAttack.length + piecesIDefend.length + piecesIAttacked.length + piecesIDefended.length)
+        bp.log.info("~~ LOG (2313) ~~ Pieces I Attack")
+        for (let index = 0; index < piecesIAttack.length; index++) {
+            bp.log.info(piecesIAttack[index])
+        }
+        bp.log.info("~~ LOG (2313) ~~ Pieces I Defend")
+        for (let index = 0; index < piecesIDefend.length; index++) {
+            bp.log.info(piecesIDefend[index])
+        }
+        bp.log.info("~~ LOG (2313) ~~ Pieces I Attacked")
+        for (let index = 0; index < piecesIAttacked.length; index++) {
+            bp.log.info(piecesIAttacked[index])
+        }
+        bp.log.info("~~ LOG (2313) ~~ Pieces I Defended")
+        for (let index = 0; index < piecesIDefended.length; index++) {
+            bp.log.info(piecesIDefended[index])
+        }
+    */
+
+
+    for (let index = 0; index < piecesIAttack.length; index++) {
+        if (!piecesIAttacked.includes(piecesIAttack[index])) {
+            Attacking = true;
+            break;
+        }
+    }
+
+    for (let index = 0; index < piecesIDefend.length; index++) {
+        if (!piecesIDefended.includes(piecesIDefend[index])) {
+            Defending = true;
+            break;
+        }
+    }
+
+    // for (let indexAttack = 0; indexAttack < piecesIAttack.length; indexAttack++) {
+    //     if (piecesIAttack[indexAttack].cellId === dstCell)
+    // }
+
     // Return a 3 - tuple consists of [Attacking, Pinning, Defending]
     // // bp.log.info("~~ LOG (2017) ~~ Returning : " + "{ Attack = " + Attacking + ", Pin = " + Pinning + ", Defend = " + Defending + " }")
 
@@ -2332,7 +2407,7 @@ function pieceExchange(piece, exchangeCell) {
     let freePiece = false, equalTrade = false, worthwhileTrade = false, worthlessTrade = false
 
     // Debugging
-    // bp.log.info("~~ LOG (2050) ~~ piece exchange happens on " + exchangeCell + ", Piece is " + JSON.stringify(piece))
+    bp.log.info("~~ LOG (2050) ~~ piece exchange happens on " + exchangeCell + ", Piece is " + JSON.stringify(piece))
 
     // Initialize all variables and data sets relevant to the bthread
 
@@ -2343,6 +2418,10 @@ function pieceExchange(piece, exchangeCell) {
     // Classify Piece
 
     let takenPiece = findPiece(exchangeCell);
+    if (takenPiece.color === 'White') {
+        bp.log.info("~~ LOG (2398) ~~ pieceExchange does not handle black pieces trades");
+        return;
+    }
     if (takenPiece === undefined) // En - Passant
     {
         // bp.log.info("~~ LOG (2050) ~~ the taken piece found on " + exchangeCell[0] + (getPrevChar(exchangeCell[1])))
@@ -2375,6 +2454,9 @@ function pieceExchange(piece, exchangeCell) {
         }
     }
 
+    if (takenPiece.color === 'Black')
+        opponentPiecesTotalValue += piecesValues[takenPiece.subtype];
+
     // bp.log.info("~~ LOG (2087) ~~ pieceExchange, opponentPiecesTotalValue =  " + opponentPiecesTotalValue)
     // bp.log.info("~~ LOG (2087) ~~ pieceExchange, numberOfOpponentPiecesInvolved =  " + numberOfOpponentPiecesInvolved)
     // bp.log.info("~~ LOG (2088) ~~ pieceExchange, playerPiecesTotalValue =  " + playerPiecesTotalValue)
@@ -2382,25 +2464,33 @@ function pieceExchange(piece, exchangeCell) {
 
     let tradeScore = null;
 
-    if (opponentPiecesTotalValue === 0 ||
+    if (numberOfOpponentPiecesInvolved === 0 ||
         (opponentPiecesTotalValue === KING_VALUE && numberOfOpponentPiecesInvolved === 1 && numberOfPlayerPiecesInvolved > 1)) {
         // bp.log.info("Free Piece -> Excellent Trade");
-        tradeScore = FREE_PIECE;
+        let receivedCounter = bp.store.get("Piece Exchange Feature: Free Piece")
+        bp.store.put("Piece Exchange Feature: Free Piece", receivedCounter + 1)
+        // tradeScore = FREE_PIECE;
     } else if ((opponentPiecesTotalValue === playerPiecesTotalValue && numberOfOpponentPiecesInvolved === numberOfPlayerPiecesInvolved) ||
-        (takingPieceValue == takenPieceValue)) {
+        (takingPieceValue === takenPieceValue)) {
         // bp.log.info("Equal Value -> Fair Trade");
-        tradeScore = EQUAL_TRADE;
+        let receivedCounter = bp.store.get("Piece Exchange Feature: Even Exchange")
+        bp.store.put("Piece Exchange Feature: Even Exchange", receivedCounter + 1)
+        // tradeScore = EQUAL_TRADE;
     } else if ((numberOfPlayerPiecesInvolved === numberOfOpponentPiecesInvolved && playerPiecesTotalValue < opponentPiecesTotalValue) ||
         (numberOfPlayerPiecesInvolved > numberOfOpponentPiecesInvolved) ||
         (takingPieceValue < takenPieceValue)) {
         // bp.log.info("You can defend this Piece or You've Earned Material -> Good Trade");
-        tradeScore = WORTHWHILE_TRADE;
+        let receivedCounter = bp.store.get("Piece Exchange Feature: Worthwhile Exchange")
+        bp.store.put("Piece Exchange Feature: Worthwhile Exchange", receivedCounter + 1)
+        // tradeScore = WORTHWHILE_TRADE;
     } else {
         // bp.log.info("You should've not capture -> Worthless Trade");
-        tradeScore = UNWORTHY_TRADE;
+        let receivedCounter = bp.store.get("Piece Exchange Feature: Unworthy Exchange")
+        bp.store.put("Piece Exchange Feature: Unworthy Exchange", receivedCounter + 1)
+        // tradeScore = UNWORTHY_TRADE;
     }
 
-    bp.store.put("Piece Exchange", tradeScore)
+    // bp.store.put("Piece Exchange", tradeScore)
 }
 
 
@@ -2461,6 +2551,70 @@ function availableStraightCellsFromPiece(piece, distance, allCells) {
             } else {
                 checkMeWest = false
                 cellsWithPiece.push(numericCellToCell(row, col - i, allCells).pieceId)
+            }
+        }
+    }
+    // bp.log.info("returning cellsWithPieces  " + cellsWithPiece)
+    // bp.log.info("returning availableMoves  " + availableMoves)
+    return [availableMoves, cellsWithPiece]
+}
+
+function availableStraightCellsFromPieceWithCell(piece, distance, allCells, cell) {
+
+    // let allCells = ctx.runQuery("Cell.all");
+    let col = cell.i.charAt(0).charCodeAt(0) - 'a'.charCodeAt(0) + 1;
+    let row = cell.j.charAt(0) - '0';
+    // let col = cell.i.charAt(0);
+    // let row = cell.j.charAt(0);
+
+    let availableCells = [];
+    let availableMoves = [];
+    let cellsWithPiece = [];
+
+    let checkMeWest = true;
+    let checkMeEast = true;
+    let checkMeSouth = true;
+    let checkMeNorth = true;
+
+    for (let i = 1; i <= distance; i++) {
+        if (row + i <= 8 && row + i >= 1 && col >= 1 && col <= 8 && checkMeNorth) {
+            let check = numericCellToCell(row + i, col, allCells)
+            // // bp.log.info("~~ LOG (2040) ~~ Sending this to numericCellToCell : " + (row + i) + "," + col + " Returned => " + JSON.stringify(check))
+            if (numericCellToCell(row + i, col, allCells).pieceId === undefined) {
+                availableCells.push({row: row + distance, col: col});
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row + i, col, allCells), piece.color));
+            } else {
+                checkMeNorth = false
+                cellsWithPiece.push(numericCellToCell(row + i, col, allCells))
+            }
+        }
+        if (row - i <= 8 && row - i >= 1 && col >= 1 && col <= 8 && checkMeSouth) {
+            if (numericCellToCell(row - i, col, allCells).pieceId === undefined) {
+                availableCells.push({row: row - distance, col: col});
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row - i, col, allCells), piece.color));
+            } else {
+                checkMeSouth = false
+                cellsWithPiece.push(numericCellToCell(row - i, col, allCells))
+            }
+        }
+        if (col + i <= 8 && col + i >= 1 && row >= 1 && row <= 8 && checkMeEast) {
+            if (numericCellToCell(row, col + i, allCells).pieceId === undefined) {
+                availableCells.push({row: row, col: col + distance});
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row, col + i, allCells), piece.color));
+            } else {
+                checkMeEast = false
+                // cellsWithPiece.push(numericCellToCell(row, col + i, allCells).pieceId)
+                cellsWithPiece.push(numericCellToCell(row, col + i, allCells))
+            }
+        }
+        if (col - i <= 8 && col - i >= 1 && row >= 1 && row <= 8 && checkMeWest) {
+            if (numericCellToCell(row, col - i, allCells).pieceId === undefined) {
+                availableCells.push({row: row, col: col - distance});
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row, col - i, allCells), piece.color));
+            } else {
+                checkMeWest = false
+                // cellsWithPiece.push(numericCellToCell(row, col - i, allCells).pieceId)
+                cellsWithPiece.push(numericCellToCell(row, col - i, allCells))
             }
         }
     }
@@ -2594,7 +2748,7 @@ function availableStraightCellsFromPawn(pawn, distance, allCells) {
 }*/
 
 function availableKnightMoves(knight) {
-    // bp.log.info("~~ LOG (2116) ~~ Knight: " + JSON.stringify(knight));
+    // bp.log.info("~~ LOG (2697) ~~ Knight: " + JSON.stringify(knight));
 
     let allCells = ctx.runQuery("Cell.all");
     let col = knight.cellId[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
@@ -2614,6 +2768,51 @@ function availableKnightMoves(knight) {
         let newRow = row + rowOffset;
         let newCol = col + colOffset;
 
+
+        // Check if the new position is within the board bounds
+        if (newRow >= 1 && newRow <= 8 && newCol >= 1 && newCol <= 8) {
+            let targetCell = numericCellToCell(newRow, newCol, allCells);
+            // bp.log.info("~~ LOG (2445) ~~ Available Knight Moves Checking ==> " + JSON.stringify(targetCell) + ", made of row = " + row + " and col = " + col)
+            // Wrap both source and destination cells with GiveMeCell function
+            let sourceCell = GiveMeCell(knight.cellId, allCells);
+            let destinationCell = targetCell
+            // bp.log.info("~~ LOG (2454) ~~ destination cell ==> " + JSON.stringify(destinationCell))
+            if (targetCell.pieceId === undefined) {
+                availableMoves.push(moveEvent("Knight", sourceCell, destinationCell, knight.color));
+            } else {
+                cellsWithPiece.push(targetCell);
+            }
+        }
+    });
+
+    // bp.log.info("Available Knight Moves Returned - " + availableMoves)
+    // bp.log.info("returning cellsWithPieces with length " + cellsWithPiece.length)
+    return [availableMoves, cellsWithPiece]
+}
+
+function availableKnightMovesWithCell(knight, cell) {
+    // bp.log.info("~~ LOG (2116) ~~ Knight With Cell: " + JSON.stringify(knight) + " On " + JSON.stringify(cell));
+
+    let allCells = ctx.runQuery("Cell.all");
+    let col = cell.i.charAt(0).charCodeAt(0) - 'a'.charCodeAt(0) + 1;
+    let row = cell.j.charAt(0) - '0';
+
+    // bp.log.info("~~ LOG (2116) ~~ Knight With Cell: " + row + col);
+
+    // Define the possible L-shaped move offsets
+    const moveOffsets = [
+        [1, 2], [1, -2], [-1, 2], [-1, -2], // Moves in the vertical direction
+        [2, 1], [2, -1], [-2, 1], [-2, -1]  // Moves in the horizontal direction
+    ];
+
+    let availableMoves = [];
+    let cellsWithPiece = [];
+
+    // Iterate through each possible move direction
+    moveOffsets.forEach(([rowOffset, colOffset]) => {
+        let newRow = row + rowOffset;
+        let newCol = col + colOffset;
+        // bp.log.info("~~ LOG (2761) ~~ Available Knight Moves Checking!!!! new rol and col" + newCol + "," + newRow)
 
         // Check if the new position is within the board bounds
         if (newRow >= 1 && newRow <= 8 && newCol >= 1 && newCol <= 8) {
@@ -2750,19 +2949,81 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
 
 }
 
+function availableDiagonalCellsFromPieceWithCell(piece, distance, allCells, cell) {
+
+    let col = cell.i.charAt(0).charCodeAt(0) - 'a'.charCodeAt(0) + 1;
+    let row = cell.j.charAt(0) - '0';
+    // let col = cell.i.charAt(0);
+    // let row = cell.j.charAt(0);
+
+    let availableCells = [];
+
+    let availableMoves = [];
+
+    let cellsWithPieces = []
+
+    let checkMeNorthWest = true;
+    let checkMeNorthEast = true;
+    let checkMeSouthWest = true;
+    let checkMeSouthEast = true;
+
+    for (let i = 1; i <= distance; i++) {
+        if (row + i <= 8 && row + i >= 1 && col + i <= 8 && col + i >= 1 && checkMeNorthEast) {
+            // bp.log.info("~~ LOG (2304) ~~ availableDiagonalCellsFromPiece " + JSON.stringify(numericCellToCell(row + i, col + i, allCells)))
+            if (numericCellToCell(row + i, col + i, allCells).pieceId === undefined) {
+                availableCells.push({row: row + i, col: col + i});
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row + i, col + i, allCells), piece.color));
+            } else {
+                checkMeNorthEast = false;
+                cellsWithPieces.push(numericCellToCell(row + i, col + i, allCells))
+            }
+        }
+        if (row - i <= 8 && row - i >= 1 && col + i <= 8 && col + i >= 1 && checkMeSouthEast) {
+            if (numericCellToCell(row - i, col + i, allCells).pieceId === undefined) {
+                availableCells.push({row: row - i, col: col + i});
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row - i, col + i, allCells), piece.color));
+            } else {
+                checkMeSouthEast = false;
+                cellsWithPieces.push(numericCellToCell(row - i, col + i, allCells))
+            }
+        }
+        if (row + i <= 8 && row + i >= 1 && col - i <= 8 && col - i >= 1 && checkMeNorthWest) {
+            if (numericCellToCell(row + i, col - i, allCells).pieceId === undefined) {
+                availableCells.push({row: row + i, col: col - i});
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row + i, col - i, allCells), piece.color));
+            } else {
+                checkMeNorthWest = false;
+                cellsWithPieces.push(numericCellToCell(row + i, col - i, allCells))
+            }
+        }
+        if (row - i <= 8 && row - i >= 1 && col - i <= 8 && col - i >= 1 && checkMeSouthWest) {
+            if (numericCellToCell(row - i, col - i, allCells).pieceId === undefined) {
+                availableCells.push({row: row - i, col: col - i});
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row - i, col - i, allCells), piece.color));
+            } else {
+                checkMeSouthWest = false;
+                cellsWithPieces.push(numericCellToCell(row - i, col - i, allCells))
+            }
+        }
+    }
+
+    return [availableMoves, cellsWithPieces]
+
+}
+
 // Helper function : Convert numeric row & column values to chess board cell
 function numericCellToCell(i, j, allCells) { // TODO: For efficiency reasons, move allCells to here
-    // // bp.log.info("NumericCellToCell : j = " + j + ", i = " + i + ", allCells: " + allCells)
+    // bp.log.info("NumericCellToCell : j = " + j + ", i = " + i + ", allCells: " + allCells)
 
     // both i and j can and must contain any values in the [1,8]
 
     let j_char = addNumericValueToChar('a', j - 1);
 
     let ret = (GiveMeCell(j_char + i, allCells))
-    // // bp.log.info("NumericCellToCell : " + (j_char + i) + " Return Value => " + JSON.stringify(ret))
+    // bp.log.info("NumericCellToCell : " + (j_char + i) + " Return Value => " + JSON.stringify(ret))
 
     if (!ret) {
-        // // bp.log.info("NumericCellToCell NULL: " + (j_char + i) + " Return Value => " + JSON.stringify(ret))
+        // bp.log.info("NumericCellToCell NULL: " + (j_char + i) + " Return Value => " + JSON.stringify(ret))
         return undefined;
     } else {
         // // bp.log.info("NumericCellToCell NOT NULL : " + (j_char + i) + " Return Value => " + JSON.stringify(ret))
@@ -2792,11 +3053,150 @@ function getPrevChar(char) {
     return String.fromCharCode(char.charCodeAt(0) - 1);
 }
 
+function createAttackingAndDefendingList(piece, srcCell, dstCell) {
+    let piecesIAttack = []
+    let piecesIDefend = []
+
+    let col = undefined
+    let row = undefined
+
+    // bp.log.info("~~ LOG (3005) Creating List of ~~ " + JSON.stringify(piece) + " On " + JSON.stringify(srcCell) + " => " + JSON.stringify(dstCell))
+    // bp.log.info("~~ LOG (2847) Lists Sizes ~~ " + piecesIAttack.length + " " + piecesIDefend.length)*/
+
+    let playerColor = 'White';
+    if (srcCell !== null) {
+        col = srcCell.i.charAt(0).charCodeAt(0) - 'a'.charCodeAt(0) + 1;
+        row = srcCell.j.charAt(0) - '0';
+    } else {
+        col = dstCell.i.charAt(0).charCodeAt(0) - 'a'.charCodeAt(0) + 1;
+        row = dstCell.j.charAt(0) - '0';
+    }
+
+    let allCells = ctx.runQuery("Cell.all")
+
+    let specificPiece = null
+    if (srcCell !== null) specificPiece = ctx.runQuery(getSpecificPieceOnCell(srcCell.id))[0]
+    if (specificPiece === undefined)
+        specificPiece = ctx.runQuery(getSpecificPieceOnCell(dstCell))[0]
+
+    // bp.log.info("~~ LOG (3025) Creating List of ~~ " + JSON.stringify(specificPiece) + " on " + numericCellToCell(row, col, allCells).id)
+    // bp.log.info("~~ LOG (3026) ~~ " + (col) + (row))
+
+    if (piece.subtype === 'Pawn') {
+        if (row + 1 <= 8 && col + 1 <= 8) {
+            let rightNorthCell = GiveMeCell(numericCellToCell(row + 1, col + 1, allCells).id, allCells);
+            // bp.log.info("~~ LOG (3020) Right North Piece ~~ " + JSON.stringify(rightNorthCell));
+            let rightNorthPiece = ctx.runQuery(getSpecificPieceOnCell(rightNorthCell))[0];
+            // bp.log.info("~~ LOG (3022) Right North Piece ~~ " + JSON.stringify(rightNorthPiece));
+
+            if (rightNorthPiece !== undefined) {
+                if (rightNorthPiece.color === playerColor) {
+                    // bp.log.info("~~ LOG (3046) Right North Piece Defending ~~ " + JSON.stringify(rightNorthPiece));
+                    piecesIDefend.push(rightNorthPiece);
+                } else {
+                    // bp.log.info("~~ LOG (3049) Right North Piece Attacking~~ " + JSON.stringify(rightNorthPiece));
+                    piecesIAttack.push(rightNorthPiece);
+                }
+            }
+        }
+
+        if (row + 1 <= 8 && col - 1 >= 1) {
+            let leftNorthCell = GiveMeCell(numericCellToCell(row + 1, col - 1, allCells).id, allCells);
+            // bp.log.info("~~ LOG (3035) Left North Piece ~~ " + JSON.stringify(leftNorthCell));
+            let leftNorthPiece = ctx.runQuery(getSpecificPieceOnCell(leftNorthCell))[0];
+            // bp.log.info("~~ LOG (3037) Left North Piece ~~ " + JSON.stringify(leftNorthPiece));
+
+            if (leftNorthPiece !== undefined) {
+                if (leftNorthPiece.color === playerColor) {
+                    piecesIDefend.push(leftNorthPiece);
+                } else {
+                    piecesIAttack.push(leftNorthPiece);
+                }
+            }
+        }
+    } else if (piece.subtype === 'Knight') {
+        let cellsWithPiece = undefined
+        if (srcCell !== null) cellsWithPiece = availableKnightMovesWithCell(piece, srcCell)[1];
+        else cellsWithPiece = availableKnightMovesWithCell(piece, dstCell)[1];
+
+
+        for (let index = 0; index < cellsWithPiece.length; index++) {
+            let pieceOnCell = ctx.runQuery(getSpecificPieceOnCell(cellsWithPiece[index]))[0];
+            // bp.log.info("~~ LOG (2850) ~~ " + JSON.stringify(pieceOnCell))
+            if (pieceOnCell.color === playerColor) {
+                piecesIDefend.push(pieceOnCell)
+            } else {
+                piecesIAttack.push(pieceOnCell)
+            }
+        }
+    } else if (piece.subtype === 'Bishop') {
+        let cellsWithPiece = undefined
+        if (srcCell !== null) cellsWithPiece = availableDiagonalCellsFromPieceWithCell(piece, 8, allCells, srcCell)[1];
+        else cellsWithPiece = availableDiagonalCellsFromPieceWithCell(piece, 8, allCells, dstCell)[1];
+        for (let index = 0; index < cellsWithPiece.length; index++) {
+            let pieceOnCell = ctx.runQuery(getSpecificPieceOnCell(cellsWithPiece[index]))[0];
+            // bp.log.info("~~ LOG (2850) ~~ " + JSON.stringify(pieceOnCell))
+            if (pieceOnCell.color === playerColor) {
+                piecesIDefend.push(pieceOnCell)
+            } else {
+                piecesIAttack.push(pieceOnCell)
+            }
+        }
+
+    } else if (piece.subtype === 'Rook') {
+        let cellsWithPiece = undefined
+        if (srcCell !== null) cellsWithPiece = availableStraightCellsFromPieceWithCell(piece, 8, allCells, srcCell)[1];
+        else cellsWithPiece = availableStraightCellsFromPieceWithCell(piece, 8, allCells, dstCell)[1];
+        for (let index = 0; index < cellsWithPiece.length; index++) {
+            let pieceOnCell = ctx.runQuery(getSpecificPieceOnCell(cellsWithPiece[index]))[0];
+            // bp.log.info("~~ LOG (2850) ~~ " + JSON.stringify(pieceOnCell))
+            if (pieceOnCell.color === playerColor) {
+                piecesIDefend.push(pieceOnCell)
+            } else {
+                piecesIAttack.push(pieceOnCell)
+            }
+        }
+    } else if (piece.subtype === 'Queen') {
+        let cellsWithPieceStraight = undefined
+        if (srcCell !== null) cellsWithPieceStraight = availableStraightCellsFromPieceWithCell(piece, 8, allCells, srcCell)[1];
+        else cellsWithPieceStraight = availableStraightCellsFromPieceWithCell(piece, 8, allCells, dstCell)[1];
+        for (let index = 0; index < cellsWithPieceStraight.length; index++) {
+            // bp.log.info("~~ LOG (2850) ~~ " + JSON.stringify(cellsWithPieceStraight[index]))
+            let pieceOnCell = ctx.runQuery(getSpecificPieceOnCell(cellsWithPieceStraight[index]))[0];
+            // bp.log.info("~~ LOG (2850) ~~ " + JSON.stringify(pieceOnCell))
+            if (pieceOnCell.color === playerColor) {
+                piecesIDefend.push(pieceOnCell)
+            } else {
+                piecesIAttack.push(pieceOnCell)
+            }
+        }
+
+        let cellsWithPieceDiagonal = undefined
+        if (srcCell !== null) cellsWithPieceDiagonal = availableDiagonalCellsFromPieceWithCell(piece, 8, allCells, srcCell)[1];
+        else cellsWithPieceDiagonal = availableDiagonalCellsFromPieceWithCell(piece, 8, allCells, dstCell)[1];
+        for (let index = 0; index < cellsWithPieceDiagonal.length; index++) {
+            let pieceOnCell = ctx.runQuery(getSpecificPieceOnCell(cellsWithPieceDiagonal[index]))[0];
+            // bp.log.info("~~ LOG (2850) ~~ " + JSON.stringify(pieceOnCell))
+            if (pieceOnCell.color === playerColor) {
+                piecesIDefend.push(pieceOnCell)
+            } else {
+                piecesIAttack.push(pieceOnCell)
+            }
+        }
+    }
+
+    // bp.log.info("~~ LOG (2847) piecesIAttack ~~ " + piecesIAttack.length)
+    // bp.log.info("~~ LOG (2848) piecesIDefend ~~ " + piecesIDefend.length)
+
+    return [piecesIAttack, piecesIDefend]
+
+}
+
 // Visualization ( Help debug process )
 ctx.bthread("Visualize", "Phase.Opening", function (entity) {
 
     // White pieces are represented by capital characters, whereas non-capital characters are used to symbolize black pieces
-    // Todo: make with correlation to the board, go through cells and print their content
+
     const _currentBoard = [
         ['r', 'n', 'b', 'q', 'k', 'b', 'n', 'r'],
 
@@ -2881,7 +3281,7 @@ ctx.bthread("Visualize", "Phase.Opening", function (entity) {
 
             currentBoard[row][col] = sign;
         }
-       /* bp.log.info(ANSI_BRIGHT_CYAN + ANSI_UNDERLINE + ANSI_BOLD + move + ANSI_RESET)
+        bp.log.info(ANSI_BRIGHT_CYAN + ANSI_UNDERLINE + ANSI_BOLD + move + ANSI_RESET)
         // Visualize
         for (let i = 0; i < 8; i++) {
 
@@ -2890,7 +3290,7 @@ ctx.bthread("Visualize", "Phase.Opening", function (entity) {
                 currentBoard[i][6] + "  " + currentBoard[i][7] + ANSI_RESET);
 
         }
-        bp.log.info(ANSI_CYAN + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + ANSI_RESET)*/
+        bp.log.info(ANSI_CYAN + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + ANSI_RESET)
 
     }
 });

@@ -165,7 +165,7 @@ function getSpecificPieceOnCell(cell_identifier) {
     } else {
         // bp.log.info("~~ DAL LOG (168) ~~ " + JSON.stringify(cell_identifier) + ", Type = " + typeof cell_identifier)
         let new_cell_identifier = String(cell_identifier.id);
-        //// bp.log.info("~~ DAL LOG (170) ~~ " + new_cell_identifier + ", Type = " + typeof cell_identifier)
+        // bp.log.info("~~ DAL LOG (170) ~~ " + new_cell_identifier + ", Type = " + typeof cell_identifier)
         return function (entity) {
             return entity.type.equals(String('piece')) &&
                 entity.cellId[0].equals(String(new_cell_identifier.charAt(0))) &&
