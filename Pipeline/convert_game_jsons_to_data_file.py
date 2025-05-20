@@ -16,7 +16,7 @@ GENOME_SIZE = 31
 WEIGHT_RANGE_MIN = -10
 WEIGHT_RANGE_MAX = 10
 
-NUMBER_OF_ANALYZED_GAMES = 100
+NUMBER_OF_ANALYZED_GAMES = 100000
 NONE_VALUE = -1
 game = {}
 CHECK_SIGN = '+'
@@ -61,7 +61,7 @@ piece_dict = {
 original_columns_single_move_length = len(columns_single_move)
 
 print(os.getcwd())
-conn = sqlite3.connect('../DB/1500/Explanations/chess_moves.db')
+conn = sqlite3.connect('../DB/1500/Explanations/chess_moves_real.db')
 cursor = conn.cursor()
 
 
@@ -208,12 +208,14 @@ def draw_board_from_cells(cells):
 # columns_names = ['selectable_events', 'major_attributes', 'look_ahead_attributes', 'event_played']
 
 if __name__ == '__main__':
-    create_db()
+    #create_db()
 
     games_data = {}
 
-    for analyzed_game_index in range(1, NUMBER_OF_ANALYZED_GAMES + 1):
-        single_game_path = '../GameSequences1500/WithSelectablesForExplanation/Game' + str(analyzed_game_index) + '.json'
+    for analyzed_game_index in range(80001, NUMBER_OF_ANALYZED_GAMES + 1):
+        if analyzed_game_index % 1000 == 0:
+            print("Analyzing game ", analyzed_game_index)
+        single_game_path = '../GameSequences1500/NoSelectables/Game' + str(analyzed_game_index) + '.json'
         # single_game_path = '[Daniel:DataFileName]/Game' + str(analyzed_game_index) + '.json'
 
         single_game_json = open(single_game_path)  # Obtain the JSON object which the path points to

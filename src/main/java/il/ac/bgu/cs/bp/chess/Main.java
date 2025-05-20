@@ -1,7 +1,9 @@
 package il.ac.bgu.cs.bp.chess;
+
 import il.ac.bgu.cs.bp.bpjs.context.ContextBProgram;
 import il.ac.bgu.cs.bp.bpjs.execution.BProgramRunner;
 import il.ac.bgu.cs.bp.bpjs.execution.listeners.PrintBProgramRunnerListener;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -29,15 +31,12 @@ public class Main {
         try {
             String currentPath = System.getProperty("user.dir");
             System.out.println("Current working directory: " + currentPath);
-            reader = new BufferedReader(new FileReader("1500_cut_after/PGNData.txt"));
+            reader = new BufferedReader(new FileReader("1600/1600PGNData.txt"));
             String line = reader.readLine();
             while (line != null) {
-
-                if(id <= 100){
-                    String idString = String.valueOf(id);
-                    String [] arr = {idString, line};
-                    games.add(arr);
-                }
+                String idString = String.valueOf(id);
+                String[] arr = {idString, line};
+                games.add(arr);
                 id++;
                 // read next line
                 line = reader.readLine();
@@ -48,43 +47,34 @@ public class Main {
         }
 
 
-
-
-        games.forEach(g->{
+        games.forEach(g -> {
             var bprog = new ContextBProgram("dal.js", "bl.js"); // New program to run the game
 
             var ess = new ChessEventSelectionStrategy(g[0]); // Redundant
 
             bprog.setEventSelectionStrategy(ess);
-            bprog.putInGlobalScope("generationMode",false);
+            bprog.putInGlobalScope("generationMode", false);
 
-            bprog.putInGlobalScope("game_id",g[0]);
+            bprog.putInGlobalScope("game_id", g[0]);
 
-            bprog.putInGlobalScope("pgn",g[1]);
+            bprog.putInGlobalScope("pgn", g[1]);
 
             bprog.setWaitForExternalEvents(false);
 
             final BProgramRunner rnr = new BProgramRunner(bprog);
 
+            String currentPath = System.getProperty("user.dir");
 
             rnr.addListener(new PrintBProgramRunnerListener());
             rnr.run();
-            try (FileWriter JSONWriter = new FileWriter("GameSequences1500/WithSelectables/Game" + g[0] + ".json")) {
-                JSONWriter.write(ess.getGameData().stream().collect(Collectors.joining(",","[","]")));
+            try (FileWriter JSONWriter = new FileWriter( currentPath + "\\1600\\GameSequences\\Game" + g[0] + ".json")) {
+                JSONWriter.write(ess.getGameData().stream().collect(Collectors.joining(",", "[", "]")));
             } catch (IOException e) {
                 e.printStackTrace();
             }
+
+            // this
         });
 
     }
-
-
-//    private static BEvent move(String src, String dst) {
-//        return new BEvent("Move", Map.of("dst", dst, "src", src));
-//    }
-//
-//    private static void simulateGameFromPgn(BProgram bprog, String pgn) {
-//        // Arrays.stream(pgn.split(" ")).map(m -> move(m.substring(0,2),m.substring(2))).forEach(bprog::enqueueExternalEvent);
-//        //    // movesList = translateFromPGN(pgn)
-//    }
 }
