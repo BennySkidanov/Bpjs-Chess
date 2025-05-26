@@ -597,7 +597,7 @@ function canReachSquareTrading(piece, dstCell, takes, enPassant) {
 }
 
 function canReachSquare(piece, dstCell, takes, enPassant) {
-    // bp.log.info("~~ LOG (442) ~~ In canReachSquare, piece = " + JSON.stringify(piece) + ", dstCell = " + JSON.stringify(dstCell) + ", enPassant = " + enPassant + ", takes = " + takes)
+    // bp.log.info("~~ LOG (600) ~~ In canReachSquare, piece = " + JSON.stringify(piece) + ", dstCell = " + JSON.stringify(dstCell) + ", enPassant = " + enPassant + ", takes = " + takes)
 
     let colToTakePawn, rowToTakePawn;
 
@@ -779,8 +779,8 @@ function handleLongCastle(color, pieces) {
 function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color, takes, enPassant, enPassantPieceCellId, optional) {
 
 
-    // bp.log.info("~~ LOG (633) ~~ findPieceThatCanReachToEndSquare with the following params : " + "piecePrefix = " + piecePrefix + " dst cell = " + JSON.stringify(dstCell))
-    // bp.log.info("~~ LOG (634) ~~ findPieceThatCanReachToEndSquare Other params : Color = " + color + " Takes = " + takes + " enPassant = " + enPassant + ", Optional ==> " + optional)
+    bp.log.info("~~ LOG (633) ~~ findPieceThatCanReachToEndSquare with the following params : " + "piecePrefix = " + piecePrefix + " dst cell = " + JSON.stringify(dstCell))
+    bp.log.info("~~ LOG (634) ~~ findPieceThatCanReachToEndSquare Other params : Color = " + color + " Takes = " + takes + " enPassant = " + enPassant + ", Optional ==> " + optional)
 
     let pieceType = piecesPrefixes[piecePrefix];
     // bp.log.info("~~ LOG (648) ~~ piece type = " + pieceType)
@@ -788,7 +788,7 @@ function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color, takes, en
     // bp.log.info("~~ LOG (650) ~~ There are " + allPiecesOfType.length + " candidates ")
     for (let i = 0; i < allPiecesOfType.length; i++) {
         if (optional === null) {
-            // bp.log.info("~~ LOG (554) ~~ No optional column! looking at " + JSON.stringify(allPiecesOfType[i]))
+            // bp.log.info("~~ LOG (791) ~~ No optional column! looking at " + JSON.stringify(allPiecesOfType[i]))
             // Todo : change here, not all calls with enPassant = True
             if (enPassant && allPiecesOfType[i].cellId === enPassantPieceCellId) {
                 if (canReachSquare(allPiecesOfType[i], dstCell, takes, enPassant)) {
@@ -943,6 +943,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
             else if (move == "O-O-O") handleLongCastle(player, pieces);
         } else if ((move.indexOf('=') > -1)) {
             // bp.log.info("Queening event");
+
             let piece = findPieceThatCanReachToEndSquare(
                 startsWithCapital(move) ? move[0] : "P",
                 move.substr(0, 2),
@@ -1749,9 +1750,20 @@ ctx.bthread("AttackingAndPinningTrack", "Phase.Opening", function (entity) {
     while (true) {
         let e = sync({waitFor: anyMoves})
         let attack = false, pin = false, defend = false
-        // bp.log.info("~~ LOG (1951) ~~ AttackingAndPinningTrack " + JSON.stringify(e.data))
+        bp.log.info("~~ LOG (1951) ~~ AttackingAndPinningTrack " + JSON.stringify(e.data))
         if (e.data.color === "White") {
-            let [piecesIAttacked, piecesIDefended] = createAttackingAndDefendingList(e.data.piece, e.data.src, e.data.dst);
+            let piecesIAttacked = undefined, piecesIDefended = undefined;
+            // bp.log.info("(1755) Src Cell Check : " + e.data.src.id)
+            if (e.data.src.id !== undefined) {
+                [piecesIAttacked, piecesIDefended] = createAttackingAndDefendingList(e.data.piece, e.data.src, e.data.dst);
+            } else {
+                bp.log.info("(1761) Src Cell Check : " + JSON.stringify(e.data));
+                let allCells = ctx.runQuery("Cell.all")
+                let srcJSON = GiveMeCell(e.data.src, allCells);
+                let dstJSON = GiveMeCell(e.data.dst, allCells);
+                bp.log.info("(1763) srcJSON Check: " + JSON.stringify(srcJSON));
+                [piecesIAttacked, piecesIDefended] = createAttackingAndDefendingList(e.data.piece, srcJSON, dstJSON);
+            }
             [attack, pin, defend] = isAttackingOpponentPieceOrDefending(e.data.piece, e.data.dst, piecesIAttacked, piecesIDefended);
             // bp.log.info("~~ LOG (1725) ~~ Returned : " + "{ Attack = " + attack + ", Pin = " + pin + ", Defend = " + defend + " }")
 
@@ -2042,7 +2054,7 @@ function isAttackingKnight(piece, dstCell) {
 }
 
 function isDefendingPiece(piece, dstCell) {
-    // bp.log.info("~~ LOG (2011) ~~ In isDefendingPiece, piece = " + JSON.stringify(piece) + ", dstCell = " + JSON.stringify(dstCell))
+    bp.log.info("~~ LOG (2011) ~~ In isDefendingPiece, piece = " + JSON.stringify(piece) + ", dstCell = " + JSON.stringify(dstCell))
     return canReachSquare(piece, dstCell, false, false);
 }
 
@@ -2211,7 +2223,12 @@ function isAttackingOpponentPieceOrDefending(piece, dstCell, piecesIAttacked, pi
 
     // Classify Piece
 
-    let specificPiece = findPiece(dstCell.id);
+    let specificPiece = undefined;
+    if (dstCell.id !== undefined) {
+        specificPiece = findPiece(dstCell.id);
+    } else {
+        specificPiece = findPiece(dstCell);
+    }
 
 
     // Debugging
@@ -2339,7 +2356,18 @@ function isAttackingOpponentPieceOrDefending(piece, dstCell, piecesIAttacked, pi
     }
 */
 
-    let [piecesIAttack, piecesIDefend] = createAttackingAndDefendingList(specificPiece, null, dstCell);
+    // bp.log.info("(1755) Src Cell Check : " + e.data.src.id)
+    // TODO: find the source of the "e1" insted of an object that represents the cell, probably comes from a cell to a move event that is not updated to working with objects instead of strings
+    let piecesIAttack = undefined, piecesIDefend = undefined;
+    if (dstCell.id !== undefined) {
+        [piecesIAttack, piecesIDefend] = createAttackingAndDefendingList(specificPiece, null, dstCell);
+
+    } else {
+        let allCells = ctx.runQuery("Cell.all")
+        let dstJSON = GiveMeCell(dstCell, allCells);
+        [piecesIAttack, piecesIDefend] = createAttackingAndDefendingList(specificPiece, null, dstJSON);
+    }
+
 
     /*
         bp.log.info("~~ LOG (2313) ~~ Comparing Lists, lengths " + piecesIAttack.length + piecesIDefend.length + piecesIAttacked.length + piecesIDefended.length)
@@ -2436,7 +2464,7 @@ function pieceExchange(piece, exchangeCell) {
     let takingPieceValue = piecesValues[piece.subtype];
 
     // Debugging
-    // bp.log.info("~~ LOG (2063) ~~ pieceExchange, exchange on " + exchangeCell + ", Taken into consideration every piece except " + JSON.stringify(takenPiece))
+    bp.log.info("~~ LOG (2063) ~~ pieceExchange, exchange on " + exchangeCell + ", Taken into consideration every piece except " + JSON.stringify(takenPiece))
 
     for (let i = 0; i < opponentPieces.length; i++) {
         if (opponentPieces[i] !== takenPiece && canReachSquareTrading(opponentPieces[i], exchangeCell, true, false)) {
@@ -2882,7 +2910,7 @@ function GiveMeCell(requestedID, allCells) {
             return cell;
         }
     }
-    // bp.log.info("~~ LOG (2281) ~~ GiveMeCell Returning NULL")
+    bp.log.info("~~ LOG (2281) ~~ GiveMeCell Returning NULL")
     return null;
 }
 
@@ -3060,7 +3088,7 @@ function createAttackingAndDefendingList(piece, srcCell, dstCell) {
     let col = undefined
     let row = undefined
 
-    // bp.log.info("~~ LOG (3005) Creating List of ~~ " + JSON.stringify(piece) + " On " + JSON.stringify(srcCell) + " => " + JSON.stringify(dstCell))
+    bp.log.info("~~ LOG (3005) Creating List of ~~ " + JSON.stringify(piece) + " On " + JSON.stringify(srcCell) + " => " + JSON.stringify(dstCell))
     // bp.log.info("~~ LOG (2847) Lists Sizes ~~ " + piecesIAttack.length + " " + piecesIDefend.length)*/
 
     let playerColor = 'White';
@@ -3079,7 +3107,7 @@ function createAttackingAndDefendingList(piece, srcCell, dstCell) {
     if (specificPiece === undefined)
         specificPiece = ctx.runQuery(getSpecificPieceOnCell(dstCell))[0]
 
-    // bp.log.info("~~ LOG (3025) Creating List of ~~ " + JSON.stringify(specificPiece) + " on " + numericCellToCell(row, col, allCells).id)
+    bp.log.info("~~ LOG (3025) Creating List of ~~ " + JSON.stringify(specificPiece) + " on " + numericCellToCell(row, col, allCells).id)
     // bp.log.info("~~ LOG (3026) ~~ " + (col) + (row))
 
     if (piece.subtype === 'Pawn') {
