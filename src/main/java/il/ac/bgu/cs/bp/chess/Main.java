@@ -29,16 +29,16 @@ public class Main {
         try {
             String currentPath = System.getProperty("user.dir");
             System.out.println("Current working directory: " + currentPath);
-            // reader = new BufferedReader(new FileReader("1500/PGNData.txt"));
-            reader = new BufferedReader(new FileReader("PGNData.txt"));
+            reader = new BufferedReader(new FileReader("1500/PGNData.txt"));
+            //reader = new BufferedReader(new FileReader("PGNData.txt"));
             String line = reader.readLine();
             while (line != null) {
 
-               // if(id <= 5003 && id >= 4912){
+               if(id >=2175 && id <= 5003){
                     String idString = String.valueOf(id);
                     String [] arr = {idString, line};
                     games.add(arr);
-               // }
+               }
                 id++;
                 // read next line
                 line = reader.readLine();
@@ -70,8 +70,8 @@ public class Main {
 
             rnr.addListener(new PrintBProgramRunnerListener());
             rnr.run();
-            // try (FileWriter JSONWriter = new FileWriter("GameSequences1500/WithSelectables/Game" + g[0] + ".json")) {
-            try (FileWriter JSONWriter = new FileWriter("Testing/Game" + g[0] + ".json")) {
+            try (FileWriter JSONWriter = new FileWriter("GameSequences1500/WithSelectablesAfterFix/Game" + g[0] + ".json")) {
+            //try (FileWriter JSONWriter = new FileWriter("Testing/Game" + g[0] + ".json")) {
                 JSONWriter.write(ess.getGameData().stream().collect(Collectors.joining(",","[","]")));
             } catch (IOException e) {
                 e.printStackTrace();
