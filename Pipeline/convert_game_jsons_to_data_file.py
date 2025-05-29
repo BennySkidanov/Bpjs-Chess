@@ -2,329 +2,344 @@ import json
 import os
 import re
 import sqlite3
-import statistics
-import random
 import pandas as pd
-import ast
-
-POP_SIZE = 150  # population size
-ELITISM = 2
-GENERATIONS = 100  # maximal number of generations to run GA
-TOURNAMENT_SIZE = 5  # size of tournament for tournament selection
-PROB_MUTATION = 0.1  # bitwise probability of mutation
-GENOME_SIZE = 34
-WEIGHT_RANGE_MIN = -10
-WEIGHT_RANGE_MAX = 10
-
-NUMBER_OF_ANALYZED_GAMES = 1
-NONE_VALUE = -1
-game = {}
-CHECK_SIGN = '+'
-MATE_SIGN = '#'
-TAKES_SIGN = 'x'
-
-# Categories to help classify chosen move better
-STRENGTHEN_CENTER_LABEL = 1
-DEVELOP_PIECES_LABEL = 2
-FIANCHETTO_LABEL = 3
-PAWN_STRUCTURE_LABEL = 4
-TAKES_MOVE_LABEL = 5
-OTHER = 6
-
-prefix_dictionary = {"Pawn": "", "Knight": "N", "Bishop": "B", "Rook": "R", "Queen": "Q", "King": "K"}
-columns_single_move = ["Game number", "Move number", "Move Description", "Board State", "Predicted Percentage",
-                       "Actual Percentage", "SHAP",
-                       "Piece Advisor: Pawn", "Piece Advisor: Bishop", "Piece Advisor: Knight",
-                       "Piece Advisor: Rook", "Piece Advisor: Queen",
-                       "Piece Moves Counter: Pawn moves", "Piece Moves Counter: Bishop moves",
-                       "Piece Moves Counter: Knight moves",
-                       "Piece Moves Counter: Rook moves", "Piece Moves Counter: Queen moves",
-                       "Strategy Advisor: Center", "Strategy Advisor: Develop", "Strategy Advisor: Fianchetto",
-                       "Strategy Counter: Center strengthen moves", "Strategy Counter: Developing moves",
-                       "Strategy Counter: Fianchetto moves",
-                       "Game Plan Counter: Scholars Mate", "Game Plan Counter: Deceiving Scholars Mate",
-                       "Game Plan Counter: Fried Liver Attack",
-                       "Game Plan Counter: Capturing Space", "Game Plan Counter: Strengthen Pawn Structure",
-                       "Moves Counter: Attacking", "Moves Counter: Defending",
-                       "Moves Counter: Preventing b4, g4 Attacks",
-                       "Developing the queen too early", "Piece Exchange", "Moves Counter: Pinning"]
-
-piece_dict = {
-    1: 'K', 2: 'k',
-    3: 'Q', 4: 'q',
-    5: 'B', 6: 'B', 7: 'b', 8: 'b',
-    9: 'N', 10: 'N', 11: 'n', 12: 'n',
-    13: 'R', 14: 'R', 15: 'r', 16: 'r',
-    21: 'P', 22: 'P', 23: 'P', 24: 'P', 25: 'P', 26: 'P', 27: 'P', 28: 'P',
-    31: 'p', 32: 'p', 33: 'p', 34: 'p', 35: 'p', 36: 'p', 37: 'p', 38: 'p'
-}
-
-original_columns_single_move_length = len(columns_single_move)
-
-print(os.getcwd())
-conn = sqlite3.connect('../DB/1500/Explanations/chess_moves_test.db')
-cursor = conn.cursor()
+from typing import Dict, List, Any, Tuple
 
 
-def create_db():
-    # Create the table
-    cursor.execute('''CREATE TABLE IF NOT EXISTS chess_moves (
-                        Game_number INTEGER,
-                        Move_number INTEGER,
-                        Move_Description TEXT,
-                        Board_State TEXT,
-                        Predicted_Percentage FLOAT,
-                        Actual_Percentage FLOAT,
-                        SHAP BLOB,
-                        Piece_Advisor_Pawn INTEGER,
-                        Piece_Advisor_Bishop INTEGER,
-                        Piece_Advisor_Knight INTEGER,
-                        Piece_Advisor_Rook INTEGER,
-                        Piece_Advisor_Queen INTEGER,
-                        Piece_Moves_Counter_Pawn_moves INTEGER,
-                        Piece_Moves_Counter_Bishop_moves INTEGER,
-                        Piece_Moves_Counter_Knight_moves INTEGER,
-                        Piece_Moves_Counter_Rook_moves INTEGER,
-                        Piece_Moves_Counter_Queen_moves INTEGER,
-                        Strategy_Advisor_Center INTEGER,
-                        Strategy_Advisor_Develop INTEGER,
-                        Strategy_Advisor_Fianchetto INTEGER,
-                        Strategy_Counter_Center_strengthen_moves INTEGER,
-                        Strategy_Counter_Developing_moves INTEGER,
-                        Strategy_Counter_Fianchetto_moves INTEGER,
-                        Game_Plan_Counter_Scholars_Mate INTEGER,
-                        Game_Plan_Counter_Deceiving_Scholars_Mate INTEGER,
-                        Game_Plan_Counter_Fried_Liver_Attack INTEGER,
-                        Game_Plan_Counter_Capturing_Space INTEGER,
-                        Game_Plan_Counter_Strengthen_Pawn_Structure INTEGER,
-                        Moves_Counter_Attacking INTEGER,
-                        Moves_Counter_Defending INTEGER,
-                        Moves_Counter_Preventing_b4_g4_Attacks INTEGER,
-                        Developing_the_queen_too_early INTEGER,
-                        Piece_Exchange INTEGER,
-                        Moves_Counter_Pinning INTEGER
-                    )''')
+class ChessMoveAnalyzer:
+    """Main class for analyzing chess moves and storing them in database."""
 
-    # Add LOOK_AHEAD columns dynamically
-    for att_index in range(7, GENOME_SIZE):
-        cursor.execute('''ALTER TABLE chess_moves ADD COLUMN LOOK_AHEAD_{} INTEGER'''.format(
-            columns_single_move[att_index].replace(" ", "_").replace(":", "").replace(",", "_")))
+    # Configuration constants
+    POP_SIZE = 150
+    ELITISM = 2
+    GENERATIONS = 100
+    TOURNAMENT_SIZE = 5
+    PROB_MUTATION = 0.1
+    GENOME_SIZE = 34
+    WEIGHT_RANGE_MIN = -10
+    WEIGHT_RANGE_MAX = 10
+    NUMBER_OF_ANALYZED_GAMES = 1
+    NONE_VALUE = -1
 
-    cursor.execute('''ALTER TABLE chess_moves ADD COLUMN Y INTEGER''')
+    # Chess notation constants
+    CHECK_SIGN = '+'
+    MATE_SIGN = '#'
+    TAKES_SIGN = 'x'
 
+    # Fixed columns (first 7)
+    FIXED_COLUMNS = [
+        "Game_number",
+        "Move_number",
+        "Move_Description",
+        "Board_State",
+        "Predicted_Percentage",
+        "Actual_Percentage",
+        "SHAP"
+    ]
 
-def add_row_to_db(row):
-    insert_statement = f'''INSERT INTO chess_moves (Game_number, Move_number, Move_Description, Board_State,
-                                        Predicted_Percentage, Actual_Percentage, SHAP,
-                                        Piece_Advisor_Pawn, Piece_Advisor_Bishop, Piece_Advisor_Knight, Piece_Advisor_Rook, Piece_Advisor_Queen, 
-                                        Piece_Moves_Counter_Pawn_moves, Piece_Moves_Counter_Bishop_moves, Piece_Moves_Counter_Knight_moves, 
-                                        Piece_Moves_Counter_Rook_moves, Piece_Moves_Counter_Queen_moves, Strategy_Advisor_Center, 
-                                        Strategy_Advisor_Develop, Strategy_Advisor_Fianchetto, Strategy_Counter_Center_strengthen_moves, 
-                                        Strategy_Counter_Developing_moves, Strategy_Counter_Fianchetto_moves, Game_Plan_Counter_Scholars_Mate, 
-                                        Game_Plan_Counter_Deceiving_Scholars_Mate, Game_Plan_Counter_Fried_Liver_Attack, Game_Plan_Counter_Capturing_Space, 
-                                        Game_Plan_Counter_Strengthen_Pawn_Structure, Moves_Counter_Attacking, Moves_Counter_Defending, 
-                                        Moves_Counter_Preventing_b4_g4_Attacks, Developing_the_queen_too_early, Piece_Exchange, Moves_Counter_Pinning'''
+    # Feature columns based on your new features
+    FEATURE_COLUMNS = [
+        "Piece_Exchange_Feature_Unworthy_Exchange",
+        "Game_Plan_Counter_Scholars_Mate",
+        "Game_Plan_Counter_Deceiving_Scholars_Mate",
+        "Developing_the_queen_too_early",
+        "Strategy_Counter_Fianchetto_moves",
+        "Game_Plan_Counter_Fried_Liver_Attack",
+        "Piece_Moves_Counter_Knight_moves",
+        "Piece_Exchange_Feature_Worthwhile_Exchange",
+        "Strategy_Counter_Developing_moves",
+        "Moves_Counter_Preventing_b4__g4_Attacks",
+        "Strategy_Counter_Center_strengthen_moves",
+        "Piece_Exchange_Feature_Free_Piece",
+        "Piece_Moves_Counter_Bishop_moves",
+        "Game_Plan_Counter_Capturing_Space",
+        "Piece_Moves_Counter_Queen_moves",
+        "Moves_Counter_Pinning",
+        "Piece_Moves_Counter_Rook_moves",
+        "Moves_Counter_Defending",
+        "Piece_Moves_Counter_Pawn_moves",
+        "Moves_Counter_Attacking",
+        "Game_Plan_Counter_Strengthen_Pawn_Structure",
+        "Piece_Exchange_Feature_Even_Exchange"
+    ]
 
-    # Dynamically add placeholders for LOOK_AHEAD attributes
-    for i in range(7, GENOME_SIZE):
-        insert_statement += f', LOOK_AHEAD_{columns_single_move[i].replace(" ", "_").replace(":", "").replace(",", "_")}'
+    # Piece mappings
+    PIECE_DICT = {
+        1: 'K', 2: 'k', 3: 'Q', 4: 'q',
+        5: 'B', 6: 'B', 7: 'b', 8: 'b',
+        9: 'N', 10: 'N', 11: 'n', 12: 'n',
+        13: 'R', 14: 'R', 15: 'r', 16: 'r',
+        21: 'P', 22: 'P', 23: 'P', 24: 'P', 25: 'P', 26: 'P', 27: 'P', 28: 'P',
+        31: 'p', 32: 'p', 33: 'p', 34: 'p', 35: 'p', 36: 'p', 37: 'p', 38: 'p'
+    }
 
-    insert_statement += ', Y)'
+    PREFIX_DICTIONARY = {
+        "Pawn": "", "Knight": "N", "Bishop": "B",
+        "Rook": "R", "Queen": "Q", "King": "K"
+    }
 
-    # Add VALUES clause with placeholders for all attributes including LOOK_AHEAD
-    insert_statement += 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?'
+    def __init__(self, db_path: str = '../DB/1500/Explanations/chess_moves_test.db',
+                 games_directory: str = '../GameSequences1500/WithSelectablesForExplanation'):
+        """Initialize the analyzer with database connection and game directory."""
+        self.db_path = db_path
+        self.games_directory = games_directory
+        self.conn = sqlite3.connect(db_path)
+        self.cursor = self.conn.cursor()
 
-    # Add placeholders for LOOK_AHEAD attributes
-    for _ in range(7, GENOME_SIZE):
-        insert_statement += ', ?'
-    insert_statement += ')'
+        # Generate all column names
+        self.all_columns = self._generate_all_columns()
+        self.look_ahead_columns = [f"LOOK_AHEAD_{col}" for col in self.FEATURE_COLUMNS]
+        print(self.all_columns)
 
-    # Prepare values for the SQL INSERT statement
-    values = (game_number, move_number, selectable_move_str, row['Board State'], row['Predicted Percentage'], row['Actual Percentage'], row['SHAP'],
-              row["Piece Advisor: Pawn"], row["Piece Advisor: Bishop"],
-              row["Piece Advisor: Knight"], row["Piece Advisor: Rook"], row["Piece Advisor: Queen"],
-              row["Piece Moves Counter: Pawn moves"], row["Piece Moves Counter: Bishop moves"],
-              row["Piece Moves Counter: Knight moves"], row["Piece Moves Counter: Rook moves"],
-              row["Piece Moves Counter: Queen moves"], row["Strategy Advisor: Center"],  row["Strategy Advisor: Develop"], row["Strategy Advisor: Fianchetto"],
-              row["Strategy Counter: Center strengthen moves"], row["Strategy Counter: Developing moves"],
-              row["Strategy Counter: Fianchetto moves"], row["Game Plan Counter: Scholars Mate"],
-              row["Game Plan Counter: Deceiving Scholars Mate"], row["Game Plan Counter: Fried Liver Attack"],
-              row["Game Plan Counter: Capturing Space"], row["Game Plan Counter: Strengthen Pawn Structure"],
-              row["Moves Counter: Attacking"], row["Moves Counter: Defending"],
-              row["Moves Counter: Preventing b4, g4 Attacks"], row["Developing the queen too early"], row["Piece Exchange"], row["Moves Counter: Pinning"])
+    def _generate_all_columns(self) -> List[str]:
+        """Generate complete list of column names."""
+        return (self.FIXED_COLUMNS +
+                self.FEATURE_COLUMNS +
+                [f"LOOK_AHEAD_{col}" for col in self.FEATURE_COLUMNS] +
+                ["Y"])
 
+    def create_database_table(self) -> None:
+        """Create the chess_moves table with all required columns."""
+        # Build column definitions
+        column_definitions = []
 
-    # Add values of LOOK_AHEAD attributes to the values tuple
+        # Fixed columns with their types
+        column_types = {
+            "Game_number": "INTEGER",
+            "Move_number": "INTEGER",
+            "Move_Description": "TEXT",
+            "Board_State": "TEXT",
+            "Predicted_Percentage": "FLOAT",
+            "Actual_Percentage": "FLOAT",
+            "SHAP": "BLOB"
+        }
 
-    counter = 0
-    for _ in range(7, GENOME_SIZE):
-        values += (row[columns_single_move[counter + original_columns_single_move_length]],)
-        counter += 1
+        for col in self.FIXED_COLUMNS:
+            column_definitions.append(f"{col} {column_types[col]}")
 
-    values += (row['Y'],)
+        # Feature columns (all INTEGER)
+        for col in self.FEATURE_COLUMNS:
+            column_definitions.append(f"{col} FLOAT")
 
-    # Execute the SQL INSERT statement with row data
-    cursor.execute(insert_statement, values)
+        # Look-ahead columns (all INTEGER)
+        for col in self.look_ahead_columns:
+            column_definitions.append(f"{col} FLOAT")
 
+        # Target column
+        column_definitions.append("Y INTEGER")
 
-def filter_major_attributes(attributes):
-    major_attributes = {}
-    for attribute in attributes:
-        if not attribute.startswith('CTX'):
-            major_attributes[attribute] = attributes[attribute]
-    return major_attributes
+        # Create table
+        create_sql = f"""
+        CREATE TABLE IF NOT EXISTS chess_moves (
+            {', '.join(column_definitions)}
+        )"""
 
-def get_board_state(attributes):
-    cells = []
-    pattern = r"^CTX\.Entity:\s[a-z]\d"
-    for attribute in attributes:
-        if re.match(pattern, attribute):
-            cells.append(attributes[attribute])
-    return cells
+        self.cursor.execute(create_sql)
+        self.conn.commit()
 
-def draw_board_from_cells(cells):
-    board = [["." for _ in range(8)] for _ in range(8)]
-    for cell in cells:
-        if 'pieceId' in cell:
-            piece_id = int(cell['pieceId'].split('_')[1])
-            piece = piece_dict[piece_id]
-            board[int(cell['j']) - 1][ord(cell['i']) - ord('a')] = piece
+    def filter_major_attributes(self, attributes: Dict[str, Any]) -> Dict[str, Any]:
+        """Filter out CTX attributes from move attributes."""
+        return {k: v for k, v in attributes.items() if not k.startswith('CTX')}
 
-    lines = []
-    lines.append("  +---+---+---+---+---+---+---+---+")
-    for rank in range(7, -1, -1):
-        row_str = f"{rank + 1} | " + " | ".join(board[rank]) + " |"
-        lines.append(row_str)
-        lines.append("  +---+---+---+---+---+---+---+---+")
-    lines.append("    a   b   c   d   e   f   g   h")
+    def get_board_state(self, attributes: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Extract board cell information from attributes."""
+        cells = []
+        pattern = r"^CTX\.Entity:\s[a-z]\d"
+        for attribute, value in attributes.items():
+            if re.match(pattern, attribute):
+                cells.append(value)
+        return cells
 
-    return "\n".join(lines)
-    # print("  +---+---+---+---+---+---+---+---+")
-    # for rank in range(7, -1, -1):
-    #     row_str = f"{rank + 1} | " + " | ".join(board[rank]) + " |"
-    #     print(row_str)
-    #     print("  +---+---+---+---+---+---+---+---+")
-    # print("    a   b   c   d   e   f   g   h")
-    # print("\n\n\n")
+    def draw_board_from_cells(self, cells: List[Dict[str, Any]]) -> str:
+        """Convert cell data to ASCII board representation."""
+        board = [["." for _ in range(8)] for _ in range(8)]
 
+        for cell in cells:
+            if 'pieceId' in cell:
+                piece_id = int(cell['pieceId'].split('_')[1])
+                piece = self.PIECE_DICT.get(piece_id, '?')
+                row = int(cell['j']) - 1
+                col = ord(cell['i']) - ord('a')
+                if 0 <= row < 8 and 0 <= col < 8:
+                    board[row][col] = piece
 
+        lines = ["  +---+---+---+---+---+---+---+---+"]
+        for rank in range(7, -1, -1):
+            row_str = f"{rank + 1} | " + " | ".join(board[rank]) + " |"
+            lines.append(row_str)
+            lines.append("  +---+---+---+---+---+---+---+---+")
+        lines.append("    a   b   c   d   e   f   g   h")
 
+        return "\n".join(lines)
 
-# columns_names = ['selectable_events', 'major_attributes', 'look_ahead_attributes', 'event_played']
+    def format_move_description(self, selectable_event: Dict[str, Any]) -> str:
+        """Format move description from selectable event data."""
+        try:
+            piece_data = selectable_event['data']['piece']
+            dst_data = selectable_event['data']['dst']
 
-if __name__ == '__main__':
-    create_db()
+            if isinstance(piece_data, str):
+                piece_prefix = self.PREFIX_DICTIONARY.get(piece_data, "")
+                dst = dst_data['id'] if isinstance(dst_data, dict) else str(dst_data)
+            else:
+                piece_prefix = self.PREFIX_DICTIONARY.get(piece_data.get('subtype', ''), "")
+                dst = dst_data if isinstance(dst_data, str) else str(dst_data)
 
-    games_data = {}
+            return f"{piece_prefix}{dst}"
+        except (KeyError, TypeError):
+            return "Unknown"
 
-    for analyzed_game_index in range(1, NUMBER_OF_ANALYZED_GAMES + 1):
-        single_game_path = '../GameSequences1500/WithSelectablesForExplanation/Game' + str(analyzed_game_index) + '.json'
-        # single_game_path = '[Daniel:DataFileName]/Game' + str(analyzed_game_index) + '.json'
+    def create_row_data(self, move_data: Dict[str, Any], selectable_index: int,
+                        game_number: int, move_number: int) -> Dict[str, Any]:
+        """Create a complete row of data for database insertion."""
+        selectable_event = move_data['move_selectable_events'][selectable_index]
+        major_attributes = move_data['move_major_attributes']
+        look_ahead_data = move_data['move_look_ahead'][selectable_index]['Attributes'][0]
 
-        single_game_json = open(single_game_path)  # Obtain the JSON object which the path points to
-        json_obj = json.load(single_game_json)
+        # Initialize row with fixed columns
+        row = {
+            'Game_number': game_number,
+            'Move_number': move_number,
+            'Move_Description': self.format_move_description(selectable_event),
+            'Predicted_Percentage': 0.0,
+            'Actual_Percentage': 0.0,
+            'SHAP': None,
+            'Y': 1 if move_data['move_played_event'] == selectable_event else 0
+        }
 
+        row['Board_State'] = self.draw_board_from_cells(move_data['board_cells'])
+
+        # Add feature columns from major attributes
+        for feature_col in self.FEATURE_COLUMNS:
+            # Convert database column name back to original feature name
+            original_key = feature_col.replace('__', ', ').replace('_', ' ').replace(' Feature ', ' Feature: ').replace(' Counter ', ' Counter: ')
+            #print(original_key)
+            row[feature_col] = major_attributes.get(original_key, -1)
+        # Add look-ahead columns
+        for i, feature_col in enumerate(self.FEATURE_COLUMNS):
+            look_ahead_col = f"LOOK_AHEAD_{feature_col}"
+            original_key = feature_col.replace('__', ', ').replace('_', ' ').replace(' Feature ', ' Feature: ').replace(' Counter ', ' Counter: ')
+            #print(look_ahead_col)
+            row[look_ahead_col] = look_ahead_data.get(original_key, -1)
+
+        return row
+
+    def insert_row(self, row_data: Dict[str, Any]) -> None:
+        """Insert a single row into the database."""
+        columns = list(row_data.keys())
+        placeholders = ', '.join(['?' for _ in columns])
+        column_names = ', '.join(columns)
+
+        sql = f"INSERT INTO chess_moves ({column_names}) VALUES ({placeholders})"
+        values = tuple(row_data[col] for col in columns)
+
+        self.cursor.execute(sql, values)
+
+    def load_game_data(self, game_path: str, game_index: int) -> Dict[str, Dict[str, Any]]:
+        """Load and process game data from JSON file."""
+        with open(game_path, 'r') as file:
+            json_data = json.load(file)
+
+        games_data = {}
         counter = 1
         white = True
+        print(f"Game index {game_index} \n\n")
 
-        for move_description in json_obj:
-            # Dictionary which contains the 4 parts of every move - notice that the attributes value is filtered to get rid of all 'CTX' attributes
-            move = {'move_selectable_events': move_description['SelectableEvents'],
-                    'move_major_attributes': filter_major_attributes(move_description['CurrentAttributes']),
-                    'move_look_ahead': move_description['SelectableEventsLookAhead'],
-                    'move_played_event': move_description['SelectedEvent'],
-                    'board_cells': get_board_state(move_description['CurrentAttributes'])}
+        for move_description in json_data:
+            white = move_description['SelectedEvent']["data"]["color"] == "White"
+            move = {
+                'move_selectable_events': move_description['SelectableEvents'],
+                'move_major_attributes': self.filter_major_attributes(
+                    move_description['CurrentAttributes']
+                ),
+                'move_look_ahead': move_description['SelectableEventsLookAhead'],
+                'move_played_event': move_description['SelectedEvent'],
+                'board_cells': self.get_board_state(move_description['CurrentAttributes'])
+            }
 
-            # print("move_selectable_event length => " + str(len(move['move_selectable_events'])))
+            game_key = f"game_{game_index}_move_{counter}_{'White' if white else 'Black'}"
+            games_data[game_key] = move
 
-            games_data['game_' + str(analyzed_game_index) + '_move_' + str(counter) + "_" + (
-                "White" if white else "Black")] = move
-
+            print("White: ", white)
             if not white:
                 counter += 1
+        print("\n\n\n\n")
+        return games_data
 
-            white = not white #patch to fix white with color - it happens only on black castle because castling is presented as two moves
-            #castling takes two moves in white as well
+    def process_games(self) -> None:
+        """Main processing function to analyze games and populate database."""
+        print("Starting chess move analysis...")
 
-        single_game_json.close()
+        # Create database table
+        self.create_database_table()
 
-    print("Game Description is Ready")
+        # Process each game
+        for game_index in range(1, self.NUMBER_OF_ANALYZED_GAMES + 1):
+            game_path = os.path.join(self.games_directory, f'Game{game_index}.json')
 
-    # data_len = len(games_data)  # Number of rows in dataset
-    selectable_moves_max_length = NONE_VALUE
+            if not os.path.exists(game_path):
+                print(f"Warning: Game file {game_path} not found")
+                continue
 
-    for move in games_data.values():
-        if len(move['move_selectable_events']) > selectable_moves_max_length:
-            selectable_moves_max_length = len(move['move_selectable_events'])
+            # Load game data
+            games_data = self.load_game_data(game_path, game_index)
 
-    for att_index in range(7, GENOME_SIZE):
-        columns_single_move.append("LOOK_AHEAD - " + columns_single_move[att_index])
+            # Process each move
+            move_count = 0
+            for move_key, move_data in games_data.items():
+                # Parse move key
+                tokens = move_key.split('_')
+                game_number = int(tokens[1])
+                move_number = int(tokens[3])
+                is_white_turn = tokens[4] == "White"
 
-    columns_single_move.append("Y")
+                # Only process white moves for now (as in original code)
+                if is_white_turn:
+                    # Process each selectable move
+                    for selectable_index in range(len(move_data['move_selectable_events'])):
+                        row_data = self.create_row_data(
+                            move_data, selectable_index, game_number, move_number
+                        )
+                        self.insert_row(row_data)
+                        move_count += 1
 
-    loop_counter = 0
+                        if move_count % 1000 == 0:
+                            pass
+                            #print(f"Processed {game_index} game {move_count} moves")
 
-    df_single_move = pd.DataFrame(columns=columns_single_move)
+        # Commit changes
+        self.conn.commit()
+        print("Analysis complete!")
 
-    index_single_move = 0
+    def close(self) -> None:
+        """Close database connection."""
+        if self.conn:
+            self.conn.close()
 
-    print("Starting Loop!")
+    def __enter__(self):
+        """Context manager entry."""
+        return self
 
-    for move_key, move_value in games_data.items():
-        loop_counter += 1
-        if loop_counter % 1000 == 0:
-            print("Analyzed 1000 Moves")  # Debug purposes, can be ignored or deleted
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Context manager exit."""
+        self.close()
 
-        tokens = move_key.split('_')
-        game_number = int(tokens[1])
-        move_number = int(tokens[3])
-        white_turn = True if tokens[4] == "White" else False
-        if white_turn:
-            move = (games_data[
-                "game_" + str(game_number) + "_move_" + str(move_number) + ("_White" if white_turn else "_Black")])
 
-            for index in range(0, len(move['move_selectable_events'])):
-                row = {}
+def main():
+    """Main execution function."""
+    print(f"Current working directory: {os.getcwd()}")
 
-                att = 0
-                for current_att_key, current_att_value in move['move_major_attributes'].items():
-                    row[current_att_key] = current_att_value
+    try:
+        db_path = "../DB/1500/WithSelectablesAfterFix/chess_moves_test.db"
+        game_directory = f"../GameSequences1500/WithSelectablesAfterFix"
+        with ChessMoveAnalyzer(db_path, game_directory) as analyzer:
+            analyzer.process_games()
+        print("Data processing completed successfully!")
 
-                look_ahead_dict = ((move['move_look_ahead'][index])['Attributes'])[0]
-                for look_ahead_attribute_index in range(len(look_ahead_dict)):
-                    key = columns_single_move[look_ahead_attribute_index + 7]
-                    row["LOOK_AHEAD - " + key] = look_ahead_dict[key]
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")
+        raise
 
-                row['Y'] = 1 if move['move_played_event'] == move['move_selectable_events'][index] else 0
-                selectable_move_str = ""
-                if isinstance(move['move_selectable_events'][index]['data']['piece'], str):
-                    selectable_move_str = prefix_dictionary[move['move_selectable_events'][index]['data']['piece']] + \
-                                          move['move_selectable_events'][index]['data']['dst']['id']
-                else:
-                    # print("HI")
-                    selectable_move_str = prefix_dictionary[
-                                              move['move_selectable_events'][index]['data']['piece']['subtype']] + \
-                                          move['move_selectable_events'][index]['data']['dst']
-                # print(selectable_move_str + "," + str(game_number) + "," + str(move_number))
-                row['Move Description'] = selectable_move_str
-                row["Move number"] = move_number
-                row["Game number"] = game_number
-                row['Board State'] = draw_board_from_cells(move['board_cells']) if row['Y'] == 1 else "Not Played"
-                row['Predicted Percentage'] = 0
-                row['Actual Percentage'] = 0
-                row['SHAP'] = None
-                add_row_to_db(row)
 
-    conn.commit()
-    conn.close()
-
-#                 df_single_move.loc[index_single_move] = row
-#                 index_single_move += 1
-#
-# df_single_move.drop_duplicates(inplace=True)
-# test = df_single_move.reset_index(drop=True)
-# df_single_move.reset_index(drop=True, inplace=True)
-#
-# df_single_move.to_excel("my_new_test.xlsx")
-
-print('\nData Is Ready!!')
+if __name__ == '__main__':
+    main()
