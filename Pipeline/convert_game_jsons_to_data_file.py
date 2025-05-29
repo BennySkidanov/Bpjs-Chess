@@ -12,11 +12,11 @@ ELITISM = 2
 GENERATIONS = 100  # maximal number of generations to run GA
 TOURNAMENT_SIZE = 5  # size of tournament for tournament selection
 PROB_MUTATION = 0.1  # bitwise probability of mutation
-GENOME_SIZE = 31
+GENOME_SIZE = 34
 WEIGHT_RANGE_MIN = -10
 WEIGHT_RANGE_MAX = 10
 
-NUMBER_OF_ANALYZED_GAMES = 100
+NUMBER_OF_ANALYZED_GAMES = 1
 NONE_VALUE = -1
 game = {}
 CHECK_SIGN = '+'
@@ -32,7 +32,8 @@ TAKES_MOVE_LABEL = 5
 OTHER = 6
 
 prefix_dictionary = {"Pawn": "", "Knight": "N", "Bishop": "B", "Rook": "R", "Queen": "Q", "King": "K"}
-columns_single_move = ["Game number", "Move number", "Move Description", "Board State",
+columns_single_move = ["Game number", "Move number", "Move Description", "Board State", "Predicted Percentage",
+                       "Actual Percentage", "SHAP",
                        "Piece Advisor: Pawn", "Piece Advisor: Bishop", "Piece Advisor: Knight",
                        "Piece Advisor: Rook", "Piece Advisor: Queen",
                        "Piece Moves Counter: Pawn moves", "Piece Moves Counter: Bishop moves",
@@ -61,7 +62,7 @@ piece_dict = {
 original_columns_single_move_length = len(columns_single_move)
 
 print(os.getcwd())
-conn = sqlite3.connect('../DB/1500/Explanations/chess_moves.db')
+conn = sqlite3.connect('../DB/1500/Explanations/chess_moves_test.db')
 cursor = conn.cursor()
 
 
@@ -72,6 +73,9 @@ def create_db():
                         Move_number INTEGER,
                         Move_Description TEXT,
                         Board_State TEXT,
+                        Predicted_Percentage FLOAT,
+                        Actual_Percentage FLOAT,
+                        SHAP BLOB,
                         Piece_Advisor_Pawn INTEGER,
                         Piece_Advisor_Bishop INTEGER,
                         Piece_Advisor_Knight INTEGER,
@@ -102,7 +106,7 @@ def create_db():
                     )''')
 
     # Add LOOK_AHEAD columns dynamically
-    for att_index in range(4, GENOME_SIZE):
+    for att_index in range(7, GENOME_SIZE):
         cursor.execute('''ALTER TABLE chess_moves ADD COLUMN LOOK_AHEAD_{} INTEGER'''.format(
             columns_single_move[att_index].replace(" ", "_").replace(":", "").replace(",", "_")))
 
@@ -111,6 +115,7 @@ def create_db():
 
 def add_row_to_db(row):
     insert_statement = f'''INSERT INTO chess_moves (Game_number, Move_number, Move_Description, Board_State,
+                                        Predicted_Percentage, Actual_Percentage, SHAP,
                                         Piece_Advisor_Pawn, Piece_Advisor_Bishop, Piece_Advisor_Knight, Piece_Advisor_Rook, Piece_Advisor_Queen, 
                                         Piece_Moves_Counter_Pawn_moves, Piece_Moves_Counter_Bishop_moves, Piece_Moves_Counter_Knight_moves, 
                                         Piece_Moves_Counter_Rook_moves, Piece_Moves_Counter_Queen_moves, Strategy_Advisor_Center, 
@@ -121,21 +126,22 @@ def add_row_to_db(row):
                                         Moves_Counter_Preventing_b4_g4_Attacks, Developing_the_queen_too_early, Piece_Exchange, Moves_Counter_Pinning'''
 
     # Dynamically add placeholders for LOOK_AHEAD attributes
-    for i in range(4, GENOME_SIZE):
+    for i in range(7, GENOME_SIZE):
         insert_statement += f', LOOK_AHEAD_{columns_single_move[i].replace(" ", "_").replace(":", "").replace(",", "_")}'
 
     insert_statement += ', Y)'
 
     # Add VALUES clause with placeholders for all attributes including LOOK_AHEAD
-    insert_statement += 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?'
+    insert_statement += 'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?'
 
     # Add placeholders for LOOK_AHEAD attributes
-    for _ in range(4, GENOME_SIZE):
+    for _ in range(7, GENOME_SIZE):
         insert_statement += ', ?'
     insert_statement += ')'
 
     # Prepare values for the SQL INSERT statement
-    values = (game_number, move_number, selectable_move_str, row['Board State'], row["Piece Advisor: Pawn"], row["Piece Advisor: Bishop"],
+    values = (game_number, move_number, selectable_move_str, row['Board State'], row['Predicted Percentage'], row['Actual Percentage'], row['SHAP'],
+              row["Piece Advisor: Pawn"], row["Piece Advisor: Bishop"],
               row["Piece Advisor: Knight"], row["Piece Advisor: Rook"], row["Piece Advisor: Queen"],
               row["Piece Moves Counter: Pawn moves"], row["Piece Moves Counter: Bishop moves"],
               row["Piece Moves Counter: Knight moves"], row["Piece Moves Counter: Rook moves"],
@@ -151,12 +157,11 @@ def add_row_to_db(row):
     # Add values of LOOK_AHEAD attributes to the values tuple
 
     counter = 0
-    for _ in range(4, GENOME_SIZE):
+    for _ in range(7, GENOME_SIZE):
         values += (row[columns_single_move[counter + original_columns_single_move_length]],)
         counter += 1
 
     values += (row['Y'],)
-
 
     # Execute the SQL INSERT statement with row data
     cursor.execute(insert_statement, values)
@@ -238,7 +243,8 @@ if __name__ == '__main__':
             if not white:
                 counter += 1
 
-            white = not white
+            white = not white #patch to fix white with color - it happens only on black castle because castling is presented as two moves
+            #castling takes two moves in white as well
 
         single_game_json.close()
 
@@ -251,7 +257,7 @@ if __name__ == '__main__':
         if len(move['move_selectable_events']) > selectable_moves_max_length:
             selectable_moves_max_length = len(move['move_selectable_events'])
 
-    for att_index in range(4, GENOME_SIZE):
+    for att_index in range(7, GENOME_SIZE):
         columns_single_move.append("LOOK_AHEAD - " + columns_single_move[att_index])
 
     columns_single_move.append("Y")
@@ -286,7 +292,7 @@ if __name__ == '__main__':
 
                 look_ahead_dict = ((move['move_look_ahead'][index])['Attributes'])[0]
                 for look_ahead_attribute_index in range(len(look_ahead_dict)):
-                    key = columns_single_move[look_ahead_attribute_index + 4]
+                    key = columns_single_move[look_ahead_attribute_index + 7]
                     row["LOOK_AHEAD - " + key] = look_ahead_dict[key]
 
                 row['Y'] = 1 if move['move_played_event'] == move['move_selectable_events'][index] else 0
@@ -304,6 +310,9 @@ if __name__ == '__main__':
                 row["Move number"] = move_number
                 row["Game number"] = game_number
                 row['Board State'] = draw_board_from_cells(move['board_cells']) if row['Y'] == 1 else "Not Played"
+                row['Predicted Percentage'] = 0
+                row['Actual Percentage'] = 0
+                row['SHAP'] = None
                 add_row_to_db(row)
 
     conn.commit()
