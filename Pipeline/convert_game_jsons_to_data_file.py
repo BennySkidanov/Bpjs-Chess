@@ -18,7 +18,7 @@ class ChessMoveAnalyzer:
     GENOME_SIZE = 34
     WEIGHT_RANGE_MIN = -10
     WEIGHT_RANGE_MAX = 10
-    NUMBER_OF_ANALYZED_GAMES = 1
+    NUMBER_OF_ANALYZED_GAMES = 5000
     NONE_VALUE = -1
 
     # Chess notation constants
@@ -26,11 +26,12 @@ class ChessMoveAnalyzer:
     MATE_SIGN = '#'
     TAKES_SIGN = 'x'
 
-    # Fixed columns (first 7)
+    # Fixed columns (first 8)
     FIXED_COLUMNS = [
         "Game_number",
         "Move_number",
         "Move_Description",
+        "Y",
         "Board_State",
         "Predicted_Percentage",
         "Actual_Percentage",
@@ -89,14 +90,13 @@ class ChessMoveAnalyzer:
         # Generate all column names
         self.all_columns = self._generate_all_columns()
         self.look_ahead_columns = [f"LOOK_AHEAD_{col}" for col in self.FEATURE_COLUMNS]
-        print(self.all_columns)
+        #print(self.all_columns)
 
     def _generate_all_columns(self) -> List[str]:
         """Generate complete list of column names."""
         return (self.FIXED_COLUMNS +
                 self.FEATURE_COLUMNS +
-                [f"LOOK_AHEAD_{col}" for col in self.FEATURE_COLUMNS] +
-                ["Y"])
+                [f"LOOK_AHEAD_{col}" for col in self.FEATURE_COLUMNS])
 
     def create_database_table(self) -> None:
         """Create the chess_moves table with all required columns."""
@@ -108,6 +108,7 @@ class ChessMoveAnalyzer:
             "Game_number": "INTEGER",
             "Move_number": "INTEGER",
             "Move_Description": "TEXT",
+            "Y": "INTEGER",
             "Board_State": "TEXT",
             "Predicted_Percentage": "FLOAT",
             "Actual_Percentage": "FLOAT",
@@ -125,8 +126,6 @@ class ChessMoveAnalyzer:
         for col in self.look_ahead_columns:
             column_definitions.append(f"{col} FLOAT")
 
-        # Target column
-        column_definitions.append("Y INTEGER")
 
         # Create table
         create_sql = f"""
@@ -242,8 +241,8 @@ class ChessMoveAnalyzer:
 
         games_data = {}
         counter = 1
-        white = True
-        print(f"Game index {game_index} \n\n")
+        #white = True
+        #print(f"Game index {game_index} \n\n")
 
         for move_description in json_data:
             white = move_description['SelectedEvent']["data"]["color"] == "White"
@@ -260,10 +259,10 @@ class ChessMoveAnalyzer:
             game_key = f"game_{game_index}_move_{counter}_{'White' if white else 'Black'}"
             games_data[game_key] = move
 
-            print("White: ", white)
+            #print(f"Move index {counter} White: {white}")
             if not white:
                 counter += 1
-        print("\n\n\n\n")
+        #print("\n\n\n\n")
         return games_data
 
     def process_games(self) -> None:
