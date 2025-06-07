@@ -19,20 +19,20 @@ public class Main {
     private static String pgn = "";
 
     public static void main(final String[] args) throws InterruptedException {
-//        int minId = 0;
-//        int maxId = Integer.MAX_VALUE;
-//        if (args.length >= 2) {
-//            try {
-//                minId = Integer.parseInt(args[0]);
-//                maxId = Integer.parseInt(args[1]);
-//            } catch (NumberFormatException e) {
-//                System.err.println("Invalid arguments. Usage: java -jar Chess.jar <minId> <maxId>");
-//                return;
-//            }
-//        } else {
-//            System.out.println("Not provided limits - exiting");
-//            exit(1);
-//        }
+        int minId = 0;
+        int maxId = Integer.MAX_VALUE;
+        if (args.length >= 2) {
+            try {
+                minId = Integer.parseInt(args[0]);
+                maxId = Integer.parseInt(args[1]);
+            } catch (NumberFormatException e) {
+                System.err.println("Invalid arguments. Usage: java -jar Chess.jar <minId> <maxId>");
+                return;
+            }
+        } else {
+            System.out.println("Not provided limits - exiting");
+            exit(1);
+        }
         List<String[]> games = new ArrayList<>();
         int id = 1;
         // Read each line of the PGNData file and insert it into the games list
@@ -42,7 +42,7 @@ public class Main {
             //reader = new BufferedReader(new FileReader("PGNData.txt"));
             String line = reader.readLine();
             while (line != null) {
-                if (id >= 160001 && id <= 170000) {
+                if (id >= minId && id <= maxId) {
                     String idString = String.valueOf(id);
                     games.add(new String[]{idString, line});
                 }
