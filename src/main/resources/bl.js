@@ -139,7 +139,7 @@ const UNWORTHY_TRADE = -1;
 const allMovesList = (function () {
     let moves = pgn.split(" ");
 
-    bp.log.info("~~ LOG (58) ~~ Moves after splitting : " + moves)
+    //bp.log.info("~~ LOG (58) ~~ Moves after splitting : " + moves)
 
     const ResultString = ["1/2-1/2", "1-0", "0-1"];
 
@@ -834,7 +834,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
     let checkmate = false;
     let enPassant = false;
     let optional = null;
-    bp.log.info(ANSI_BG_BRIGHT_CYAN + ANSI_BRIGHT_BLACK + ANSI_BOLD + allMovesList + ANSI_RESET)
+    //bp.log.info(ANSI_BG_BRIGHT_CYAN + ANSI_BRIGHT_BLACK + ANSI_BOLD + allMovesList + ANSI_RESET)
 
     let allCells = ctx.runQuery("Cell.all")
     for (let i = 0; i < allMovesList.length; i++) {
@@ -1769,7 +1769,7 @@ ctx.bthread("AttackingAndPinningTrack", "Phase.Opening", function (entity) {
                 let allCells = ctx.runQuery("Cell.all")
                 let srcJSON = GiveMeCell(e.data.src, allCells);
                 let dstJSON = GiveMeCell(e.data.dst, allCells);
-                bp.log.info("(1763) srcJSON Check: " + JSON.stringify(srcJSON));
+                //bp.log.info("(1763) srcJSON Check: " + JSON.stringify(srcJSON));
                 [piecesIAttacked, piecesIDefended] = createAttackingAndDefendingList(e.data.piece, srcJSON, dstJSON);
             }
             [attack, pin, defend] = isAttackingOpponentPieceOrDefending(e.data.piece, e.data.dst, piecesIAttacked, piecesIDefended);
@@ -2062,7 +2062,7 @@ function isAttackingKnight(piece, dstCell) {
 }
 
 function isDefendingPiece(piece, dstCell) {
-    bp.log.info("~~ LOG (2011) ~~ In isDefendingPiece, piece = " + JSON.stringify(piece) + ", dstCell = " + JSON.stringify(dstCell))
+    //bp.log.info("~~ LOG (2011) ~~ In isDefendingPiece, piece = " + JSON.stringify(piece) + ", dstCell = " + JSON.stringify(dstCell))
     return canReachSquare(piece, dstCell, false, false);
 }
 
@@ -2443,7 +2443,7 @@ function pieceExchange(piece, exchangeCell) {
     let freePiece = false, equalTrade = false, worthwhileTrade = false, worthlessTrade = false
 
     // Debugging
-    bp.log.info("~~ LOG (2050) ~~ piece exchange happens on " + exchangeCell + ", Piece is " + JSON.stringify(piece))
+    //bp.log.info("~~ LOG (2050) ~~ piece exchange happens on " + exchangeCell + ", Piece is " + JSON.stringify(piece))
 
     // Initialize all variables and data sets relevant to the bthread
 
@@ -2455,7 +2455,7 @@ function pieceExchange(piece, exchangeCell) {
 
     let takenPiece = findPiece(exchangeCell);
     if (takenPiece.color === 'White') {
-        bp.log.info("~~ LOG (2398) ~~ pieceExchange does not handle black pieces trades");
+        //bp.log.info("~~ LOG (2398) ~~ pieceExchange does not handle black pieces trades");
         return;
     }
     if (takenPiece === undefined) // En - Passant
@@ -2472,7 +2472,7 @@ function pieceExchange(piece, exchangeCell) {
     let takingPieceValue = piecesValues[piece.subtype];
 
     // Debugging
-    bp.log.info("~~ LOG (2063) ~~ pieceExchange, exchange on " + exchangeCell + ", Taken into consideration every piece except " + JSON.stringify(takenPiece))
+    //bp.log.info("~~ LOG (2063) ~~ pieceExchange, exchange on " + exchangeCell + ", Taken into consideration every piece except " + JSON.stringify(takenPiece))
 
     for (let i = 0; i < opponentPieces.length; i++) {
         if (opponentPieces[i] !== takenPiece && canReachSquareTrading(opponentPieces[i], exchangeCell, true, false)) {
@@ -2971,7 +2971,7 @@ function GiveMeCell(requestedID, allCells) {
             return cell;
         }
     }
-    bp.log.info("~~ LOG (2281) ~~ GiveMeCell Returning NULL")
+    //bp.log.info("~~ LOG (2281) ~~ GiveMeCell Returning NULL")
     return null;
 }
 
@@ -3394,16 +3394,16 @@ ctx.bthread("Visualize", "Phase.Opening", function (entity) {
 
             currentBoard[row][col] = sign;
         }
-        bp.log.info(ANSI_BRIGHT_CYAN + ANSI_UNDERLINE + ANSI_BOLD + move + ANSI_RESET)
+        //bp.log.info(ANSI_BRIGHT_CYAN + ANSI_UNDERLINE + ANSI_BOLD + move + ANSI_RESET)
         // Visualize
         for (let i = 0; i < 8; i++) {
 
-            bp.log.info(ANSI_PURPLE + currentBoard[i][0] + "  " + currentBoard[i][1] + "  " + currentBoard[i][2] + "  " +
-                currentBoard[i][3] + "  " + currentBoard[i][4] + "  " + currentBoard[i][5] + "  " +
-                currentBoard[i][6] + "  " + currentBoard[i][7] + ANSI_RESET);
+            //bp.log.info(ANSI_PURPLE + currentBoard[i][0] + "  " + currentBoard[i][1] + "  " + currentBoard[i][2] + "  " +
+              //  currentBoard[i][3] + "  " + currentBoard[i][4] + "  " + currentBoard[i][5] + "  " +
+               // currentBoard[i][6] + "  " + currentBoard[i][7] + ANSI_RESET);
 
         }
-        bp.log.info(ANSI_CYAN + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + ANSI_RESET)
+        //bp.log.info(ANSI_CYAN + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + ANSI_RESET)
 
     }
 });
