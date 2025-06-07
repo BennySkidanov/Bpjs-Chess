@@ -139,7 +139,7 @@ const UNWORTHY_TRADE = -1;
 const allMovesList = (function () {
     let moves = pgn.split(" ");
 
-    //bp.log.info("~~ LOG (58) ~~ Moves after splitting : " + moves)
+    bp.log.info("~~ LOG (58) ~~ Moves after splitting : " + moves)
 
     const ResultString = ["1/2-1/2", "1-0", "0-1"];
 
@@ -779,8 +779,8 @@ function handleLongCastle(color, pieces) {
 function findPieceThatCanReachToEndSquare(piecePrefix, dstCell, color, takes, enPassant, enPassantPieceCellId, optional) {
 
 
-    //bp.log.info("~~ LOG (633) ~~ findPieceThatCanReachToEndSquare with the following params : " + "piecePrefix = " + piecePrefix + " dst cell = " + JSON.stringify(dstCell))
-    //bp.log.info("~~ LOG (634) ~~ findPieceThatCanReachToEndSquare Other params : Color = " + color + " Takes = " + takes + " enPassant = " + enPassant + ", Optional ==> " + optional)
+    // bp.log.info("~~ LOG (633) ~~ findPieceThatCanReachToEndSquare with the following params : " + "piecePrefix = " + piecePrefix + " dst cell = " + JSON.stringify(dstCell))
+    // bp.log.info("~~ LOG (634) ~~ findPieceThatCanReachToEndSquare Other params : Color = " + color + " Takes = " + takes + " enPassant = " + enPassant + ", Optional ==> " + optional)
 
     let pieceType = piecesPrefixes[piecePrefix];
     // bp.log.info("~~ LOG (648) ~~ piece type = " + pieceType)
@@ -834,7 +834,7 @@ ctx.bthread("ParsePGNAndSimulateGame", "Phase.Opening", function (entity) {
     let checkmate = false;
     let enPassant = false;
     let optional = null;
-    //bp.log.info(ANSI_BG_BRIGHT_CYAN + ANSI_BRIGHT_BLACK + ANSI_BOLD + allMovesList + ANSI_RESET)
+    bp.log.info(ANSI_BG_BRIGHT_CYAN + ANSI_BRIGHT_BLACK + ANSI_BOLD + allMovesList + ANSI_RESET)
 
     let allCells = ctx.runQuery("Cell.all")
     for (let i = 0; i < allMovesList.length; i++) {
@@ -1359,12 +1359,13 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
         let nonOccupiedCellsSet = ctx.runQuery("Cell.all.nonOccupied")
 
         for (let i = 0; i < pawnsArray.length; i++) {
-            let straightPawnMoves = availableStraightCellsFromPawn(pawnsArray[i], 2, allCells);
+            let allPawnMoves = availableCellsFromPawn(pawnsArray[i], allCells);
 
-            for (let i = 0; i < straightPawnMoves.length; i++) {
-                if (ESPawnDevelopingMoves.contains(straightPawnMoves[i])) {
-                    pawnMoves.push(straightPawnMoves[i]);
-                }
+            for (let i = 0; i < allPawnMoves.length; i++) {
+                // if (ESPawnDevelopingMoves.contains(straightPawnMoves[i])) {
+                // bp.log.info("Move - " + JSON.stringify(allPawnMoves[i]))
+                pawnMoves.push(allPawnMoves[i]);
+                // }
             }
         }
 
@@ -1425,9 +1426,9 @@ ctx.bthread("DevelopingKnights", "Phase.Opening", function (entity) {
             let availKnightMoves = availableKnightMoves(knightsArray[i])[0];
             let availableKnightMovesTotal = [];
             for (let j = 0; j < availKnightMoves.length; j++) {
-                if (ESKnightDevelopingMoves.contains(availKnightMoves[j])) {
-                    availableKnightMovesTotal.push(availKnightMoves[j]);
-                }
+                // if (ESKnightDevelopingMoves.contains(availKnightMoves[j])) {
+                availableKnightMovesTotal.push(availKnightMoves[j]);
+                // }
             }
             knightMoves = knightMoves.concat(availableKnightMovesTotal);
         }
@@ -1457,9 +1458,9 @@ ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
 
             let availableRookMovesTotal = [];
             for (let j = 0; j < availRookMoves.length; j++) {
-                if (ESRookDevelopingMoves.contains(availRookMoves[j])) {
-                    availableRookMovesTotal.push(availRookMoves[j]);
-                }
+                // if (ESRookDevelopingMoves.contains(availRookMoves[j])) {
+                availableRookMovesTotal.push(availRookMoves[j]);
+                // }
             }
             rookMoves = rookMoves.concat(availableRookMovesTotal);
         }
@@ -1485,7 +1486,14 @@ ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
         for (let i = 0; i < bishopsArray.length; i++) {
             //bp.log.info("~~ LOG (1386) Developing Bishops ~~ Calling availableDiagonalCellsFromPiece :  " + JSON.stringify(bishopsArray[i]))
             let diagonalBishopMoves = availableDiagonalCellsFromPiece(bishopsArray[i], 7, allCells)[0];
-            bishopsMoves = bishopsMoves.concat(diagonalBishopMoves);
+
+            let availableBishopMovesTotal = [];
+            for (let j = 0; j < diagonalBishopMoves.length; j++) {
+                // if (ESBishopDevelopingMoves.contains(diagonalBishopMoves[j])) {
+                    availableBishopMovesTotal.push(diagonalBishopMoves[j]);
+                // }
+            }
+            bishopsMoves = bishopsMoves.concat(availableBishopMovesTotal);
         }
 
         let bishopsMovesSet = clearDuplicates(bishopsMoves)
@@ -1517,15 +1525,15 @@ ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
         let diagonalQueenMoves = availableDiagonalCellsFromPiece(queen, 7, allCells)[0];
         let straightQueenMoves = availableStraightCellsFromPiece(queen, 7, allCells)[0];
         for (let i = 0; i < diagonalQueenMoves.length; i++) {
-            if (ESQueenDevelopingMoves.contains(diagonalQueenMoves[i])) {
+            // if (ESQueenDevelopingMoves.contains(diagonalQueenMoves[i])) {
                 queenMoves.push(diagonalQueenMoves[i]);
-            }
+            // }
         }
 
         for (let i = 0; i < straightQueenMoves.length; i++) {
-            if (ESQueenDevelopingMoves.contains(straightQueenMoves[i])) {
+            // if (ESQueenDevelopingMoves.contains(straightQueenMoves[i])) {
                 queenMoves.push(straightQueenMoves[i]);
-            }
+            // }
         }
 
         // bp.log.info("~~ LOG (1120) Developing Queen ~~ Moves :  " + queenMoves)
@@ -1750,18 +1758,18 @@ ctx.bthread("AttackingAndPinningTrack", "Phase.Opening", function (entity) {
     while (true) {
         let e = sync({waitFor: anyMoves})
         let attack = false, pin = false, defend = false
-        //bp.log.info("~~ LOG (1951) ~~ AttackingAndPinningTrack " + JSON.stringify(e.data))
+        // bp.log.info("~~ LOG (1951) ~~ AttackingAndPinningTrack " + JSON.stringify(e.data))
         if (e.data.color === "White") {
             let piecesIAttacked = undefined, piecesIDefended = undefined;
             // bp.log.info("(1755) Src Cell Check : " + e.data.src.id)
             if (e.data.src.id !== undefined) {
                 [piecesIAttacked, piecesIDefended] = createAttackingAndDefendingList(e.data.piece, e.data.src, e.data.dst);
             } else {
-                //bp.log.info("(1761) Src Cell Check : " + JSON.stringify(e.data));
+                // bp.log.info("(1761) Src Cell Check : " + JSON.stringify(e.data));
                 let allCells = ctx.runQuery("Cell.all")
                 let srcJSON = GiveMeCell(e.data.src, allCells);
                 let dstJSON = GiveMeCell(e.data.dst, allCells);
-                //bp.log.info("(1763) srcJSON Check: " + JSON.stringify(srcJSON));
+                bp.log.info("(1763) srcJSON Check: " + JSON.stringify(srcJSON));
                 [piecesIAttacked, piecesIDefended] = createAttackingAndDefendingList(e.data.piece, srcJSON, dstJSON);
             }
             [attack, pin, defend] = isAttackingOpponentPieceOrDefending(e.data.piece, e.data.dst, piecesIAttacked, piecesIDefended);
@@ -1845,7 +1853,7 @@ function isStrengtheningPawnStructure(dstCell) {
     // bp.log.info("isStrengtheningPawnStructure, dstcell = " + dstCell)
     let defaultReturnValue = false;
 
-    let col = dstCell.id[0].charCodeAt(0) - 'a'.charCodeAt(0);
+    let col = dstCell.id[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
     let row = dstCell.id[1] - '0';
 
 
@@ -1886,7 +1894,7 @@ function isAttackingDiagonal(piece, dstCell, range, canAttackBackwards) {
     let opponentPieces = ctx.runQuery("Piece.Black.All")
     let allCells = ctx.runQuery("Cell.all")
 
-    let col = dstCell.id[0].charCodeAt(0) - 'a'.charCodeAt(0);
+    let col = dstCell.id[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
     let row = dstCell.id[1] - '0';
 
     let checkMeNorthWest = true;
@@ -1961,7 +1969,7 @@ function isAttackingStraight(piece, dstCell, range) {
     let opponentPieces = ctx.runQuery("Piece.Black.All")
     let allCells = ctx.runQuery("Cell.all")
 
-    let col = dstCell.id[0].charCodeAt(0) - 'a'.charCodeAt(0);
+    let col = dstCell.id[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
     let row = dstCell.id[1] - '0';
 
     let checkMeNorth = true;
@@ -2054,7 +2062,7 @@ function isAttackingKnight(piece, dstCell) {
 }
 
 function isDefendingPiece(piece, dstCell) {
-    //bp.log.info("~~ LOG (2011) ~~ In isDefendingPiece, piece = " + JSON.stringify(piece) + ", dstCell = " + JSON.stringify(dstCell))
+    bp.log.info("~~ LOG (2011) ~~ In isDefendingPiece, piece = " + JSON.stringify(piece) + ", dstCell = " + JSON.stringify(dstCell))
     return canReachSquare(piece, dstCell, false, false);
 }
 
@@ -2435,7 +2443,7 @@ function pieceExchange(piece, exchangeCell) {
     let freePiece = false, equalTrade = false, worthwhileTrade = false, worthlessTrade = false
 
     // Debugging
-    //bp.log.info("~~ LOG (2050) ~~ piece exchange happens on " + exchangeCell + ", Piece is " + JSON.stringify(piece))
+    bp.log.info("~~ LOG (2050) ~~ piece exchange happens on " + exchangeCell + ", Piece is " + JSON.stringify(piece))
 
     // Initialize all variables and data sets relevant to the bthread
 
@@ -2447,7 +2455,7 @@ function pieceExchange(piece, exchangeCell) {
 
     let takenPiece = findPiece(exchangeCell);
     if (takenPiece.color === 'White') {
-       // bp.log.info("~~ LOG (2398) ~~ pieceExchange does not handle black pieces trades");
+        bp.log.info("~~ LOG (2398) ~~ pieceExchange does not handle black pieces trades");
         return;
     }
     if (takenPiece === undefined) // En - Passant
@@ -2464,7 +2472,7 @@ function pieceExchange(piece, exchangeCell) {
     let takingPieceValue = piecesValues[piece.subtype];
 
     // Debugging
-   // bp.log.info("~~ LOG (2063) ~~ pieceExchange, exchange on " + exchangeCell + ", Taken into consideration every piece except " + JSON.stringify(takenPiece))
+    bp.log.info("~~ LOG (2063) ~~ pieceExchange, exchange on " + exchangeCell + ", Taken into consideration every piece except " + JSON.stringify(takenPiece))
 
     for (let i = 0; i < opponentPieces.length; i++) {
         if (opponentPieces[i] !== takenPiece && canReachSquareTrading(opponentPieces[i], exchangeCell, true, false)) {
@@ -2545,40 +2553,66 @@ function availableStraightCellsFromPiece(piece, distance, allCells) {
     for (let i = 1; i <= distance; i++) {
         if (row + i <= 8 && row + i >= 1 && col >= 1 && col <= 8 && checkMeNorth) {
             let check = numericCellToCell(row + i, col, allCells)
-            // // bp.log.info("~~ LOG (2040) ~~ Sending this to numericCellToCell : " + (row + i) + "," + col + " Returned => " + JSON.stringify(check))
+            // bp.log.info("~~ LOG (2040) ~~ Sending this to numericCellToCell : " + (row + i) + "," + col + " Returned => " + JSON.stringify(check))
             if (numericCellToCell(row + i, col, allCells).pieceId === undefined) {
-                availableCells.push({row: row + distance, col: col});
+                // availableCells.push({row: row + distance, col: col});
+                availableCells.push({row: row + i, col: col});
                 availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row + i, col, allCells), piece.color));
             } else {
                 checkMeNorth = false
                 cellsWithPiece.push(numericCellToCell(row + i, col, allCells))
+                let targetCell = numericCellToCell(row + i, col, allCells);
+                let pieceOnTargetCell = ctx.runQuery(getSpecificPieceOnCell(targetCell));
+                if (pieceOnTargetCell.color === 'Black') {
+                    availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row + i, col, allCells), piece.color, true));
+                }
             }
         }
         if (row - i <= 8 && row - i >= 1 && col >= 1 && col <= 8 && checkMeSouth) {
             if (numericCellToCell(row - i, col, allCells).pieceId === undefined) {
-                availableCells.push({row: row - distance, col: col});
+                // availableCells.push({row: row - distance, col: col});
+                availableCells.push({row: row - i, col: col});
                 availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row - i, col, allCells), piece.color));
             } else {
                 checkMeSouth = false
                 cellsWithPiece.push(numericCellToCell(row - i, col, allCells))
+                let targetCell = numericCellToCell(row - i, col, allCells);
+                let pieceOnTargetCell = ctx.runQuery(getSpecificPieceOnCell(targetCell));
+                if (pieceOnTargetCell.color === 'Black') {
+                    availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row - i, col, allCells), piece.color, true));
+                }
             }
         }
         if (col + i <= 8 && col + i >= 1 && row >= 1 && row <= 8 && checkMeEast) {
             if (numericCellToCell(row, col + i, allCells).pieceId === undefined) {
-                availableCells.push({row: row, col: col + distance});
+                // availableCells.push({row: row, col: col + distance});
+                availableCells.push({row: row, col: col + i});
                 availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row, col + i, allCells), piece.color));
             } else {
                 checkMeEast = false
-                cellsWithPiece.push(numericCellToCell(row, col + i, allCells).pieceId)
+                // cellsWithPiece.push(numericCellToCell(row, col + i, allCells).pieceId)
+                cellsWithPiece.push(numericCellToCell(row, col + i, allCells))
+                let targetCell = numericCellToCell(row, col + i, allCells);
+                let pieceOnTargetCell = ctx.runQuery(getSpecificPieceOnCell(targetCell));
+                if (pieceOnTargetCell.color === 'Black') {
+                    availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row, col + i, allCells), piece.color, true));
+                }
             }
         }
         if (col - i <= 8 && col - i >= 1 && row >= 1 && row <= 8 && checkMeWest) {
             if (numericCellToCell(row, col - i, allCells).pieceId === undefined) {
-                availableCells.push({row: row, col: col - distance});
+                // availableCells.push({row: row, col: col - distance});
+                availableCells.push({row: row, col: col - i});
                 availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row, col - i, allCells), piece.color));
             } else {
                 checkMeWest = false
-                cellsWithPiece.push(numericCellToCell(row, col - i, allCells).pieceId)
+                // cellsWithPiece.push(numericCellToCell(row, col - i, allCells).pieceId)
+                cellsWithPiece.push(numericCellToCell(row, col - i, allCells))
+                let targetCell = numericCellToCell(row, col - i, allCells);
+                let pieceOnTargetCell = ctx.runQuery(getSpecificPieceOnCell(targetCell));
+                if (pieceOnTargetCell.color === 'Black') {
+                    availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row, col - i, allCells), piece.color, true));
+                }
             }
         }
     }
@@ -2609,40 +2643,48 @@ function availableStraightCellsFromPieceWithCell(piece, distance, allCells, cell
             let check = numericCellToCell(row + i, col, allCells)
             // // bp.log.info("~~ LOG (2040) ~~ Sending this to numericCellToCell : " + (row + i) + "," + col + " Returned => " + JSON.stringify(check))
             if (numericCellToCell(row + i, col, allCells).pieceId === undefined) {
-                availableCells.push({row: row + distance, col: col});
+                // availableCells.push({row: row + distance, col: col});
+                availableCells.push({row: row + i, col: col});
                 availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row + i, col, allCells), piece.color));
             } else {
                 checkMeNorth = false
                 cellsWithPiece.push(numericCellToCell(row + i, col, allCells))
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row + i, col, allCells), piece.color));
             }
         }
         if (row - i <= 8 && row - i >= 1 && col >= 1 && col <= 8 && checkMeSouth) {
             if (numericCellToCell(row - i, col, allCells).pieceId === undefined) {
-                availableCells.push({row: row - distance, col: col});
+                // availableCells.push({row: row - distance, col: col});
+                availableCells.push({row: row - i, col: col});
                 availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row - i, col, allCells), piece.color));
             } else {
                 checkMeSouth = false
                 cellsWithPiece.push(numericCellToCell(row - i, col, allCells))
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row - i, col, allCells), piece.color));
             }
         }
         if (col + i <= 8 && col + i >= 1 && row >= 1 && row <= 8 && checkMeEast) {
             if (numericCellToCell(row, col + i, allCells).pieceId === undefined) {
-                availableCells.push({row: row, col: col + distance});
+                // availableCells.push({row: row, col: col + distance});
+                availableCells.push({row: row, col: col + i});
                 availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row, col + i, allCells), piece.color));
             } else {
                 checkMeEast = false
                 // cellsWithPiece.push(numericCellToCell(row, col + i, allCells).pieceId)
                 cellsWithPiece.push(numericCellToCell(row, col + i, allCells))
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row, col + i, allCells), piece.color));
             }
         }
         if (col - i <= 8 && col - i >= 1 && row >= 1 && row <= 8 && checkMeWest) {
             if (numericCellToCell(row, col - i, allCells).pieceId === undefined) {
-                availableCells.push({row: row, col: col - distance});
+                // availableCells.push({row: row, col: col - distance});
+                availableCells.push({row: row, col: col - i});
                 availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row, col - i, allCells), piece.color));
             } else {
                 checkMeWest = false
                 // cellsWithPiece.push(numericCellToCell(row, col - i, allCells).pieceId)
                 cellsWithPiece.push(numericCellToCell(row, col - i, allCells))
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row, col - i, allCells), piece.color));
             }
         }
     }
@@ -2651,21 +2693,17 @@ function availableStraightCellsFromPieceWithCell(piece, distance, allCells, cell
     return [availableMoves, cellsWithPiece]
 }
 
-function availableStraightCellsFromPawn(pawn, distance, allCells) {
+function availableCellsFromPawn(pawn, allCells) {
 
-    let col = pawn.cellId[0].charCodeAt(0) - 'a'.charCodeAt(0);
+    let col = pawn.cellId[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
     let row = (pawn.cellId[1] - '0');
-
-
-    if (distance === 2 && row !== 2) {
-        return [];
-    }
-
+    // bp.log.info("2700 " + row + ", " + col)
     // let availableCells = [];
     let availableMoves = [];
 
     let currentCell = numericCellToCell(row, col, allCells);
 
+    // Advance One Cell Up
     if (row + 1 <= 8 && row + 1 >= 1 && col >= 1 && col <= 8) {
         let cellUp = numericCellToCell(row + 1, col, allCells);
         // bp.log.info("~~ LOG (2327) ~~ Current Cell : " + JSON.stringify(currentCell) + " Cell Up : " + JSON.stringify(cellUp))
@@ -2675,28 +2713,36 @@ function availableStraightCellsFromPawn(pawn, distance, allCells) {
         }
     }
 
-    if (row + 2 <= 8 && row + 2 >= 1 && col >= 1 && col <= 8) {
-        let cellUpDouble = numericCellToCell(row + 2, col, allCells);
-        // bp.log.info("~~ LOG (2327) ~~ Current Cell : " + JSON.stringify(currentCell) + " Cell Up Double : " + JSON.stringify(cellUpDouble))
-        if (cellUpDouble.pieceId === undefined) {
-            // availableCells.push({row: row + 2, col: col});
-            availableMoves.push(moveEvent("Pawn", currentCell, cellUpDouble, pawn.color));
+    // Advance Two Cells Up
+    if (row === 2) {
+        if (row + 2 <= 8 && row + 2 >= 1 && col >= 1 && col <= 8) {
+            let cellUpDouble = numericCellToCell(row + 2, col, allCells);
+            // bp.log.info("~~ LOG (2327) ~~ Current Cell : " + JSON.stringify(currentCell) + " Cell Up Double : " + JSON.stringify(cellUpDouble))
+            if (cellUpDouble.pieceId === undefined) {
+                // availableCells.push({row: row + 2, col: col});
+                availableMoves.push(moveEvent("Pawn", currentCell, cellUpDouble, pawn.color));
+            }
         }
     }
 
-    /*if (col + 1 <= 8 && col + 1 >= 1 && row >= 1 && row <= 8) {
-        if (numericCellToCell(row + 1, col + 1, allCells).pieceId != undefined) {
+    // Takes
+    if (col + 1 <= 8 && col + 1 >= 1 && row + 1 >= 1 && row + 1 <= 8) {
+        let cellToTake = numericCellToCell(row + 1, col + 1, allCells);
+        let pieceOnCellToTake = ctx.runQuery(getSpecificPieceOnCell(cellToTake));
+        if (cellToTake.pieceId !== undefined && pieceOnCellToTake.color === 'Black') {
             // availableCells.push({row: row + 1, col: col + 1});
-            availableMoves.push(moveEvent("Pawn", jToCol(col) + row, jToCol(col + 1) + (row + 1), pawn.color));
+            availableMoves.push(moveEvent("Pawn", jToCol(col) + row, jToCol(col + 1) + (row + 1), pawn.color, true));
         }
     }
 
-    if (col - 1 <= 8 && col - 1 >= 1 && row >= 1 && row <= 8) {
-        if (numericCellToCell(row + 1, col - 1, allCells).pieceId != undefined) {
+    if (col - 1 <= 8 && col - 1 >= 1 && row + 1 >= 1 && row + 1 <= 8) {
+        let cellToTake = numericCellToCell(row + 1, col - 1, allCells);
+        let pieceOnCellToTake = ctx.runQuery(getSpecificPieceOnCell(cellToTake));
+        if (cellToTake.pieceId !== undefined && pieceOnCellToTake.color === 'Black') {
             // availableCells.push({row: row + 1, col: col - 1});
-            availableMoves.push(moveEvent("Pawn", jToCol(col) + row, jToCol(col - 1) + (row + 1), pawn.color));
+            availableMoves.push(moveEvent("Pawn", jToCol(col) + row, jToCol(col - 1) + (row + 1), pawn.color, true));
         }
-    }*/
+    }
 
     return availableMoves
 }
@@ -2788,6 +2834,14 @@ function availableKnightMoves(knight) {
         [2, 1], [2, -1], [-2, 1], [-2, -1]  // Moves in the horizontal direction
     ];
 
+    let oppositeColor = undefined;
+    if (knight.color === 'White') {
+        oppositeColor = 'Black'
+    } else {
+        oppositeColor = 'White'
+    }
+
+
     let availableMoves = [];
     let cellsWithPiece = [];
 
@@ -2808,7 +2862,13 @@ function availableKnightMoves(knight) {
             if (targetCell.pieceId === undefined) {
                 availableMoves.push(moveEvent("Knight", sourceCell, destinationCell, knight.color));
             } else {
-                cellsWithPiece.push(targetCell);
+                let pieceOnTargetCell = ctx.runQuery(getSpecificPieceOnCell(targetCell));
+                if (pieceOnTargetCell.color === oppositeColor) {
+                    cellsWithPiece.push(targetCell);
+                    availableMoves.push(moveEvent("Knight", sourceCell, destinationCell, knight.color, true));
+                } else {
+                    cellsWithPiece.push(targetCell);
+                }
             }
         }
     });
@@ -2854,6 +2914,7 @@ function availableKnightMovesWithCell(knight, cell) {
                 availableMoves.push(moveEvent("Knight", sourceCell, destinationCell, knight.color));
             } else {
                 cellsWithPiece.push(targetCell);
+                availableMoves.push(moveEvent("Knight", sourceCell, destinationCell, knight.color));
             }
         }
     });
@@ -2910,7 +2971,7 @@ function GiveMeCell(requestedID, allCells) {
             return cell;
         }
     }
-   // bp.log.info("~~ LOG (2281) ~~ GiveMeCell Returning NULL")
+    bp.log.info("~~ LOG (2281) ~~ GiveMeCell Returning NULL")
     return null;
 }
 
@@ -2941,6 +3002,11 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
             } else {
                 checkMeNorthEast = false;
                 cellsWithPieces.push(numericCellToCell(row + i, col + i, allCells))
+                let targetCell = numericCellToCell(row + i, col + 1, allCells);
+                let pieceOnTargetCell = ctx.runQuery(getSpecificPieceOnCell(targetCell));
+                if (pieceOnTargetCell.color === 'Black') {
+                    availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row + i, col + i, allCells), piece.color, true));
+                }
             }
         }
         if (row - i <= 8 && row - i >= 1 && col + i <= 8 && col + i >= 1 && checkMeSouthEast) {
@@ -2950,6 +3016,11 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
             } else {
                 checkMeSouthEast = false;
                 cellsWithPieces.push(numericCellToCell(row - i, col + i, allCells))
+                let targetCell = numericCellToCell(row - i, col + 1, allCells);
+                let pieceOnTargetCell = ctx.runQuery(getSpecificPieceOnCell(targetCell));
+                if (pieceOnTargetCell.color === 'Black') {
+                    availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row - i, col + i, allCells), piece.color, true));
+                }
             }
         }
         if (row + i <= 8 && row + i >= 1 && col - i <= 8 && col - i >= 1 && checkMeNorthWest) {
@@ -2959,6 +3030,11 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
             } else {
                 checkMeNorthWest = false;
                 cellsWithPieces.push(numericCellToCell(row + i, col - i, allCells))
+                let targetCell = numericCellToCell(row + i, col - 1, allCells);
+                let pieceOnTargetCell = ctx.runQuery(getSpecificPieceOnCell(targetCell));
+                if (pieceOnTargetCell.color === 'Black') {
+                    availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row + i, col - i, allCells), piece.color, true));
+                }
             }
         }
         if (row - i <= 8 && row - i >= 1 && col - i <= 8 && col - i >= 1 && checkMeSouthWest) {
@@ -2968,6 +3044,11 @@ function availableDiagonalCellsFromPiece(piece, distance, allCells) {
             } else {
                 checkMeSouthWest = false;
                 cellsWithPieces.push(numericCellToCell(row - i, col - i, allCells))
+                let targetCell = numericCellToCell(row - i, col - 1, allCells);
+                let pieceOnTargetCell = ctx.runQuery(getSpecificPieceOnCell(targetCell));
+                if (pieceOnTargetCell.color === 'Black') {
+                    availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row - i, col - i, allCells), piece.color, true));
+                }
             }
         }
     }
@@ -3004,6 +3085,7 @@ function availableDiagonalCellsFromPieceWithCell(piece, distance, allCells, cell
             } else {
                 checkMeNorthEast = false;
                 cellsWithPieces.push(numericCellToCell(row + i, col + i, allCells))
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row + i, col + i, allCells), piece.color));
             }
         }
         if (row - i <= 8 && row - i >= 1 && col + i <= 8 && col + i >= 1 && checkMeSouthEast) {
@@ -3013,6 +3095,7 @@ function availableDiagonalCellsFromPieceWithCell(piece, distance, allCells, cell
             } else {
                 checkMeSouthEast = false;
                 cellsWithPieces.push(numericCellToCell(row - i, col + i, allCells))
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row - i, col + i, allCells), piece.color));
             }
         }
         if (row + i <= 8 && row + i >= 1 && col - i <= 8 && col - i >= 1 && checkMeNorthWest) {
@@ -3022,6 +3105,7 @@ function availableDiagonalCellsFromPieceWithCell(piece, distance, allCells, cell
             } else {
                 checkMeNorthWest = false;
                 cellsWithPieces.push(numericCellToCell(row + i, col - i, allCells))
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row + i, col - i, allCells), piece.color));
             }
         }
         if (row - i <= 8 && row - i >= 1 && col - i <= 8 && col - i >= 1 && checkMeSouthWest) {
@@ -3031,6 +3115,7 @@ function availableDiagonalCellsFromPieceWithCell(piece, distance, allCells, cell
             } else {
                 checkMeSouthWest = false;
                 cellsWithPieces.push(numericCellToCell(row - i, col - i, allCells))
+                availableMoves.push(moveEvent(piece.subtype, numericCellToCell(row, col, allCells), numericCellToCell(row - i, col - i, allCells), piece.color));
             }
         }
     }
@@ -3088,7 +3173,7 @@ function createAttackingAndDefendingList(piece, srcCell, dstCell) {
     let col = undefined
     let row = undefined
 
-   // bp.log.info("~~ LOG (3005) Creating List of ~~ " + JSON.stringify(piece) + " On " + JSON.stringify(srcCell) + " => " + JSON.stringify(dstCell))
+    // bp.log.info("~~ LOG (3005) Creating List of ~~ " + JSON.stringify(piece) + " On " + JSON.stringify(srcCell) + " => " + JSON.stringify(dstCell))
     // bp.log.info("~~ LOG (2847) Lists Sizes ~~ " + piecesIAttack.length + " " + piecesIDefend.length)*/
 
     let playerColor = 'White';
@@ -3107,7 +3192,7 @@ function createAttackingAndDefendingList(piece, srcCell, dstCell) {
     if (specificPiece === undefined)
         specificPiece = ctx.runQuery(getSpecificPieceOnCell(dstCell))[0]
 
-   // bp.log.info("~~ LOG (3025) Creating List of ~~ " + JSON.stringify(specificPiece) + " on " + numericCellToCell(row, col, allCells).id)
+    // bp.log.info("~~ LOG (3025) Creating List of ~~ " + JSON.stringify(specificPiece) + " on " + numericCellToCell(row, col, allCells).id)
     // bp.log.info("~~ LOG (3026) ~~ " + (col) + (row))
 
     if (piece.subtype === 'Pawn') {
@@ -3309,16 +3394,16 @@ ctx.bthread("Visualize", "Phase.Opening", function (entity) {
 
             currentBoard[row][col] = sign;
         }
-        //bp.log.info(ANSI_BRIGHT_CYAN + ANSI_UNDERLINE + ANSI_BOLD + move + ANSI_RESET)
+        bp.log.info(ANSI_BRIGHT_CYAN + ANSI_UNDERLINE + ANSI_BOLD + move + ANSI_RESET)
         // Visualize
         for (let i = 0; i < 8; i++) {
 
-            //bp.log.info(ANSI_PURPLE + currentBoard[i][0] + "  " + currentBoard[i][1] + "  " + currentBoard[i][2] + "  " +
-                //currentBoard[i][3] + "  " + currentBoard[i][4] + "  " + currentBoard[i][5] + "  " +
-                //currentBoard[i][6] + "  " + currentBoard[i][7] + ANSI_RESET);
+            bp.log.info(ANSI_PURPLE + currentBoard[i][0] + "  " + currentBoard[i][1] + "  " + currentBoard[i][2] + "  " +
+                currentBoard[i][3] + "  " + currentBoard[i][4] + "  " + currentBoard[i][5] + "  " +
+                currentBoard[i][6] + "  " + currentBoard[i][7] + ANSI_RESET);
 
         }
-        //bp.log.info(ANSI_CYAN + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + ANSI_RESET)
+        bp.log.info(ANSI_CYAN + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + ANSI_RESET)
 
     }
 });
