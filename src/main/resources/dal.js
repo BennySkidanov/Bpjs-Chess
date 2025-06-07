@@ -17,10 +17,12 @@ const piecesPrefixes = {
 
 bp.store.put("NON-FEATURE: QUEENING_COUNTER", 0);
 
+// Populate Context Helper - This function represents a BP cell object
 function Cell(i, j, pieceId) {
     return ctx.Entity(i + j, 'cell', {i: i, j: j, pieceId: pieceId})
 }
 
+// Populate Context Helper - This function represents a BP piece object
 function Piece(subtype, number, color, cellId) {
     return ctx.Entity('piece' + "_" + number, 'piece', {
         subtype: subtype,
@@ -30,8 +32,8 @@ function Piece(subtype, number, color, cellId) {
 
 /*
 
-    We have 64 cells on the chess board, we can identify them uniquely the combination of letters as columns and digits as rows, just like in the real gamke.
-    For example, let's suppose we are playing White, the board will look like :
+    We have 64 cells on the chess board, we can identify them uniquely using the combination of letters as columns and digits as rows.
+    For example, let's suppose we are playing white, the board from the player's perspective is as follows:
 
     a8 b8 c8 d8 e8 f8 g8 h8
     a7 b7 c7 d7 e7 f7 g7 h7
@@ -46,7 +48,7 @@ function Piece(subtype, number, color, cellId) {
 
 
 ctx.registerQuery("Cell.all", function (entity) {
-    return entity.type == 'cell';
+    return entity.type === 'cell';
 })
 
 ctx.registerQuery("ready to mate on f7", function (entity) {
