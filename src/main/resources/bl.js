@@ -1363,6 +1363,7 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
 
             for (let i = 0; i < allPawnMoves.length; i++) {
                 // if (ESPawnDevelopingMoves.contains(straightPawnMoves[i])) {
+                // bp.log.info("Move - " + JSON.stringify(allPawnMoves[i]))
                 pawnMoves.push(allPawnMoves[i]);
                 // }
             }
@@ -1852,7 +1853,7 @@ function isStrengtheningPawnStructure(dstCell) {
     // bp.log.info("isStrengtheningPawnStructure, dstcell = " + dstCell)
     let defaultReturnValue = false;
 
-    let col = dstCell.id[0].charCodeAt(0) - 'a'.charCodeAt(0);
+    let col = dstCell.id[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
     let row = dstCell.id[1] - '0';
 
 
@@ -1893,7 +1894,7 @@ function isAttackingDiagonal(piece, dstCell, range, canAttackBackwards) {
     let opponentPieces = ctx.runQuery("Piece.Black.All")
     let allCells = ctx.runQuery("Cell.all")
 
-    let col = dstCell.id[0].charCodeAt(0) - 'a'.charCodeAt(0);
+    let col = dstCell.id[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
     let row = dstCell.id[1] - '0';
 
     let checkMeNorthWest = true;
@@ -1968,7 +1969,7 @@ function isAttackingStraight(piece, dstCell, range) {
     let opponentPieces = ctx.runQuery("Piece.Black.All")
     let allCells = ctx.runQuery("Cell.all")
 
-    let col = dstCell.id[0].charCodeAt(0) - 'a'.charCodeAt(0);
+    let col = dstCell.id[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
     let row = dstCell.id[1] - '0';
 
     let checkMeNorth = true;
@@ -2694,9 +2695,9 @@ function availableStraightCellsFromPieceWithCell(piece, distance, allCells, cell
 
 function availableCellsFromPawn(pawn, allCells) {
 
-    let col = pawn.cellId[0].charCodeAt(0) - 'a'.charCodeAt(0);
+    let col = pawn.cellId[0].charCodeAt(0) - 'a'.charCodeAt(0) + 1;
     let row = (pawn.cellId[1] - '0');
-
+    // bp.log.info("2700 " + row + ", " + col)
     // let availableCells = [];
     let availableMoves = [];
 
