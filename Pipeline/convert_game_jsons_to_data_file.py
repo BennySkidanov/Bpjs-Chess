@@ -18,7 +18,7 @@ class ChessMoveAnalyzer:
     GENOME_SIZE = 34
     WEIGHT_RANGE_MIN = -10
     WEIGHT_RANGE_MAX = 10
-    NUMBER_OF_ANALYZED_GAMES = 5000
+    NUMBER_OF_ANALYZED_GAMES = 50700
     NONE_VALUE = -1
 
     # Chess notation constants
@@ -33,13 +33,38 @@ class ChessMoveAnalyzer:
         "Move_Description",
         "Y",
         "Board_State",
-        "Predicted_Percentage",
-        "Actual_Percentage",
         "SHAP"
     ]
 
     # Feature columns based on your new features
     FEATURE_COLUMNS = [
+            # "Game_Plan_Counter_Deceiving_Scholars_Mate",
+            # "Developing_the_queen_too_early",
+            # "Game_Plan_Counter_Fried_Liver_Attack",
+            # "Strategy_Counter_Developing_moves",
+            # "Piece_Moves_Counter_Bishop_moves",
+            # "Piece_Moves_Counter_Queen_moves",
+            # "Moves_Counter_Defending",
+            # "Piece_Moves_Counter_Pawn_moves",
+            # "Moves_Counter_Attacking",
+            # "Strategy_Advisor_Develop",
+            # "Piece_Exchange",
+            # "Piece_Advisor_Pawn",
+            # "Piece_Advisor_Knight",
+            # "Strategy_Advisor_Fianchetto",
+            # "Game_Plan_Counter_Scholars_Mate",
+            # "Strategy_Counter_Fianchetto_moves",
+            # "Strategy_Advisor_Center",
+            # "Piece_Advisor_Rook",
+            # "Piece_Moves_Counter_Knight_moves",
+            # "Piece_Advisor_Queen",
+            # "Moves_Counter_Preventing_b4__g4_Attacks",
+            # "Strategy_Counter_Center_strengthen_moves",
+            # "Piece_Advisor_Bishop",
+            # "Game_Plan_Counter_Capturing_Space",
+            # "Moves_Counter_Pinning",
+            # "Piece_Moves_Counter_Rook_moves",
+            # "Game_Plan_Counter_Strengthen_Pawn_Structure"
         "Piece_Exchange_Feature_Unworthy_Exchange",
         "Game_Plan_Counter_Scholars_Mate",
         "Game_Plan_Counter_Deceiving_Scholars_Mate",
@@ -110,8 +135,6 @@ class ChessMoveAnalyzer:
             "Move_Description": "TEXT",
             "Y": "INTEGER",
             "Board_State": "TEXT",
-            "Predicted_Percentage": "FLOAT",
-            "Actual_Percentage": "FLOAT",
             "SHAP": "BLOB"
         }
 
@@ -200,8 +223,6 @@ class ChessMoveAnalyzer:
             'Game_number': game_number,
             'Move_number': move_number,
             'Move_Description': self.format_move_description(selectable_event),
-            'Predicted_Percentage': 0.0,
-            'Actual_Percentage': 0.0,
             'SHAP': None,
             'Y': 1 if move_data['move_played_event'] == selectable_event else 0
         }
@@ -211,13 +232,13 @@ class ChessMoveAnalyzer:
         # Add feature columns from major attributes
         for feature_col in self.FEATURE_COLUMNS:
             # Convert database column name back to original feature name
-            original_key = feature_col.replace('__', ', ').replace('_', ' ').replace(' Feature ', ' Feature: ').replace(' Counter ', ' Counter: ')
+            original_key = feature_col.replace('__', ', ').replace('_', ' ').replace(' Feature ', ' Feature: ').replace(' Counter ', ' Counter: ').replace(' Advisor ', ' Advisor: ')
             #print(original_key)
             row[feature_col] = major_attributes.get(original_key, -1)
         # Add look-ahead columns
         for i, feature_col in enumerate(self.FEATURE_COLUMNS):
             look_ahead_col = f"LOOK_AHEAD_{feature_col}"
-            original_key = feature_col.replace('__', ', ').replace('_', ' ').replace(' Feature ', ' Feature: ').replace(' Counter ', ' Counter: ')
+            original_key = feature_col.replace('__', ', ').replace('_', ' ').replace(' Feature ', ' Feature: ').replace(' Counter ', ' Counter: ').replace(' Advisor ', ' Advisor: ')
             #print(look_ahead_col)
             row[look_ahead_col] = look_ahead_data.get(original_key, -1)
 
@@ -284,7 +305,6 @@ class ChessMoveAnalyzer:
             games_data = self.load_game_data(game_path, game_index)
 
             # Process each move
-            move_count = 0
             for move_key, move_data in games_data.items():
                 # Parse move key
                 tokens = move_key.split('_')
@@ -300,11 +320,9 @@ class ChessMoveAnalyzer:
                             move_data, selectable_index, game_number, move_number
                         )
                         self.insert_row(row_data)
-                        move_count += 1
 
-                        if move_count % 1000 == 0:
-                            pass
-                            #print(f"Processed {game_index} game {move_count} moves")
+            if game_index % 1000 == 0:
+                print(f"Processed {game_index} games")
 
         # Commit changes
         self.conn.commit()
@@ -329,7 +347,7 @@ def main():
     print(f"Current working directory: {os.getcwd()}")
 
     try:
-        db_path = "../DB/1500/WithSelectablesAfterFix/chess_moves_test.db"
+        db_path = "../DB/1500/WithSelectablesAfterFix/chess_moves_extended.db"
         game_directory = f"../GameSequences1500/WithSelectablesAfterFix"
         with ChessMoveAnalyzer(db_path, game_directory) as analyzer:
             analyzer.process_games()
