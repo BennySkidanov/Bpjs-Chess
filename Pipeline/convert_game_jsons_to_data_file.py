@@ -1,4 +1,5 @@
 import json
+import math
 import os
 import re
 import sqlite3
@@ -10,61 +11,23 @@ class ChessMoveAnalyzer:
     """Main class for analyzing chess moves and storing them in database."""
 
     # Configuration constants
-    POP_SIZE = 150
-    ELITISM = 2
-    GENERATIONS = 100
-    TOURNAMENT_SIZE = 5
-    PROB_MUTATION = 0.1
-    GENOME_SIZE = 34
-    WEIGHT_RANGE_MIN = -10
-    WEIGHT_RANGE_MAX = 10
-    NUMBER_OF_ANALYZED_GAMES = 50700
-    NONE_VALUE = -1
+    GAMES_PER_FILE = 500
 
-    # Chess notation constants
-    CHECK_SIGN = '+'
-    MATE_SIGN = '#'
-    TAKES_SIGN = 'x'
+    # Train/validation/test split ratios
+    TRAIN_RATIO = 0.7
+    VAL_RATIO = 0.15
+    TEST_RATIO = 0.15
 
-    # Fixed columns (first 8)
+    # Fixed columns (first 4)
     FIXED_COLUMNS = [
         "Game_number",
         "Move_number",
         "Move_Description",
-        "Y",
-        "Board_State",
-        "SHAP"
+        "Y"
     ]
 
     # Feature columns based on your new features
     FEATURE_COLUMNS = [
-            # "Game_Plan_Counter_Deceiving_Scholars_Mate",
-            # "Developing_the_queen_too_early",
-            # "Game_Plan_Counter_Fried_Liver_Attack",
-            # "Strategy_Counter_Developing_moves",
-            # "Piece_Moves_Counter_Bishop_moves",
-            # "Piece_Moves_Counter_Queen_moves",
-            # "Moves_Counter_Defending",
-            # "Piece_Moves_Counter_Pawn_moves",
-            # "Moves_Counter_Attacking",
-            # "Strategy_Advisor_Develop",
-            # "Piece_Exchange",
-            # "Piece_Advisor_Pawn",
-            # "Piece_Advisor_Knight",
-            # "Strategy_Advisor_Fianchetto",
-            # "Game_Plan_Counter_Scholars_Mate",
-            # "Strategy_Counter_Fianchetto_moves",
-            # "Strategy_Advisor_Center",
-            # "Piece_Advisor_Rook",
-            # "Piece_Moves_Counter_Knight_moves",
-            # "Piece_Advisor_Queen",
-            # "Moves_Counter_Preventing_b4__g4_Attacks",
-            # "Strategy_Counter_Center_strengthen_moves",
-            # "Piece_Advisor_Bishop",
-            # "Game_Plan_Counter_Capturing_Space",
-            # "Moves_Counter_Pinning",
-            # "Piece_Moves_Counter_Rook_moves",
-            # "Game_Plan_Counter_Strengthen_Pawn_Structure"
         "Piece_Exchange_Feature_Unworthy_Exchange",
         "Game_Plan_Counter_Scholars_Mate",
         "Game_Plan_Counter_Deceiving_Scholars_Mate",
@@ -104,18 +67,41 @@ class ChessMoveAnalyzer:
         "Rook": "R", "Queen": "Q", "King": "K"
     }
 
-    def __init__(self, db_path: str = '../DB/1500/Explanations/chess_moves_test.db',
-                 games_directory: str = '../GameSequences1500/WithSelectablesForExplanation'):
-        """Initialize the analyzer with database connection and game directory."""
-        self.db_path = db_path
+    def __init__(self, output_base_path: str = '../ParquetData',
+                 games_directory: str = '../GameSequences1500/WithSelectablesFixed',
+                 total_games: int = 1000):
+        """Initialize the analyzer with output directory and game directory."""
+        self.output_base_path = output_base_path
         self.games_directory = games_directory
-        self.conn = sqlite3.connect(db_path)
-        self.cursor = self.conn.cursor()
+        self.total_games = total_games
+
+        # Calculate splits
+        self.train_games = int(total_games * self.TRAIN_RATIO)
+        self.val_games = int(total_games * self.VAL_RATIO)
+        self.test_games = total_games - self.train_games - self.val_games
+
+        # Calculate number of files needed for each split
+        self.train_files = math.ceil(self.train_games / self.GAMES_PER_FILE)
+        self.val_files = math.ceil(self.val_games / self.GAMES_PER_FILE)
+        self.test_files = math.ceil(self.test_games / self.GAMES_PER_FILE)
+
+        print(f"Dataset split:")
+        print(f"  Train: {self.train_games} games ({self.train_files} files)")
+        print(f"  Validation: {self.val_games} games ({self.val_files} files)")
+        print(f"  Test: {self.test_games} games ({self.test_files} files)")
 
         # Generate all column names
         self.all_columns = self._generate_all_columns()
         self.look_ahead_columns = [f"LOOK_AHEAD_{col}" for col in self.FEATURE_COLUMNS]
-        #print(self.all_columns)
+
+        # Create output directories
+        self._create_output_directories()
+
+        # Initialize data storage
+        self.current_data = []
+        self.current_game_count = 0
+        self.current_split = 'train'
+        self.current_file_index = 0
 
     def _generate_all_columns(self) -> List[str]:
         """Generate complete list of column names."""
@@ -123,41 +109,72 @@ class ChessMoveAnalyzer:
                 self.FEATURE_COLUMNS +
                 [f"LOOK_AHEAD_{col}" for col in self.FEATURE_COLUMNS])
 
-    def create_database_table(self) -> None:
-        """Create the chess_moves table with all required columns."""
-        # Build column definitions
-        column_definitions = []
+    def _create_output_directories(self) -> None:
+        """Create output directories for train/val/test splits."""
+        for split in ['train', 'val', 'test']:
+            split_path = os.path.join(self.output_base_path, split)
+            os.makedirs(split_path, exist_ok=True)
 
-        # Fixed columns with their types
-        column_types = {
-            "Game_number": "INTEGER",
-            "Move_number": "INTEGER",
-            "Move_Description": "TEXT",
-            "Y": "INTEGER",
-            "Board_State": "TEXT",
-            "SHAP": "BLOB"
-        }
+    def _get_current_split(self, game_number: int) -> str:
+        """Determine which split the current game belongs to."""
+        if game_number <= self.train_games:
+            return 'train'
+        elif game_number <= self.train_games + self.val_games:
+            return 'val'
+        else:
+            return 'test'
 
-        for col in self.FIXED_COLUMNS:
-            column_definitions.append(f"{col} {column_types[col]}")
+    def _save_current_batch(self) -> None:
+        """Save current batch of data to Parquet file."""
+        if not self.current_data:
+            return
 
-        # Feature columns (all INTEGER)
-        for col in self.FEATURE_COLUMNS:
-            column_definitions.append(f"{col} FLOAT")
+        # Create DataFrame
+        df = pd.DataFrame(self.current_data)
 
-        # Look-ahead columns (all INTEGER)
-        for col in self.look_ahead_columns:
-            column_definitions.append(f"{col} FLOAT")
+        # Ensure all columns are present
+        for col in self.all_columns:
+            if col not in df.columns:
+                if col in self.FEATURE_COLUMNS + self.look_ahead_columns:
+                    df[col] = 0.0
+                elif col in ['Game_number', 'Move_number', 'Y']:
+                    df[col] = 0
+                else:
+                    df[col] = ""
+
+        # Reorder columns
+        df = df[self.all_columns]
+
+        # Save to Parquet
+        filename = f"{self.current_split}_batch_{self.current_file_index:03d}.parquet"
+        filepath = os.path.join(self.output_base_path, self.current_split, filename)
 
 
-        # Create table
-        create_sql = f"""
-        CREATE TABLE IF NOT EXISTS chess_moves (
-            {', '.join(column_definitions)}
-        )"""
+        df.to_parquet(filepath, index=False, engine='pyarrow')
+        print(f"Saved {len(df)} rows to {filepath}")
 
-        self.cursor.execute(create_sql)
-        self.conn.commit()
+        # Reset current data
+        self.current_data = []
+        self.current_game_count = 0
+
+    def _check_and_save_batch(self, game_number: int) -> None:
+        """Check if we need to save current batch and start a new one."""
+        new_split = self._get_current_split(game_number)
+
+        # If we've reached the games per file limit OR switched splits
+        if (self.current_game_count >= self.GAMES_PER_FILE or
+                new_split != self.current_split):
+
+            # Save current batch
+            self._save_current_batch()
+
+            # Update split and file index
+            if new_split != self.current_split:
+                self.current_split = new_split
+                self.current_file_index = 0
+            else:
+                self.current_file_index += 1
+
 
     def filter_major_attributes(self, attributes: Dict[str, Any]) -> Dict[str, Any]:
         """Filter out CTX attributes from move attributes."""
@@ -223,11 +240,10 @@ class ChessMoveAnalyzer:
             'Game_number': game_number,
             'Move_number': move_number,
             'Move_Description': self.format_move_description(selectable_event),
-            'SHAP': None,
             'Y': 1 if move_data['move_played_event'] == selectable_event else 0
         }
 
-        row['Board_State'] = self.draw_board_from_cells(move_data['board_cells'])
+        #row['Board_State'] = self.draw_board_from_cells(move_data['board_cells'])
 
         # Add feature columns from major attributes
         for feature_col in self.FEATURE_COLUMNS:
@@ -243,17 +259,6 @@ class ChessMoveAnalyzer:
             row[look_ahead_col] = look_ahead_data.get(original_key, -1)
 
         return row
-
-    def insert_row(self, row_data: Dict[str, Any]) -> None:
-        """Insert a single row into the database."""
-        columns = list(row_data.keys())
-        placeholders = ', '.join(['?' for _ in columns])
-        column_names = ', '.join(columns)
-
-        sql = f"INSERT INTO chess_moves ({column_names}) VALUES ({placeholders})"
-        values = tuple(row_data[col] for col in columns)
-
-        self.cursor.execute(sql, values)
 
     def load_game_data(self, game_path: str, game_index: int) -> Dict[str, Dict[str, Any]]:
         """Load and process game data from JSON file."""
@@ -287,19 +292,20 @@ class ChessMoveAnalyzer:
         return games_data
 
     def process_games(self) -> None:
-        """Main processing function to analyze games and populate database."""
+        """Main processing function to analyze games and create Parquet files."""
         print("Starting chess move analysis...")
-
-        # Create database table
-        self.create_database_table()
+        print(f"Processing {self.total_games} games total")
 
         # Process each game
-        for game_index in range(1, self.NUMBER_OF_ANALYZED_GAMES + 1):
+        for game_index in range(1, self.total_games + 1):
             game_path = os.path.join(self.games_directory, f'Game{game_index}.json')
 
             if not os.path.exists(game_path):
                 print(f"Warning: Game file {game_path} not found")
                 continue
+
+            # Check if we need to save current batch before processing new game
+            self._check_and_save_batch(game_index)
 
             # Load game data
             games_data = self.load_game_data(game_path, game_index)
@@ -319,27 +325,44 @@ class ChessMoveAnalyzer:
                         row_data = self.create_row_data(
                             move_data, selectable_index, game_number, move_number
                         )
-                        self.insert_row(row_data)
+                        self.current_data.append(row_data)
+
+            # Increment game count for current batch
+            self.current_game_count += 1
 
             if game_index % 1000 == 0:
                 print(f"Processed {game_index} games")
 
-        # Commit changes
-        self.conn.commit()
+        # Save any remaining data
+        self._save_current_batch()
         print("Analysis complete!")
 
-    def close(self) -> None:
-        """Close database connection."""
-        if self.conn:
-            self.conn.close()
-
-    def __enter__(self):
-        """Context manager entry."""
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        """Context manager exit."""
-        self.close()
+    def get_dataset_info(self) -> Dict[str, Any]:
+        """Get information about the created dataset."""
+        info = {
+            'total_games': self.total_games,
+            'games_per_file': self.GAMES_PER_FILE,
+            'splits': {
+                'train': {
+                    'games': self.train_games,
+                    'files': self.train_files,
+                    'ratio': self.TRAIN_RATIO
+                },
+                'val': {
+                    'games': self.val_games,
+                    'files': self.val_files,
+                    'ratio': self.VAL_RATIO
+                },
+                'test': {
+                    'games': self.test_games,
+                    'files': self.test_files,
+                    'ratio': self.TEST_RATIO
+                }
+            },
+            'columns': self.all_columns,
+            'output_path': self.output_base_path
+        }
+        return info
 
 
 def main():
@@ -347,11 +370,32 @@ def main():
     print(f"Current working directory: {os.getcwd()}")
 
     try:
-        db_path = "../DB/1500/WithSelectablesAfterFix/chess_moves_extended.db"
-        game_directory = f"../GameSequences1500/WithSelectablesAfterFix"
-        with ChessMoveAnalyzer(db_path, game_directory) as analyzer:
-            analyzer.process_games()
-        print("Data processing completed successfully!")
+        # Configuration
+        output_path = "../ParquetData/1500"
+        game_directory = "../GameSequences1500/WithSelectablesAfterFix"
+        total_games = 5000  # Change this to your actual number of games
+
+        # Create analyzer and process games
+        analyzer = ChessMoveAnalyzer(
+            output_base_path=output_path,
+            games_directory=game_directory,
+            total_games=total_games
+        )
+
+        analyzer.process_games()
+
+        # Print dataset information
+        info = analyzer.get_dataset_info()
+        print("\nDataset Information:")
+        print(f"Total games: {info['total_games']}")
+        print(f"Games per file: {info['games_per_file']}")
+        print(f"Output directory: {info['output_path']}")
+        print("\nSplit details:")
+        for split_name, split_info in info['splits'].items():
+            print(
+                f"  {split_name}: {split_info['games']} games in {split_info['files']} files ({split_info['ratio']:.1%})")
+
+        print("\nData processing completed successfully!")
 
     except Exception as e:
         print(f"Error occurred: {str(e)}")
