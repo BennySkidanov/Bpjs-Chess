@@ -5,6 +5,8 @@ import re
 import sqlite3
 import pandas as pd
 from typing import Dict, List, Any, Tuple
+import pyarrow as pa
+import pyarrow.parquet as pq
 
 
 class ChessMoveAnalyzer:
@@ -102,6 +104,9 @@ class ChessMoveAnalyzer:
         self.current_game_count = 0
         self.current_split = 'train'
         self.current_file_index = 0
+        self.parquet_writer = None
+        self.schema = None
+        self.current_file_path = None
 
     def _generate_all_columns(self) -> List[str]:
         """Generate complete list of column names."""
@@ -145,16 +150,31 @@ class ChessMoveAnalyzer:
         # Reorder columns
         df = df[self.all_columns]
 
-        # Save to Parquet
-        filename = f"{self.current_split}_batch_{self.current_file_index:03d}.parquet"
-        filepath = os.path.join(self.output_base_path, self.current_split, filename)
+        # Initialize schema and writer if first time
+        if self.parquet_writer is None:
+            self.schema = pa.Schema.from_pandas(df)
+            filename = f"{self.current_split}_batch_{self.current_file_index:03d}.parquet"
+            self.current_file_path = os.path.join(self.output_base_path, self.current_split, filename)
+            self.parquet_writer = pq.ParquetWriter(self.current_file_path, self.schema)
 
+        # Write to streaming parquet file
+        table = pa.Table.from_pandas(df, schema=self.schema)
+        self.parquet_writer.write_table(table)
 
-        df.to_parquet(filepath, index=False, engine='pyarrow')
-        print(f"Saved {len(df)} rows to {filepath}")
+        print(f"Streamed {len(df)} rows to {self.current_file_path}")
 
-        # Reset current data
+        # Clear current data to free memory
         self.current_data = []
+        del df, table  # Explicit cleanup
+
+    def _finalize_current_file(self) -> None:
+        """Close current parquet writer and prepare for next file."""
+        if self.parquet_writer:
+            self.parquet_writer.close()
+            self.parquet_writer = None
+            self.schema = None  # Reset schema for next file
+
+        self.current_file_index += 1
         self.current_game_count = 0
 
     def _check_and_save_batch(self, game_number: int) -> None:
@@ -165,16 +185,18 @@ class ChessMoveAnalyzer:
         if (self.current_game_count >= self.GAMES_PER_FILE or
                 new_split != self.current_split):
 
-            # Save current batch
             self._save_current_batch()
+            # Finalize current file
+            self._finalize_current_file()
 
             # Update split and file index
             if new_split != self.current_split:
                 self.current_split = new_split
                 self.current_file_index = 0
-            else:
-                self.current_file_index += 1
 
+        # Write intermediate batch every 1000 games to manage memory
+        elif len(self.current_data) > 10000:  # Adjust this number based on your memory
+            self._save_current_batch()
 
     def filter_major_attributes(self, attributes: Dict[str, Any]) -> Dict[str, Any]:
         """Filter out CTX attributes from move attributes."""
@@ -335,6 +357,7 @@ class ChessMoveAnalyzer:
 
         # Save any remaining data
         self._save_current_batch()
+        self._finalize_current_file()
         print("Analysis complete!")
 
     def get_dataset_info(self) -> Dict[str, Any]:
