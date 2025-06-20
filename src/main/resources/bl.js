@@ -189,11 +189,13 @@ const ESCenterCaptureMoves = bp.EventSet("EScenterCaptureMoves",
                 (['b', 'c', 'd', 'e', 'f', 'g'].includes(e.data.src.id[0]))
             ) ||
             (e.data.piece === "Bishop" &&  // Bishop Fianchetto
-                (e.data.dst.id[1] === "2") &&
-                (['b', 'g'].includes(e.data.src.id[0]))
+                (
+                    ((e.data.dst.id[1] === "2") && (['b', 'g'].includes(e.data.src.id[0]))) ||
+                    ((e.data.dst.id[1] === "3") && (['a', 'h'].includes(e.data.src.id[0])))
+                )
             ) ||
             (e.data.piece === "Bishop" &&  // Bishop Regular
-                (e.data.dst.id[1] === "2" || e.data.dst.id[1] === "3") &&
+                (e.data.dst.id[1] === "2" || e.data.dst.id[1] === "3" || e.data.dst.id[1] === "4") &&
                 (['c', 'd', 'e', 'f'].includes(e.data.src.id[0]))
             ) ||
             (e.data.piece === "Queen" &&  // Queen
@@ -1362,10 +1364,10 @@ ctx.bthread("DevelopingPawns", "Phase.Opening", function (entity) {
             let allPawnMoves = availableCellsFromPawn(pawnsArray[i], allCells);
 
             for (let i = 0; i < allPawnMoves.length; i++) {
-                // if (ESPawnDevelopingMoves.contains(straightPawnMoves[i])) {
-                // bp.log.info("Move - " + JSON.stringify(allPawnMoves[i]))
-                pawnMoves.push(allPawnMoves[i]);
-                // }
+                if (ESPawnDevelopingMoves.contains(allPawnMoves[i])) {
+                    // bp.log.info("Move - " + JSON.stringify(allPawnMoves[i]))
+                    pawnMoves.push(allPawnMoves[i]);
+                }
             }
         }
 
@@ -1426,9 +1428,9 @@ ctx.bthread("DevelopingKnights", "Phase.Opening", function (entity) {
             let availKnightMoves = availableKnightMoves(knightsArray[i])[0];
             let availableKnightMovesTotal = [];
             for (let j = 0; j < availKnightMoves.length; j++) {
-                // if (ESKnightDevelopingMoves.contains(availKnightMoves[j])) {
-                availableKnightMovesTotal.push(availKnightMoves[j]);
-                // }
+                if (ESKnightDevelopingMoves.contains(availKnightMoves[j])) {
+                    availableKnightMovesTotal.push(availKnightMoves[j]);
+                }
             }
             knightMoves = knightMoves.concat(availableKnightMovesTotal);
         }
@@ -1458,9 +1460,9 @@ ctx.bthread("DevelopingRooks", "Phase.Opening", function (entity) {
 
             let availableRookMovesTotal = [];
             for (let j = 0; j < availRookMoves.length; j++) {
-                // if (ESRookDevelopingMoves.contains(availRookMoves[j])) {
-                availableRookMovesTotal.push(availRookMoves[j]);
-                // }
+                if (ESRookDevelopingMoves.contains(availRookMoves[j])) {
+                    availableRookMovesTotal.push(availRookMoves[j]);
+                }
             }
             rookMoves = rookMoves.concat(availableRookMovesTotal);
         }
@@ -1489,9 +1491,9 @@ ctx.bthread("DevelopingBishops", "Phase.Opening", function (entity) {
 
             let availableBishopMovesTotal = [];
             for (let j = 0; j < diagonalBishopMoves.length; j++) {
-                // if (ESBishopDevelopingMoves.contains(diagonalBishopMoves[j])) {
+                if (ESBishopDevelopingMoves.contains(diagonalBishopMoves[j])) {
                     availableBishopMovesTotal.push(diagonalBishopMoves[j]);
-                // }
+                }
             }
             bishopsMoves = bishopsMoves.concat(availableBishopMovesTotal);
         }
@@ -1525,15 +1527,15 @@ ctx.bthread("DevelopingQueen", "Phase.Opening", function (entity) {
         let diagonalQueenMoves = availableDiagonalCellsFromPiece(queen, 7, allCells)[0];
         let straightQueenMoves = availableStraightCellsFromPiece(queen, 7, allCells)[0];
         for (let i = 0; i < diagonalQueenMoves.length; i++) {
-            // if (ESQueenDevelopingMoves.contains(diagonalQueenMoves[i])) {
+            if (ESQueenDevelopingMoves.contains(diagonalQueenMoves[i])) {
                 queenMoves.push(diagonalQueenMoves[i]);
-            // }
+            }
         }
 
         for (let i = 0; i < straightQueenMoves.length; i++) {
-            // if (ESQueenDevelopingMoves.contains(straightQueenMoves[i])) {
+            if (ESQueenDevelopingMoves.contains(straightQueenMoves[i])) {
                 queenMoves.push(straightQueenMoves[i]);
-            // }
+            }
         }
 
         // bp.log.info("~~ LOG (1120) Developing Queen ~~ Moves :  " + queenMoves)
@@ -3399,8 +3401,8 @@ ctx.bthread("Visualize", "Phase.Opening", function (entity) {
         for (let i = 0; i < 8; i++) {
 
             //bp.log.info(ANSI_PURPLE + currentBoard[i][0] + "  " + currentBoard[i][1] + "  " + currentBoard[i][2] + "  " +
-              //  currentBoard[i][3] + "  " + currentBoard[i][4] + "  " + currentBoard[i][5] + "  " +
-               // currentBoard[i][6] + "  " + currentBoard[i][7] + ANSI_RESET);
+            //  currentBoard[i][3] + "  " + currentBoard[i][4] + "  " + currentBoard[i][5] + "  " +
+            // currentBoard[i][6] + "  " + currentBoard[i][7] + ANSI_RESET);
 
         }
         //bp.log.info(ANSI_CYAN + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ " + ANSI_RESET)
